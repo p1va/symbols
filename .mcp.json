@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "typescript": {
+      "command": "lsp-use",
+      "args": []
+    },
+    "typescript-new": {
+      "command": "pnpm",
+      "args": ["start"]
+    }
+  }
+}
