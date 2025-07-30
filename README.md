@@ -10,7 +10,6 @@ An MCP server to bring the structure of Language Servers to Coding Agents
 ![Go](https://img.shields.io/badge/go-%2300ADD8.svg?logo=go&logoColor=white)
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)
 
-
 </div>
 
 ## Introduction
@@ -22,7 +21,6 @@ By giving Coding Agents direct access to the same Language Server that powers VS
 ```bash
 npx -y @p1va/lsp-use
 ```
-
 
 The tool spawn a Language Server process and then communicates over stdio with it according to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). In order for the tool to work the Language Server for the language of choice needs to also be installed.
 
@@ -43,7 +41,6 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
     }
   }
 }
-
 ```
 
 Update your `CLAUDE.md` with instructions on tool use recommending to prefer LSP-based discovery over traditional file read.
@@ -54,7 +51,7 @@ Update your `CLAUDE.md` with instructions on tool use recommending to prefer LSP
 
 <summary><b>OpenAI Codex</b></summary>
 
-Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo level yet. 
+Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo level yet.
 
 ```toml
 [mcp_servers.csharp]
@@ -74,15 +71,15 @@ Add or update your `.vscode/mcp.toml` to include this `csharp` server and provid
 
 ```json
 {
-   "servers": {
-     "csharp": {
-       "type": "stdio",
-       "command": "npx -y @p1va/lsp-use",
-       "args": []
-     }
-   }
- }
- ```
+  "servers": {
+    "csharp": {
+      "type": "stdio",
+      "command": "npx -y @p1va/lsp-use",
+      "args": []
+    }
+  }
+}
+```
 
 </details>
 
@@ -96,5 +93,5 @@ The server provides the following tools.
 - **`completion`**: add description
 - **`references`**: add description
 - **`rename`**: add description
-- **`diagnostics`**: add description 
+- **`diagnostics`**: add description
 - **`logs`**: add description

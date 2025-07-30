@@ -27,12 +27,12 @@ export function createLspError(
   message: string,
   originalError?: Error
 ): LspOperationError {
-  return originalError 
+  return originalError
     ? { message, errorCode, originalError }
     : { message, errorCode };
 }
 
-// Result type for consistent error handling  
+// Result type for consistent error handling
 export type Result<T> =
   | { success: true; data: T }
   | { success: false; error: LspOperationError };

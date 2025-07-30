@@ -22,7 +22,7 @@ import {
   LogMessage,
   createLspError,
   ErrorCode,
-} from './types';
+} from './types.js';
 
 export async function createLspClient(
   config: LspConfig,

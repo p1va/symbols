@@ -12,7 +12,7 @@ import {
   FileRequest,
   ValidationErrorCode,
   ErrorCode,
-} from './types';
+} from './types.js';
 
 /**
  * Validates that the workspace is ready for operations
@@ -126,7 +126,7 @@ export async function validatePosition(
         },
       };
     }
-    
+
     if (zeroBasedChar < 0 || zeroBasedChar > lineContent.length) {
       return {
         valid: false,
@@ -168,7 +168,7 @@ export async function validateFileRequest(
     return pathCheck;
   }
 
-  return pathCheck.absolutePath 
+  return pathCheck.absolutePath
     ? { valid: true, absolutePath: pathCheck.absolutePath }
     : { valid: true };
 }
@@ -202,7 +202,7 @@ export async function validateSymbolPositionRequest(
     return positionCheck;
   }
 
-  return pathCheck.absolutePath 
+  return pathCheck.absolutePath
     ? { valid: true, absolutePath: pathCheck.absolutePath }
     : { valid: true };
 }

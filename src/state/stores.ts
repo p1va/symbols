@@ -3,7 +3,7 @@
  */
 
 import { Diagnostic } from 'vscode-languageserver-protocol';
-import { DiagnosticsStore, WindowLogStore, LogMessage } from './types';
+import { DiagnosticsStore, WindowLogStore, LogMessage } from '../types.js';
 
 export function createDiagnosticsStore(): DiagnosticsStore {
   const diagnostics = new Map<string, Diagnostic[]>();

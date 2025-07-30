@@ -86,6 +86,7 @@ Steps:
   `vscode-languageserver-textdocument`.
 
 ---
+
 Feel free to open individual PRs linked to the tasks above; they are designed
 to be largely independent so the team can work in parallel.
 
@@ -95,14 +96,14 @@ to be largely independent so the team can work in parallel.
 
 Legend: ✅ done 🔄 partial / in-flight ⬜ still to do
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-|1|API ergonomics – introduce `LspContext`|✅|`LspContext` interface exists, `createContext()` factory wired; all operations consume `(ctx, request)`|
-|2|Structured error handling|⬜|`Result<T>` still string-error variant; no `ApplicationServiceError` / `ErrorCode` enum yet|
-|3|Complete `getDocumentSymbols` end-to-end|🔄|`readSymbols` implemented with lifecycle wrapper; need 1-based conversion + Vitest integration test|
-|4|File-lifecycle – handle pre-loaded files|🔄|`file-lifecycle-v2.ts` present, pre-load branch not yet finished; unit tests missing|
-|5|Stores – functional & capacity-limited|⬜|Stores still expose internals; no eviction logic|
-|6|TS & linting alignment|🔄|`strict` on; extra flags & ESLint/Prettier hook missing; still using “.js” import suffixes|
-|7|Utility refinements|🔄|`getLogLevelName()` exists but in `index.ts`; language-id helper not added|
+| #   | Task                                     | Status | Notes                                                                                                   |
+| --- | ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------- |
+| 1   | API ergonomics – introduce `LspContext`  | ✅     | `LspContext` interface exists, `createContext()` factory wired; all operations consume `(ctx, request)` |
+| 2   | Structured error handling                | ⬜     | `Result<T>` still string-error variant; no `ApplicationServiceError` / `ErrorCode` enum yet             |
+| 3   | Complete `getDocumentSymbols` end-to-end | 🔄     | `readSymbols` implemented with lifecycle wrapper; need 1-based conversion + Vitest integration test     |
+| 4   | File-lifecycle – handle pre-loaded files | 🔄     | `file-lifecycle-v2.ts` present, pre-load branch not yet finished; unit tests missing                    |
+| 5   | Stores – functional & capacity-limited   | ⬜     | Stores still expose internals; no eviction logic                                                        |
+| 6   | TS & linting alignment                   | 🔄     | `strict` on; extra flags & ESLint/Prettier hook missing; still using “.js” import suffixes              |
+| 7   | Utility refinements                      | 🔄     | `getLogLevelName()` exists but in `index.ts`; language-id helper not added                              |
 
 Next recommended steps (descending priority): 1. land new `Result<T>` shape, 2. finish lifecycle & tests for `readSymbols`, 3. refactor stores, 4. decide on import-extension strategy & update lint config.
