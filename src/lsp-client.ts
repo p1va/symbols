@@ -15,6 +15,7 @@ import {
 
 import {
   LspClient,
+  LspClientResult,
   LspConfig,
   Result,
   DiagnosticsStore,
@@ -28,7 +29,7 @@ export async function createLspClient(
   config: LspConfig,
   diagnosticsStore: DiagnosticsStore,
   windowLogStore: WindowLogStore
-): Promise<Result<LspClient>> {
+): Promise<Result<LspClientResult>> {
   try {
     // TODO: accept command, arguments and env vars from outside to be read from config
 
@@ -53,7 +54,12 @@ export async function createLspClient(
       ...(serverProcess.pid !== undefined && { processId: serverProcess.pid }),
     };
 
-    return { success: true, data: client };
+    const result: LspClientResult = {
+      client,
+      process: serverProcess,
+    };
+
+    return { success: true, data: result };
   } catch (error) {
     return {
       success: false,

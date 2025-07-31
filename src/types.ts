@@ -4,6 +4,7 @@
  */
 
 import * as rpc from 'vscode-jsonrpc';
+import { ChildProcessWithoutNullStreams } from 'child_process';
 import { Diagnostic, LogMessageParams } from 'vscode-languageserver-protocol';
 
 // Error codes for LSP operations
@@ -43,6 +44,12 @@ export interface LspClient {
   isInitialized: boolean;
   capabilities?: any;
   processId?: number;
+}
+
+// LSP Client creation result with child process for shutdown handling
+export interface LspClientResult {
+  client: LspClient;
+  process: ChildProcessWithoutNullStreams;
 }
 
 // Workspace loading state

@@ -1,8 +1,10 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { ChildProcessWithoutNullStreams } from 'child_process';
 import * as path from 'path';
 
 import {
   LspClient,
+  LspClientResult,
   LspConfig,
   LspContext,
   WorkspaceState,
@@ -18,9 +20,11 @@ import { createLspClient, initializeLspClient } from '../lsp-client.js';
 import { openFileWithStrategy } from '../lsp/fileLifecycle/index.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
 import { createServer } from './createServer.js';
+import { setupShutdown } from './shutdown.js';
 
 // Module-level state
 let lspClient: LspClient | null = null;
+let lspProcess: ChildProcessWithoutNullStreams | null = null;
 let preloadedFiles: PreloadedFiles = new Map();
 let diagnosticsStore: DiagnosticsStore = createDiagnosticsStore();
 let windowLogStore: WindowLogStore = createWindowLogStore();
@@ -59,12 +63,16 @@ async function initializeLsp(): Promise<void> {
       throw new Error(clientResult.error.message);
     }
 
-    const initResult = await initializeLspClient(clientResult.data, config);
+    const initResult = await initializeLspClient(
+      clientResult.data.client,
+      config
+    );
     if (!initResult.success) {
       throw new Error(initResult.error.message);
     }
 
-    lspClient = clientResult.data;
+    lspClient = clientResult.data.client;
+    lspProcess = clientResult.data.process;
 
     // Initialize workspace by opening preloaded files
     await initializeWorkspace(config);
@@ -151,8 +159,16 @@ export async function main(): Promise<void> {
   // Initialize LSP connection
   await initializeLsp();
 
+  // Ensure both client and process are available for shutdown
+  if (!lspClient || !lspProcess) {
+    throw new Error('LSP client or process not initialized');
+  }
+
   // Create and configure MCP server
   const server = createServer(createContext);
+
+  // Set up graceful shutdown handling
+  setupShutdown(server, lspClient, lspProcess);
 
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();
