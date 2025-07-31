@@ -4,7 +4,7 @@
  */
 
 import * as rpc from 'vscode-jsonrpc';
-import { Diagnostic } from 'vscode-languageserver-protocol';
+import { Diagnostic, LogMessageParams } from 'vscode-languageserver-protocol';
 
 // Error codes for LSP operations
 export enum ErrorCode {
@@ -79,11 +79,8 @@ export interface DiagnosticsStore {
   clear(): void;
 }
 
-// Simple log message type (since WindowLogMessage isn't exported)
-export interface LogMessage {
-  type: number;
-  message: string;
-}
+// Use the official LogMessageParams type
+export type LogMessage = LogMessageParams;
 
 export interface WindowLogStore {
   messages: LogMessage[];
@@ -92,33 +89,29 @@ export interface WindowLogStore {
   clear(): void;
 }
 
-// Position coordinate conversion utilities
-export interface Position {
-  line: number;
-  character: number;
-}
+// Import and re-export position types
+import {
+  OneBasedPosition,
+  ZeroBasedPosition,
+  createOneBasedPosition,
+  createZeroBasedPosition,
+  toZeroBased,
+  toOneBased,
+} from './types/position.js';
 
-// Convert 1-based (MCP/user) to 0-based (LSP)
-export function toLspPosition(pos: Position): Position {
-  return {
-    line: pos.line - 1,
-    character: pos.character - 1,
-  };
-}
+export {
+  OneBasedPosition,
+  ZeroBasedPosition,
+  createOneBasedPosition,
+  createZeroBasedPosition,
+  toZeroBased,
+  toOneBased,
+};
 
-// Convert 0-based (LSP) to 1-based (MCP/user)
-export function fromLspPosition(pos: Position): Position {
-  return {
-    line: pos.line + 1,
-    character: pos.character + 1,
-  };
-}
-
-// Tool request types (1-based coordinates)
+// Tool request types (using branded position types)
 export interface SymbolPositionRequest {
   file: string;
-  line: number;
-  character: number;
+  position: OneBasedPosition;
 }
 
 export interface FileRequest {
@@ -129,7 +122,9 @@ export interface SearchRequest {
   query: string;
 }
 
-export interface RenameRequest extends SymbolPositionRequest {
+export interface RenameRequest {
+  file: string;
+  position: OneBasedPosition;
   newName: string;
 }
 

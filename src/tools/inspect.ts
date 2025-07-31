@@ -3,7 +3,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext } from '../types.js';
+import { LspContext, createOneBasedPosition } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursorContext.js';
@@ -24,7 +24,13 @@ export function registerInspectTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
-      const result = await LspOperations.inspectSymbol(ctx, request);
+      // Convert raw request to branded position type
+      const symbolRequest = {
+        file: request.file,
+        position: createOneBasedPosition(request.line, request.character),
+      };
+
+      const result = await LspOperations.inspectSymbol(ctx, symbolRequest);
       if (!result.success) throw new Error(result.error.message);
 
       // Format response with cursor context

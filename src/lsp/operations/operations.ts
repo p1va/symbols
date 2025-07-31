@@ -14,11 +14,33 @@ import {
   ErrorCode,
   ValidationError,
   ValidationErrorCode,
+  toZeroBased,
 } from '../../types.js';
 import {
   parseDocumentSymbolResponse,
   SymbolInformation,
   DocumentSymbol,
+  TextDocumentPositionParams,
+  ReferenceParams,
+  CompletionParams,
+  DocumentSymbolParams,
+  WorkspaceSymbolParams,
+  RenameParams,
+  Hover,
+  Location,
+  CompletionList,
+  CompletionItem,
+  WorkspaceEdit,
+  WorkspaceSymbol,
+  // Internal result types
+  SymbolReference,
+  SymbolInspection,
+  CompletionResult,
+  SymbolSearchResult,
+  DocumentSymbolResult,
+  RenameResult,
+  LogMessageResult,
+  DisplayRange,
 } from '../../types/lsp.js';
 import {
   validateSymbolPositionRequest,
@@ -62,7 +84,7 @@ function validationErrorToLspError(validationError: ValidationError) {
 export async function inspectSymbol(
   ctx: LspContext,
   request: SymbolPositionRequest
-): Promise<Result<OperationWithContextResult<any>>> {
+): Promise<Result<OperationWithContextResult<SymbolInspection>>> {
   // Validate request
   const validation = await validateSymbolPositionRequest(ctx, request);
   if (!validation.valid) {
@@ -74,20 +96,24 @@ export async function inspectSymbol(
 
   const { client, preloadedFiles } = ctx;
   const filePath = validation.absolutePath!;
-  const position = { line: request.line, character: request.character };
+  const oneBasedPosition = request.position;
 
   return await executeWithCursorContext(
     'inspect',
     client,
     filePath,
-    position,
+    oneBasedPosition,
     preloadedFiles,
     'respect_existing',
     async (uri) => {
       try {
-        const lspPosition = {
-          line: position.line - 1, // Convert to 0-based
-          character: position.character - 1,
+        // Convert to 0-based position for LSP
+        const lspPosition = toZeroBased(oneBasedPosition);
+
+        // Create typed LSP request parameters
+        const positionParams: TextDocumentPositionParams = {
+          textDocument: { uri },
+          position: lspPosition,
         };
 
         // Send multiple LSP requests for comprehensive symbol information
@@ -97,25 +123,25 @@ export async function inspectSymbol(
           typeDefinitionResult,
           implementationResult,
         ] = await Promise.allSettled([
-          client.connection.sendRequest('textDocument/hover', {
-            textDocument: { uri },
-            position: lspPosition,
-          }),
-          client.connection.sendRequest('textDocument/definition', {
-            textDocument: { uri },
-            position: lspPosition,
-          }),
-          client.connection.sendRequest('textDocument/typeDefinition', {
-            textDocument: { uri },
-            position: lspPosition,
-          }),
-          client.connection.sendRequest('textDocument/implementation', {
-            textDocument: { uri },
-            position: lspPosition,
-          }),
+          client.connection.sendRequest(
+            'textDocument/hover',
+            positionParams
+          ) as Promise<Hover>,
+          client.connection.sendRequest(
+            'textDocument/definition',
+            positionParams
+          ) as Promise<Location | Location[]>,
+          client.connection.sendRequest(
+            'textDocument/typeDefinition',
+            positionParams
+          ) as Promise<Location | Location[]>,
+          client.connection.sendRequest(
+            'textDocument/implementation',
+            positionParams
+          ) as Promise<Location | Location[]>,
         ]);
 
-        const inspectData: any = {
+        const inspectData: SymbolInspection = {
           hover: hoverResult.status === 'fulfilled' ? hoverResult.value : null,
           definition:
             definitionResult.status === 'fulfilled'
@@ -176,7 +202,7 @@ export async function inspectSymbol(
 export async function findReferences(
   ctx: LspContext,
   request: SymbolPositionRequest
-): Promise<Result<OperationWithContextResult<any[]>>> {
+): Promise<Result<OperationWithContextResult<SymbolReference[]>>> {
   // Validate request
   const validation = await validateSymbolPositionRequest(ctx, request);
   if (!validation.valid) {
@@ -188,40 +214,40 @@ export async function findReferences(
 
   const { client, preloadedFiles } = ctx;
   const filePath = validation.absolutePath!;
-  const position = { line: request.line, character: request.character };
+  const oneBasedPosition = request.position;
 
   return await executeWithCursorContext(
     'references',
     client,
     filePath,
-    position,
+    oneBasedPosition,
     preloadedFiles,
     'respect_existing',
     async (uri) => {
       try {
+        // Convert to 0-based position for LSP
+        const lspPosition = toZeroBased(oneBasedPosition);
+
         // Send textDocument/references request to LSP
-        const params = {
+        const params: ReferenceParams = {
           textDocument: { uri },
-          position: {
-            line: position.line - 1, // Convert to 0-based
-            character: position.character - 1,
-          },
+          position: lspPosition,
           context: {
             includeDeclaration: true,
           },
         };
 
-        const references = await client.connection.sendRequest(
+        const references = (await client.connection.sendRequest(
           'textDocument/references',
           params
-        );
+        )) as Location[];
 
         if (!Array.isArray(references)) {
           return { success: true, data: [] };
         }
 
         // Transform LSP response to our format
-        const results = references.map((ref) => ({
+        const results: SymbolReference[] = references.map((ref) => ({
           uri: ref.uri,
           range: ref.range,
           // Convert back to 1-based for user display
@@ -247,7 +273,7 @@ export async function findReferences(
 export async function completion(
   ctx: LspContext,
   request: SymbolPositionRequest
-): Promise<Result<OperationWithContextResult<any[]>>> {
+): Promise<Result<OperationWithContextResult<CompletionResult[]>>> {
   // Validate request
   const validation = await validateSymbolPositionRequest(ctx, request);
   if (!validation.valid) {
@@ -259,32 +285,35 @@ export async function completion(
 
   const { client, preloadedFiles } = ctx;
   const filePath = validation.absolutePath!;
-  const position = { line: request.line, character: request.character };
+  const oneBasedPosition = request.position;
 
   return await executeWithCursorContext(
     'completion',
     client,
     filePath,
-    position,
+    oneBasedPosition,
     preloadedFiles,
     'respect_existing',
     async (uri) => {
       try {
+        // Convert to 0-based position for LSP
+        const lspPosition = toZeroBased(oneBasedPosition);
+
         // Send textDocument/completion request to LSP
-        const params = {
+        const params: CompletionParams = {
           textDocument: { uri },
-          position: {
-            line: position.line - 1, // Convert to 0-based
-            character: position.character - 1,
+          position: lspPosition,
+          context: {
+            triggerKind: 2,
           },
         };
 
-        const completionResult = await client.connection.sendRequest(
+        const completionResult = (await client.connection.sendRequest(
           'textDocument/completion',
           params
-        );
+        )) as CompletionList | CompletionItem[];
 
-        let completions: any[] = [];
+        let completions: CompletionItem[] = [];
 
         if (Array.isArray(completionResult)) {
           completions = completionResult;
@@ -301,29 +330,31 @@ export async function completion(
         }
 
         // Transform LSP completion items to our format
-        const results = completions.map((item) => ({
+        const results: CompletionResult[] = completions.map((item) => ({
           label: item.label,
-          kind: item.kind,
-          detail: item.detail,
-          documentation: item.documentation,
+          kind: item.kind || 1, // Default to Text if kind is undefined
+          detail: item.detail || '',
+          documentation: item.documentation || '',
           insertText: item.insertText || item.label,
-          filterText: item.filterText,
-          sortText: item.sortText,
-          textEdit: item.textEdit
+          filterText: item.filterText || item.label,
+          sortText: item.sortText || item.label,
+          ...(item.textEdit && 'range' in item.textEdit
             ? {
-                ...item.textEdit,
-                range: {
-                  start: {
-                    line: item.textEdit.range.start.line + 1,
-                    character: item.textEdit.range.start.character + 1,
-                  },
-                  end: {
-                    line: item.textEdit.range.end.line + 1,
-                    character: item.textEdit.range.end.character + 1,
+                textEdit: {
+                  newText: item.textEdit.newText,
+                  range: {
+                    start: {
+                      line: item.textEdit.range.start.line + 1,
+                      character: item.textEdit.range.start.character + 1,
+                    },
+                    end: {
+                      line: item.textEdit.range.end.line + 1,
+                      character: item.textEdit.range.end.character + 1,
+                    },
                   },
                 },
               }
-            : undefined,
+            : {}),
         }));
 
         return { success: true, data: results };
@@ -344,7 +375,7 @@ export async function completion(
 export async function searchSymbols(
   ctx: LspContext,
   request: SearchRequest
-): Promise<Result<any[]>> {
+): Promise<Result<SymbolSearchResult[]>> {
   // Validate workspace readiness
   const validation = validateWorkspaceOperation(ctx);
   if (!validation.valid) {
@@ -358,26 +389,50 @@ export async function searchSymbols(
 
   try {
     // Send workspace symbol request to LSP
-    const params = {
+    const params: WorkspaceSymbolParams = {
       query: request.query,
     };
 
-    const symbols = await client.connection.sendRequest(
+    const symbols = (await client.connection.sendRequest(
       'workspace/symbol',
       params
-    );
+    )) as WorkspaceSymbol[] | SymbolInformation[];
 
     // Transform LSP response to our format
-    const results = Array.isArray(symbols)
-      ? symbols.map((symbol) => ({
-          name: symbol.name,
-          kind: symbol.kind,
-          location: {
-            uri: symbol.location.uri,
-            range: symbol.location.range,
-          },
-          containerName: symbol.containerName,
-        }))
+    const results: SymbolSearchResult[] = Array.isArray(symbols)
+      ? symbols.map((symbol) => {
+          // Handle both WorkspaceSymbol and SymbolInformation
+          if (
+            'location' in symbol &&
+            symbol.location &&
+            'range' in symbol.location
+          ) {
+            // SymbolInformation
+            return {
+              name: symbol.name,
+              kind: symbol.kind,
+              location: {
+                uri: symbol.location.uri,
+                range: symbol.location.range,
+              },
+              containerName: symbol.containerName || '',
+            };
+          } else {
+            // WorkspaceSymbol - has no location directly
+            return {
+              name: symbol.name,
+              kind: symbol.kind,
+              location: {
+                uri: (symbol as any).uri || '',
+                range: (symbol as any).range || {
+                  start: { line: 0, character: 0 },
+                  end: { line: 0, character: 0 },
+                },
+              },
+              containerName: symbol.containerName || '',
+            };
+          }
+        })
       : [];
 
     return { success: true, data: results };
@@ -396,7 +451,7 @@ export async function searchSymbols(
 export async function readSymbols(
   ctx: LspContext,
   request: FileRequest
-): Promise<Result<any[]>> {
+): Promise<Result<any>> {
   // Validate request
   const validation = await validateFileRequest(ctx, request);
   if (!validation.valid) {
@@ -417,19 +472,19 @@ export async function readSymbols(
     filePath,
     preloadedFiles,
     'respect_existing', // Don't close preloaded files, close temporary ones
-    async (uri) => {
+    async (uri): Promise<Result<any>> => {
       try {
         // Send textDocument/documentSymbol request
-        const params = {
+        const params: DocumentSymbolParams = {
           textDocument: {
             uri: uri,
           },
         };
 
-        const rawSymbols = await client.connection.sendRequest(
+        const rawSymbols = (await client.connection.sendRequest(
           'textDocument/documentSymbol',
           params
-        );
+        )) as DocumentSymbol[] | SymbolInformation[];
 
         // Use typed parser to handle both SymbolInformation[] and DocumentSymbol[]
         const symbolResult = parseDocumentSymbolResponse(rawSymbols);
@@ -441,12 +496,12 @@ export async function readSymbols(
               name: symbol.name,
               kind: symbol.kind,
               range: symbol.location.range,
-              containerName: symbol.containerName,
+              containerName: symbol.containerName || '',
               uri: symbol.location.uri,
               deprecated: symbol.deprecated,
             })
           );
-          return { success: true, data: results };
+          return { success: true, data: symbolResult };
         } else {
           // DocumentSymbol format - flatten nested symbols
           const results: any[] = [];
@@ -473,7 +528,7 @@ export async function readSymbols(
           }
 
           flattenDocumentSymbols(symbolResult.symbols);
-          return { success: true, data: results };
+          return { success: true, data: symbolResult };
         }
       } catch (error) {
         return {
@@ -513,7 +568,7 @@ export async function getDiagnostics(
 export async function rename(
   ctx: LspContext,
   request: RenameRequest
-): Promise<Result<OperationWithContextResult<any>>> {
+): Promise<Result<OperationWithContextResult<RenameResult>>> {
   // Validate request (RenameRequest extends SymbolPositionRequest)
   const validation = await validateSymbolPositionRequest(ctx, request);
   if (!validation.valid) {
@@ -525,31 +580,31 @@ export async function rename(
 
   const { client, preloadedFiles } = ctx;
   const filePath = validation.absolutePath!;
-  const position = { line: request.line, character: request.character };
+  const oneBasedPosition = request.position;
 
   return await executeWithCursorContext(
     'rename',
     client,
     filePath,
-    position,
+    oneBasedPosition,
     preloadedFiles,
     'respect_existing',
     async (uri) => {
       try {
+        // Convert to 0-based position for LSP
+        const lspPosition = toZeroBased(oneBasedPosition);
+
         // Send textDocument/rename request to LSP
-        const params = {
+        const params: RenameParams = {
           textDocument: { uri },
-          position: {
-            line: position.line - 1, // Convert to 0-based
-            character: position.character - 1,
-          },
+          position: lspPosition,
           newName: request.newName,
         };
 
-        const workspaceEdit = await client.connection.sendRequest(
+        const workspaceEdit = (await client.connection.sendRequest(
           'textDocument/rename',
           params
-        );
+        )) as WorkspaceEdit;
 
         if (
           !workspaceEdit ||
@@ -557,11 +612,11 @@ export async function rename(
           !('changes' in workspaceEdit) ||
           !workspaceEdit.changes
         ) {
-          return { success: true, data: { changes: {}, changeCount: 0 } };
+          return { success: true, data: {} };
         }
 
         // Transform LSP WorkspaceEdit response to our format
-        const changes: any = {};
+        const changes: RenameResult = {};
         const workspaceChanges = workspaceEdit.changes as Record<string, any[]>;
         for (const [fileUri, edits] of Object.entries(workspaceChanges)) {
           changes[fileUri] = (edits as any[]).map((edit) => ({
@@ -577,10 +632,7 @@ export async function rename(
 
         return {
           success: true,
-          data: {
-            changes,
-            changeCount: Object.keys(changes).length,
-          },
+          data: changes,
         };
       } catch (error) {
         return {
@@ -596,7 +648,9 @@ export async function rename(
   );
 }
 
-export async function logs(ctx: LspContext): Promise<Result<any[]>> {
+export async function logs(
+  ctx: LspContext
+): Promise<Result<LogMessageResult[]>> {
   const { windowLogStore } = ctx;
   try {
     const messages = windowLogStore.getMessages();

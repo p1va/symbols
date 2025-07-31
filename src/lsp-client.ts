@@ -30,6 +30,8 @@ export async function createLspClient(
   windowLogStore: WindowLogStore
 ): Promise<Result<LspClient>> {
   try {
+    // TODO: accept command, arguments and env vars from outside to be read from config
+
     // Spawn the TypeScript Language Server (same as playground)
     const serverProcess = cp.spawn('typescript-language-server', ['--stdio']);
 

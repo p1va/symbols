@@ -11,7 +11,7 @@ import {
   Result,
   createLspError,
   ErrorCode,
-  Position,
+  OneBasedPosition,
 } from '../../types.js';
 import {
   getLanguageId,
@@ -163,7 +163,7 @@ export async function executeWithCursorContext<T>(
   operationName: string,
   client: LspClient,
   filePath: string,
-  position: Position,
+  position: OneBasedPosition,
   preloadedFiles: PreloadedFiles,
   strategy: FileLifecycleStrategy,
   operation: (uri: string, cursorContext?: CursorContext) => Promise<Result<T>>

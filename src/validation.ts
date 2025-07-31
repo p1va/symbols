@@ -12,6 +12,8 @@ import {
   FileRequest,
   ValidationErrorCode,
   ErrorCode,
+  OneBasedPosition,
+  toZeroBased,
 } from './types.js';
 
 /**
@@ -93,46 +95,47 @@ export function validateAndNormalizeFilePath(
  */
 export async function validatePosition(
   filePath: string,
-  line: number,
-  character: number
+  position: OneBasedPosition
 ): Promise<ValidationResult> {
   try {
     const content = await fs.promises.readFile(filePath, 'utf8');
     const lines = content.split('\n');
 
     // Convert to 0-based for validation (LSP coordinates)
-    const zeroBasedLine = line - 1;
-    const zeroBasedChar = character - 1;
+    const zeroBasedPosition = toZeroBased(position);
 
     // Check line bounds
-    if (zeroBasedLine < 0 || zeroBasedLine >= lines.length) {
+    if (zeroBasedPosition.line < 0 || zeroBasedPosition.line >= lines.length) {
       return {
         valid: false,
         error: {
           errorCode: ValidationErrorCode.PositionOutOfBounds,
-          message: `Line ${line} is out of bounds. File has ${lines.length} lines.`,
+          message: `Line ${position.line} is out of bounds. File has ${lines.length} lines.`,
         },
       };
     }
 
     // Check character bounds
-    const lineContent = lines[zeroBasedLine];
+    const lineContent = lines[zeroBasedPosition.line];
     if (!lineContent) {
       return {
         valid: false,
         error: {
           errorCode: ValidationErrorCode.PositionOutOfBounds,
-          message: `Line ${line} does not exist in file.`,
+          message: `Line ${position.line} does not exist in file.`,
         },
       };
     }
 
-    if (zeroBasedChar < 0 || zeroBasedChar > lineContent.length) {
+    if (
+      zeroBasedPosition.character < 0 ||
+      zeroBasedPosition.character > lineContent.length
+    ) {
       return {
         valid: false,
         error: {
           errorCode: ValidationErrorCode.PositionOutOfBounds,
-          message: `Character ${character} is out of bounds. Line ${line} has ${lineContent.length} characters.`,
+          message: `Character ${position.character} is out of bounds. Line ${position.line} has ${lineContent.length} characters.`,
         },
       };
     }
@@ -195,8 +198,7 @@ export async function validateSymbolPositionRequest(
   // Validate position bounds
   const positionCheck = await validatePosition(
     pathCheck.absolutePath!,
-    request.line,
-    request.character
+    request.position
   );
   if (!positionCheck.valid) {
     return positionCheck;

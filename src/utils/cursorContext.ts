@@ -5,7 +5,7 @@
  * what symbol was targeted at a specific position.
  */
 
-import { LspClient, Position, toLspPosition } from '../types.js';
+import { LspClient, OneBasedPosition, toZeroBased } from '../types.js';
 import {
   parseDocumentSymbolResponse,
   SymbolInformation,
@@ -17,7 +17,7 @@ import {
 export interface CursorContext {
   operation: string;
   file: string;
-  position: Position; // 1-based user position
+  position: OneBasedPosition; // 1-based user position
   symbolName?: string;
   symbolKind?: string;
   snippet: string; // Text snippet showing cursor position with | marker
@@ -72,9 +72,12 @@ function symbolKindToString(kind: number): string {
 async function findSymbolAtPosition(
   client: LspClient,
   uri: string,
-  position: Position // 0-based LSP position
+  position: OneBasedPosition // 1-based position - need to convert to LSP 0-based
 ): Promise<SymbolAtPosition | null> {
   try {
+    // Convert to 0-based position for LSP
+    const lspPosition = toZeroBased(position);
+
     const params = {
       textDocument: { uri },
     };
@@ -138,18 +141,21 @@ async function findSymbolAtPosition(
       const end = range.end;
 
       // Check if position is within range (0-based LSP coordinates)
-      if (position.line < start.line || position.line > end.line) {
+      if (lspPosition.line < start.line || lspPosition.line > end.line) {
         return false;
       }
 
       if (
-        position.line === start.line &&
-        position.character < start.character
+        lspPosition.line === start.line &&
+        lspPosition.character < start.character
       ) {
         return false;
       }
 
-      if (position.line === end.line && position.character > end.character) {
+      if (
+        lspPosition.line === end.line &&
+        lspPosition.character > end.character
+      ) {
         return false;
       }
 
@@ -192,7 +198,7 @@ async function findSymbolAtPosition(
  */
 function createTextSnippet(
   fileContent: string,
-  position: Position, // 1-based user position
+  position: OneBasedPosition, // 1-based user position
   contextChars: number = 10
 ): string {
   const lines = fileContent.split('\n');
@@ -254,11 +260,9 @@ export async function generateCursorContext(
   client: LspClient,
   uri: string,
   filePath: string,
-  position: Position, // 1-based user position
+  position: OneBasedPosition, // 1-based user position
   preloadedFiles: Map<string, any>
 ): Promise<CursorContext | null> {
-  const lspPosition = toLspPosition(position);
-
   // Get file content
   const fileContent = await getFileContent(uri, preloadedFiles, filePath);
   if (!fileContent) {
@@ -266,7 +270,7 @@ export async function generateCursorContext(
   }
 
   // Find the symbol at the position
-  const symbolAtPosition = await findSymbolAtPosition(client, uri, lspPosition);
+  const symbolAtPosition = await findSymbolAtPosition(client, uri, position);
 
   // Create text snippet
   const snippet = createTextSnippet(fileContent, position);

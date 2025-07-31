@@ -35,6 +35,7 @@ let workspaceState: WorkspaceState = {
 async function initializeLsp(): Promise<void> {
   try {
     const workspacePath = process.cwd();
+    // TODO: this has a file prefix but is a folder?
     const workspaceUri = `file://${path.resolve(workspacePath)}`;
     const workspaceName = path.basename(workspacePath);
 

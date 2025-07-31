@@ -1,76 +1,161 @@
 /**
- * LSP Types from the Language Server Protocol 3.17 specification
+ * LSP Types - Import official types from vscode-languageserver-protocol
  * https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
  */
 
-// Basic LSP types
-export type DocumentUri = string;
-export type uinteger = number;
+// Import all the official LSP types instead of defining our own
+import {
+  // Basic types
+  DocumentUri,
+  Position,
+  Range,
+  Location,
+  uinteger,
 
-export interface Position {
-  line: uinteger;
-  character: uinteger;
-}
+  // Symbol types
+  SymbolInformation,
+  DocumentSymbol,
+  SymbolKind,
+  WorkspaceSymbol,
 
-export interface Range {
-  start: Position;
-  end: Position;
-}
+  // Request/Response parameter types
+  InitializeParams,
+  InitializeResult,
+  InitializedParams,
+  TextDocumentPositionParams,
+  ReferenceParams,
+  CompletionParams,
+  CompletionList,
+  CompletionItem,
+  DocumentSymbolParams,
+  WorkspaceSymbolParams,
+  RenameParams,
+  WorkspaceEdit,
 
-export interface Location {
-  uri: DocumentUri;
-  range: Range;
-}
+  // Response types
+  Hover,
 
-// SymbolKind enum from LSP spec
-export const SymbolKind = {
-  File: 1,
-  Module: 2,
-  Namespace: 3,
-  Package: 4,
-  Class: 5,
-  Method: 6,
-  Property: 7,
-  Field: 8,
-  Constructor: 9,
-  Enum: 10,
-  Interface: 11,
-  Function: 12,
-  Variable: 13,
-  Constant: 14,
-  String: 15,
-  Number: 16,
-  Boolean: 17,
-  Array: 18,
-  Object: 19,
-  Key: 20,
-  Null: 21,
-  EnumMember: 22,
-  Struct: 23,
-  Event: 24,
-  Operator: 25,
-  TypeParameter: 26,
-} as const;
+  // Notification parameter types
+  DidOpenTextDocumentParams,
+  DidCloseTextDocumentParams,
+  DidChangeTextDocumentParams,
+  LogMessageParams,
+  PublishDiagnosticsParams,
+} from 'vscode-languageserver-protocol';
 
+// Re-export the official types
+export {
+  DocumentUri,
+  Position,
+  Range,
+  Location,
+  uinteger,
+  SymbolInformation,
+  DocumentSymbol,
+  SymbolKind,
+  WorkspaceSymbol,
+  InitializeParams,
+  InitializeResult,
+  InitializedParams,
+  TextDocumentPositionParams,
+  ReferenceParams,
+  CompletionParams,
+  CompletionList,
+  CompletionItem,
+  DocumentSymbolParams,
+  WorkspaceSymbolParams,
+  RenameParams,
+  WorkspaceEdit,
+  Hover,
+  DidOpenTextDocumentParams,
+  DidCloseTextDocumentParams,
+  DidChangeTextDocumentParams,
+  LogMessageParams,
+  PublishDiagnosticsParams,
+};
+
+// Keep our custom discriminated union helper since it's useful
 export type SymbolKindValue = (typeof SymbolKind)[keyof typeof SymbolKind];
 
-// LSP symbol types using discriminated unions
-export interface SymbolInformation {
-  name: string;
-  kind: SymbolKindValue;
-  deprecated?: boolean;
-  location: Location;
-  containerName?: string;
+// Internal operation result types (not MCP responses)
+// These represent structured data that flows from LspOperations to MCP tools
+
+/** Position information with 1-based coordinates for display */
+export interface DisplayPosition {
+  line: number;
+  character: number;
 }
 
-export interface DocumentSymbol {
+/** Range information with 1-based coordinates for display */
+export interface DisplayRange {
+  start: DisplayPosition;
+  end: DisplayPosition;
+}
+
+/** Location information for display */
+export interface DisplayLocation {
+  uri: string;
+  range: DisplayRange;
+}
+
+/** Symbol reference result */
+export interface SymbolReference {
+  uri: string;
+  range: Range; // 0-based LSP range
+  line: number; // 1-based display line
+  character: number; // 1-based display character
+}
+
+/** Symbol inspection result */
+export interface SymbolInspection {
+  hover: Hover | null;
+  definition: Location | Location[] | null;
+  typeDefinition: Location | Location[] | null;
+  implementation: Location | Location[] | null;
+}
+
+/** Completion result item */
+export interface CompletionResult {
+  label: string;
+  kind: number;
+  detail: string;
+  documentation: string | { kind: string; value: string };
+  insertText: string;
+  filterText: string;
+  sortText: string;
+  textEdit?: {
+    range: DisplayRange;
+    newText: string;
+  };
+}
+
+/** Symbol search result */
+export interface SymbolSearchResult {
   name: string;
-  detail?: string;
-  kind: SymbolKindValue;
-  deprecated?: boolean;
-  range: Range;
-  selectionRange: Range;
-  children?: DocumentSymbol[];
+  kind: number;
+  location: DisplayLocation;
+  containerName: string;
+}
+
+/** File change for rename operation */
+export interface FileChange {
+  range: DisplayRange;
+  newText: string;
+  startLine: number;
+  startCharacter: number;
+  endLine: number;
+  endCharacter: number;
+}
+
+/** Rename operation result */
+export interface RenameResult {
+  [fileUri: string]: FileChange[];
+}
+
+/** Log message result */
+export interface LogMessageResult {
+  type: number;
+  message: string;
 }
 
 // The textDocument/documentSymbol response can be either format
