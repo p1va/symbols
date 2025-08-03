@@ -18,6 +18,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+logs
+
 # Test runner output
 # Default directory for test coverage reports from Vitest/Jest.
 coverage
