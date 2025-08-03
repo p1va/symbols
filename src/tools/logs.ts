@@ -18,15 +18,15 @@ export function registerWindowLogsTool(
       description: 'Retrieve logs from the Language Server for troubleshooting',
       inputSchema: {} as const,
     },
-    async () => {
+    () => {
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
-      const result = await LspOperations.logs(ctx);
-      if (!result.success) throw new Error(result.error.message);
+      const result = LspOperations.logs(ctx);
+      if (!result.ok) throw new Error(result.error.message);
 
       // Format each log message as a separate content entry
-      const content = result.data.map((msg: any) => {
+      const content = result.data.map((msg) => {
         const logLevel = getLogLevelName(msg.type);
         return {
           type: 'text' as const,

@@ -42,6 +42,8 @@ import {
   LogMessageParams,
   PublishDiagnosticsParams,
 } from 'vscode-languageserver-protocol';
+import logger from '../utils/logger.js';
+import { LspClient } from '../types.js';
 
 // Re-export the official types
 export {
@@ -164,33 +166,110 @@ export type DocumentSymbolResult =
   | { type: 'symbolInformation'; symbols: SymbolInformation[] }
   | { type: 'documentSymbol'; symbols: DocumentSymbol[] };
 
-// Utility function to determine and type the response
+// Utility function with refined checks
 export function parseDocumentSymbolResponse(
-  response: any
+  response: DocumentSymbol[] | SymbolInformation[]
 ): DocumentSymbolResult {
+  logger.info(
+    `parseDocumentSymbolResponse called with ${Array.isArray(response) ? response.length : 'non-array'} items`
+  );
+
   if (!Array.isArray(response) || response.length === 0) {
-    // Default to empty SymbolInformation array
+    logger.info('Empty or invalid response, returning empty symbolInformation');
     return { type: 'symbolInformation', symbols: [] };
   }
 
   const firstSymbol = response[0];
 
-  // Check if it has location property (SymbolInformation)
-  if (firstSymbol.location && firstSymbol.location.range) {
+  if (firstSymbol && 'location' in firstSymbol) {
+    logger.info('Detected SymbolInformation format');
     return {
       type: 'symbolInformation',
       symbols: response as SymbolInformation[],
     };
   }
 
-  // Check if it has range and selectionRange (DocumentSymbol)
-  if (firstSymbol.range && firstSymbol.selectionRange) {
+  if (firstSymbol && 'range' in firstSymbol) {
+    logger.info('Detected DocumentSymbol format');
     return {
       type: 'documentSymbol',
       symbols: response as DocumentSymbol[],
     };
   }
 
-  // Fallback to SymbolInformation
-  return { type: 'symbolInformation', symbols: [] };
+  // Refined Fallback: Throw an error to make unexpected formats obvious.
+  throw new Error(
+    'Unable to determine symbol type from the provided response.'
+  );
+}
+
+// Common flattened symbol type for internal use
+export interface FlattenedSymbol {
+  name: string;
+  kind: SymbolKindValue;
+  range: Range;
+  containerName?: string;
+  uri?: string;
+  selectionRange?: Range;
+  detail?: string;
+  deprecated?: boolean;
+}
+
+// Utility function to get and flatten document symbols with proper typing
+export async function getDocumentSymbols(
+  client: LspClient,
+  uri: string
+): Promise<FlattenedSymbol[]> {
+  logger.info(`getDocumentSymbols called for ${uri}`);
+  const params: DocumentSymbolParams = {
+    textDocument: { uri },
+  };
+
+  const rawSymbols: DocumentSymbol[] | SymbolInformation[] =
+    await client.connection.sendRequest('textDocument/documentSymbol', params);
+
+  const symbolResult = parseDocumentSymbolResponse(rawSymbols);
+
+  if (symbolResult.type === 'symbolInformation') {
+    // SymbolInformation format - already flat
+    return symbolResult.symbols.map(
+      (symbol: SymbolInformation): FlattenedSymbol => ({
+        name: symbol.name,
+        kind: symbol.kind,
+        range: symbol.location.range,
+        ...(symbol.containerName && { containerName: symbol.containerName }),
+        uri: symbol.location.uri,
+        ...(symbol.deprecated && { deprecated: symbol.deprecated }),
+      })
+    );
+  } else {
+    // DocumentSymbol format - flatten nested symbols
+    const results: FlattenedSymbol[] = [];
+
+    function flattenDocumentSymbols(
+      symbols: DocumentSymbol[],
+      container?: string
+    ): void {
+      for (const symbol of symbols) {
+        results.push({
+          name: symbol.name,
+          kind: symbol.kind,
+          range: symbol.range,
+          ...(symbol.selectionRange && {
+            selectionRange: symbol.selectionRange,
+          }),
+          ...(symbol.detail && { detail: symbol.detail }),
+          ...(container && { containerName: container }),
+          ...(symbol.deprecated && { deprecated: symbol.deprecated }),
+        });
+
+        if (symbol.children) {
+          flattenDocumentSymbols(symbol.children, symbol.name);
+        }
+      }
+    }
+
+    flattenDocumentSymbols(symbolResult.symbols);
+    return results;
+  }
 }

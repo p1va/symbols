@@ -11,7 +11,6 @@ import {
   SymbolPositionRequest,
   FileRequest,
   ValidationErrorCode,
-  ErrorCode,
   OneBasedPosition,
   toZeroBased,
 } from './types.js';
@@ -60,7 +59,7 @@ export function validateAndNormalizeFilePath(
       return {
         valid: false,
         error: {
-          errorCode: ErrorCode.FileNotFound,
+          errorCode: ValidationErrorCode.InvalidPath,
           message: `File not found: ${absolutePath}`,
         },
       };
@@ -145,7 +144,7 @@ export async function validatePosition(
     return {
       valid: false,
       error: {
-        errorCode: ErrorCode.FileNotFound,
+        errorCode: ValidationErrorCode.InvalidPath,
         message: `Cannot read file for position validation: ${error instanceof Error ? error.message : String(error)}`,
       },
     };
@@ -155,10 +154,10 @@ export async function validatePosition(
 /**
  * Comprehensive validation for file-based requests
  */
-export async function validateFileRequest(
+export function validateFileRequest(
   ctx: LspContext,
   request: FileRequest
-): Promise<ValidationResult & { absolutePath?: string }> {
+): ValidationResult & { absolutePath?: string } {
   // Check workspace readiness
   const workspaceCheck = validateWorkspaceReady(ctx);
   if (!workspaceCheck.valid) {

@@ -5,13 +5,10 @@
 import { z } from 'zod';
 import { createOneBasedPosition, OneBasedPosition } from '../types/position.js';
 
-// Custom zod transform for OneBasedPosition
-const oneBasedPositionTransform = z
-  .object({
-    line: z.number().int().min(1),
-    character: z.number().int().min(1),
-  })
-  .transform(({ line, character }) => createOneBasedPosition(line, character));
+// TODO: Apply descrition everywhere
+
+// Note: OneBasedPosition transforms are defined inline in the schemas below
+// to avoid unused variable warnings while keeping the patterns clear
 
 export const symbolPositionSchema = {
   file: z.string(),
@@ -33,6 +30,8 @@ export const symbolPositionWithTransformSchema = z
 
 export const fileSchema = {
   file: z.string(),
+  maxDepth: z.number().int().min(0).optional().default(99),
+  previewMode: z.enum(['none', 'signature', 'full']).optional().default('none'),
 } as const;
 
 export const searchSchema = {

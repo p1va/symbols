@@ -95,3 +95,13 @@ The server provides the following tools.
 - **`rename`**: add description
 - **`diagnostics`**: add description
 - **`logs`**: add description
+
+## Development
+
+- `pnpm lint` outputs the lint violations
+- `pnpm lint:fix` attempts to fix lint violations
+- `pnpm format` formats the codebase
+- `pnpm dev` starts in development mode
+- `pnpm start` starts in production mode
+- `pnpm build` runs the linter and build
+- `pnpm test` runs the tests

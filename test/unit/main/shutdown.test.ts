@@ -1,6 +1,10 @@
 /**
  * Tests for shutdown coordinator
  */
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import {
   describe,
@@ -12,27 +16,58 @@ import {
   MockedFunction,
 } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { ChildProcessWithoutNullStreams } from 'child_process';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { LspClient } from '../../../src/types.js';
 import { setupShutdown } from '../../../src/main/shutdown.js';
 
+// Mock server type
+type MockServer = Pick<McpServer, 'close'>;
+
+// Mock LSP client type
+type MockLspClient = Pick<LspClient, 'connection' | 'isInitialized'>;
+
+// Mock child process type
+type MockChildProcess = Pick<
+  ChildProcessWithoutNullStreams,
+  'kill' | 'killed' | 'pid'
+> &
+  EventEmitter;
+
 // Mock dependencies
-const mockServer = {
+const mockServer: MockServer = {
   close: vi.fn().mockResolvedValue(undefined),
 };
 
-const mockLspClient = {
+const mockLspClient: MockLspClient = {
   connection: {
     sendRequest: vi.fn().mockResolvedValue(undefined),
     sendNotification: vi.fn(),
+    onRequest: vi.fn(),
+    hasPendingResponse: vi.fn().mockReturnValue(false),
+    onNotification: vi.fn(),
+    onUnhandledNotification: vi.fn(),
+    onError: vi.fn(),
+    onClose: vi.fn(),
+    onDispose: vi.fn(),
+    end: vi.fn(),
+    dispose: vi.fn(),
+    inspect: vi.fn(),
+    listen: vi.fn(),
+    trace: vi.fn(),
+    onProgress: vi.fn(),
+    sendProgress: vi.fn(),
+    onUnhandledProgress: vi.fn(),
   },
   isInitialized: true,
 };
 
 // Create a mock child process that extends EventEmitter
-class MockChildProcess extends EventEmitter {
+class MockChildProcessClass extends EventEmitter implements MockChildProcess {
   killed = false;
   pid = 12345;
 
-  kill(signal?: string) {
+  kill(signal?: NodeJS.Signals) {
     this.killed = true;
     // Simulate process exit immediately in tests
     setImmediate(() => {
@@ -43,7 +78,7 @@ class MockChildProcess extends EventEmitter {
 }
 
 describe('Shutdown Coordinator', () => {
-  let mockProcess: MockChildProcess;
+  let mockProcess: MockChildProcessClass;
   let originalProcessOn: typeof process.on;
   let originalProcessOff: typeof process.off;
   let originalProcessExit: typeof process.exit;
@@ -52,7 +87,7 @@ describe('Shutdown Coordinator', () => {
   let processExitSpy: MockedFunction<typeof process.exit>;
 
   beforeEach(() => {
-    mockProcess = new MockChildProcess();
+    mockProcess = new MockChildProcessClass();
 
     // Mock process methods
     originalProcessOn = process.on;
@@ -63,9 +98,9 @@ describe('Shutdown Coordinator', () => {
     processOffSpy = vi.fn().mockReturnValue(process);
     processExitSpy = vi.fn(); // Mock process.exit to prevent actual exit
 
-    process.on = processOnSpy as any;
-    process.off = processOffSpy as any;
-    process.exit = processExitSpy as any;
+    process.on = processOnSpy as any; // Mock process.on for testing
+    process.off = processOffSpy as any; // Mock process.off for testing
+    process.exit = processExitSpy as any; // Mock process.exit for testing
 
     vi.clearAllMocks();
   });
@@ -80,9 +115,9 @@ describe('Shutdown Coordinator', () => {
   describe('setupShutdown', () => {
     it('should register SIGINT and SIGTERM handlers', () => {
       const disposer = setupShutdown(
-        mockServer as any,
-        mockLspClient as any,
-        mockProcess as any
+        mockServer as any, // Mock server for testing
+        mockLspClient as any, // Mock LSP client for testing
+        mockProcess as any // Mock child process for testing
       );
 
       expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
@@ -107,15 +142,15 @@ describe('Shutdown Coordinator', () => {
 
     it('should initiate LSP shutdown sequence when signal handler is called', async () => {
       const disposer = setupShutdown(
-        mockServer as any,
-        mockLspClient as any,
-        mockProcess as any
+        mockServer as any, // Mock server for testing
+        mockLspClient as any, // Mock LSP client for testing
+        mockProcess as any // Mock child process for testing
       );
 
       // Get the registered handler
       const sigintHandler = processOnSpy.mock.calls.find(
         (call) => call[0] === 'SIGINT'
-      )?.[1] as Function;
+      )?.[1] as () => void; // Get signal handler function from mock calls
 
       expect(sigintHandler).toBeDefined();
 
@@ -146,22 +181,23 @@ describe('Shutdown Coordinator', () => {
       const timeoutMs = 50; // Short timeout for testing
 
       // Create a process that doesn't exit naturally
-      const slowProcess = new MockChildProcess();
+      const slowProcess = new MockChildProcessClass();
       slowProcess.kill = vi.fn().mockReturnValue(true); // Don't emit exit event
 
       const killSpy = vi.spyOn(slowProcess, 'kill');
 
       const disposer = setupShutdown(
-        mockServer as any,
-        mockLspClient as any,
-        slowProcess as any,
+        mockServer as any, // Mock server for testing
+
+        mockLspClient as any, // Mock LSP client for testing
+        slowProcess as any, // Mock slow process for timeout testing
         { timeoutMs }
       );
 
       // Get the registered handler
       const sigintHandler = processOnSpy.mock.calls.find(
         (call) => call[0] === 'SIGINT'
-      )?.[1] as Function;
+      )?.[1] as () => void; // Get signal handler function from mock calls
 
       // Call the handler
       const shutdownPromise = sigintHandler();
@@ -175,7 +211,7 @@ describe('Shutdown Coordinator', () => {
       // Emit exit to complete the shutdown
       slowProcess.emit('exit', 0, 'SIGKILL');
 
-      await shutdownPromise;
+      void shutdownPromise; // Complete the shutdown promise
 
       disposer();
     });
@@ -187,14 +223,15 @@ describe('Shutdown Coordinator', () => {
       };
 
       const disposer = setupShutdown(
-        mockServer as any,
-        uninitializedClient as any,
-        mockProcess as any
+        mockServer as any, // Mock server for testing
+        uninitializedClient as any, // Mock uninitialized client for testing
+
+        mockProcess as any // Mock child process for testing
       );
 
       const sigintHandler = processOnSpy.mock.calls.find(
         (call) => call[0] === 'SIGINT'
-      )?.[1] as Function;
+      )?.[1] as () => void; // Get signal handler function from mock calls
 
       expect(sigintHandler).toBeDefined();
       expect(() => sigintHandler()).not.toThrow();
@@ -206,15 +243,15 @@ describe('Shutdown Coordinator', () => {
       const killSpy = vi.spyOn(mockProcess, 'kill');
 
       const disposer = setupShutdown(
-        mockServer as any,
-        mockLspClient as any,
-        mockProcess as any
+        mockServer as any, // Mock server for testing
+        mockLspClient as any, // Mock LSP client for testing
+        mockProcess as any // Mock child process for testing
       );
 
       // Get the registered handler
       const sigintHandler = processOnSpy.mock.calls.find(
         (call) => call[0] === 'SIGINT'
-      )?.[1] as Function;
+      )?.[1] as () => void; // Get signal handler function from mock calls
 
       // Start shutdown
       sigintHandler();
@@ -238,17 +275,19 @@ describe('Shutdown Coordinator', () => {
       };
       const crashProcessExitSpy = vi.fn();
       const originalProcessExit = process.exit;
-      process.exit = crashProcessExitSpy as any;
+      process.exit = crashProcessExitSpy as any; // Mock process.exit for crash testing
 
       // Create a separate process for this test
-      const crashingProcess = new MockChildProcess();
+      const crashingProcess = new MockChildProcessClass();
       // Don't auto-emit exit to avoid interference
       crashingProcess.kill = vi.fn().mockReturnValue(true);
 
       const disposer = setupShutdown(
-        crashMockServer as any,
-        crashMockLspClient as any,
-        crashingProcess as any
+        crashMockServer as any, // Mock server for crash testing
+
+        crashMockLspClient as any, // Mock LSP client for crash testing
+
+        crashingProcess as any // Mock crashing process for testing
       );
 
       // Simulate LSP crash with non-zero exit code
@@ -283,17 +322,19 @@ describe('Shutdown Coordinator', () => {
       };
       const freshProcessExitSpy = vi.fn();
       const originalProcessExit = process.exit;
-      process.exit = freshProcessExitSpy as any;
+      process.exit = freshProcessExitSpy as any; // Mock process.exit for normal exit testing
 
       // Create a process that doesn't auto-emit exit events
-      const separateProcess = new MockChildProcess();
+      const separateProcess = new MockChildProcessClass();
       // Override kill to not emit exit automatically for this test
       separateProcess.kill = vi.fn().mockReturnValue(true);
 
       const disposer = setupShutdown(
-        freshMockServer as any,
-        freshMockLspClient as any,
-        separateProcess as any
+        freshMockServer as any, // Mock server for normal exit testing
+
+        freshMockLspClient as any, // Mock LSP client for normal exit testing
+
+        separateProcess as any // Mock separate process for normal exit testing
       );
 
       // Manually emit normal LSP exit with code 0 - should not trigger crash handler
@@ -312,7 +353,7 @@ describe('Shutdown Coordinator', () => {
 
     it('should use exit code 1 on shutdown failure', async () => {
       // Mock LSP client to throw error during shutdown
-      const failingLspClient = {
+      const errorLspClient = {
         ...mockLspClient,
         connection: {
           sendRequest: vi
@@ -323,14 +364,16 @@ describe('Shutdown Coordinator', () => {
       };
 
       const disposer = setupShutdown(
-        mockServer as any,
-        failingLspClient as any,
-        mockProcess as any
+        mockServer as any, // Mock server for testing
+
+        errorLspClient as any, // Mock failing LSP client for error testing
+
+        mockProcess as any // Mock child process for testing
       );
 
       const sigintHandler = processOnSpy.mock.calls.find(
         (call) => call[0] === 'SIGINT'
-      )?.[1] as Function;
+      )?.[1] as () => void; // Get signal handler function from mock calls
 
       sigintHandler();
       await new Promise((resolve) => setImmediate(resolve));

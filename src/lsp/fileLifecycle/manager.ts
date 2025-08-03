@@ -11,7 +11,9 @@ import {
   Result,
   createLspError,
   ErrorCode,
+  LspOperationError,
   OneBasedPosition,
+  tryResultAsync,
 } from '../../types.js';
 import {
   getLanguageId,
@@ -52,80 +54,76 @@ export async function openFileWithStrategy(
   preloadedFiles: PreloadedFiles,
   strategy: FileLifecycleStrategy
 ): Promise<Result<FileOpenResult>> {
-  try {
-    const uri = `file://${path.resolve(filePath)}`;
-    const preloaded = preloadedFiles.get(uri);
-    const isPreloaded = !!preloaded;
-    const wasAlreadyOpen = preloaded?.isOpen ?? false;
+  return await tryResultAsync(
+    async () => {
+      const uri = `file://${path.resolve(filePath)}`;
+      const preloaded = preloadedFiles.get(uri);
+      const isPreloaded = !!preloaded;
+      const wasAlreadyOpen = preloaded?.isOpen ?? false;
 
-    // If already open and we respect existing state, return early
-    if (wasAlreadyOpen && strategy === 'respect_existing') {
-      return {
-        success: true,
-        data: { wasAlreadyOpen: true, isPreloaded, uri, strategy },
-      };
-    }
+      // If already open and we respect existing state, return early
+      if (wasAlreadyOpen && strategy === 'respect_existing') {
+        return { wasAlreadyOpen: true, isPreloaded, uri, strategy };
+      }
 
-    // Get file content
-    let content: string;
-    let version: number;
+      // Get file content
+      let content: string;
+      let version: number;
 
-    if (preloaded) {
-      content = preloaded.content;
-      version = preloaded.version;
-    } else {
-      // Read from filesystem
-      try {
-        content = await fs.promises.readFile(filePath, 'utf8');
-        version = 1;
-      } catch (error) {
-        return {
-          success: false,
-          error: createLspError(
+      if (preloaded) {
+        content = preloaded.content;
+        version = preloaded.version;
+      } else {
+        // Read from filesystem
+        try {
+          content = await fs.promises.readFile(filePath, 'utf8');
+          version = 1;
+        } catch (error) {
+          const lspError = createLspError(
             ErrorCode.FileNotFound,
             `Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
             error instanceof Error ? error : undefined
-          ),
-        };
+          );
+          throw new Error(lspError.message);
+        }
       }
-    }
 
-    // If file is already open, close it first (clean slate approach)
-    if (wasAlreadyOpen) {
-      const closeResult = await forceCloseFile(client, uri, preloadedFiles);
-      if (!closeResult.success) {
-        return closeResult;
+      // If file is already open, close it first (clean slate approach)
+      if (wasAlreadyOpen) {
+        const closeResult = await forceCloseFile(client, uri, preloadedFiles);
+        if (!closeResult.ok) {
+          throw new Error(closeResult.error.message);
+        }
       }
-    }
 
-    // Open the file
-    const languageId = getLanguageId(filePath);
-    const openResult = await openFile(
-      client,
-      uri,
-      content,
-      version,
-      languageId,
-      preloadedFiles
-    );
-    if (!openResult.success) {
-      return openResult;
-    }
+      // Open the file
+      const languageId = getLanguageId(filePath);
+      const openResult = await openFile(
+        client,
+        uri,
+        content,
+        version,
+        languageId,
+        preloadedFiles
+      );
+      if (!openResult.ok) {
+        throw new Error(openResult.error.message);
+      }
 
-    return {
-      success: true,
-      data: { wasAlreadyOpen, isPreloaded, uri, strategy },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: createLspError(
+      return { wasAlreadyOpen, isPreloaded, uri, strategy };
+    },
+    (error) => {
+      // If error is already a structured error, use it directly
+      if (error && typeof error === 'object' && 'errorCode' in error) {
+        return error as LspOperationError;
+      }
+      return createLspError(
         ErrorCode.LSPError,
         `Failed to open file with strategy: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
-      ),
-    };
-  }
+      );
+    }
+  );
 }
 
 /**
@@ -136,16 +134,15 @@ export async function closeFileWithStrategy(
   uri: string,
   preloadedFiles: PreloadedFiles,
   strategy: FileLifecycleStrategy,
-  wasAlreadyOpen: boolean,
-  isPreloaded: boolean
+  wasAlreadyOpen: boolean
 ): Promise<Result<void>> {
-  const shouldClose = decideShouldClose(strategy, wasAlreadyOpen, isPreloaded);
+  const shouldClose = decideShouldClose(strategy, wasAlreadyOpen);
 
   if (shouldClose) {
     return await closeFile(client, uri, preloadedFiles);
   }
 
-  return { success: true, data: undefined };
+  return { ok: true, data: undefined };
 }
 
 /**
@@ -175,45 +172,47 @@ export async function executeWithCursorContext<T>(
     preloadedFiles,
     strategy
   );
-  if (!openResult.success) {
+  if (!openResult.ok) {
     return {
-      success: false,
+      ok: false,
       error: openResult.error,
     };
   }
 
-  const { wasAlreadyOpen, isPreloaded, uri } = openResult.data;
+  const { wasAlreadyOpen, uri } = openResult.data;
 
-  try {
-    // Generate cursor context
-    const cursorContext = await generateCursorContext(
-      operationName,
-      client,
-      uri,
-      filePath,
-      position,
-      preloadedFiles
-    );
+  const executionResult = await tryResultAsync(
+    async () => {
+      // Generate cursor context
+      const cursorContext = await generateCursorContext(
+        operationName,
+        client,
+        uri,
+        filePath,
+        position,
+        preloadedFiles
+      );
 
-    // Execute the operation
-    const operationResult = await operation(uri, cursorContext || undefined);
+      // Execute the operation
+      const operationResult = await operation(uri, cursorContext || undefined);
+      if (!operationResult.ok) {
+        throw new Error(operationResult.error.message);
+      }
 
-    // Close file based on strategy
-    const closeResult = await closeFileWithStrategy(
-      client,
-      uri,
-      preloadedFiles,
-      strategy,
-      wasAlreadyOpen,
-      isPreloaded
-    );
+      // Close file based on strategy
+      const closeResult = await closeFileWithStrategy(
+        client,
+        uri,
+        preloadedFiles,
+        strategy,
+        wasAlreadyOpen
+      );
 
-    // If operation succeeded but close failed, log but don't fail the operation
-    if (operationResult.success && !closeResult.success) {
-      // Could log warning here: Failed to close file but operation succeeded
-    }
+      // If operation succeeded but close failed, log but don't fail the operation
+      if (!closeResult.ok) {
+        // Could log warning here: Failed to close file but operation succeeded
+      }
 
-    if (operationResult.success) {
       const resultData: OperationWithContextResult<
         typeof operationResult.data
       > = {
@@ -224,33 +223,34 @@ export async function executeWithCursorContext<T>(
         resultData.cursorContext = cursorContext;
       }
 
-      return {
-        success: true,
-        data: resultData,
-      };
-    } else {
-      return operationResult as any;
+      return resultData;
+    },
+    (error) => {
+      // If error is already a structured error, use it directly
+      if (error && typeof error === 'object' && 'errorCode' in error) {
+        return error as LspOperationError;
+      }
+      return createLspError(
+        ErrorCode.LSPError,
+        `Operation failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined
+      );
     }
-  } catch (error) {
+  );
+
+  // Handle cleanup on error
+  if (!executionResult.ok) {
     // Attempt to close file on error
     await closeFileWithStrategy(
       client,
       uri,
       preloadedFiles,
       strategy,
-      wasAlreadyOpen,
-      isPreloaded
+      wasAlreadyOpen
     );
-
-    return {
-      success: false,
-      error: createLspError(
-        ErrorCode.LSPError,
-        `Operation failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      ),
-    };
   }
+
+  return executionResult;
 }
 
 /**
@@ -270,53 +270,63 @@ export async function executeWithExplicitLifecycle<T>(
     preloadedFiles,
     strategy
   );
-  if (!openResult.success) {
+  if (!openResult.ok) {
     return {
-      success: false,
+      ok: false,
       error: openResult.error,
     };
   }
 
-  const { wasAlreadyOpen, isPreloaded, uri } = openResult.data;
+  const { wasAlreadyOpen, uri } = openResult.data;
 
-  try {
-    // Execute the operation
-    const operationResult = await operation(uri);
+  const executionResult = await tryResultAsync(
+    async () => {
+      // Execute the operation
+      const operationResult = await operation(uri);
+      if (!operationResult.ok) {
+        throw new Error(operationResult.error.message);
+      }
 
-    // Close file based on strategy
-    const closeResult = await closeFileWithStrategy(
-      client,
-      uri,
-      preloadedFiles,
-      strategy,
-      wasAlreadyOpen,
-      isPreloaded
-    );
+      // Close file based on strategy
+      const closeResult = await closeFileWithStrategy(
+        client,
+        uri,
+        preloadedFiles,
+        strategy,
+        wasAlreadyOpen
+      );
 
-    // If operation succeeded but close failed, log but don't fail the operation
-    if (operationResult.success && !closeResult.success) {
-      // Could log warning here: Failed to close file but operation succeeded
+      // If operation succeeded but close failed, log but don't fail the operation
+      if (!closeResult.ok) {
+        // Could log warning here: Failed to close file but operation succeeded
+      }
+
+      return operationResult.data;
+    },
+    (error) => {
+      // If error is already a structured error, use it directly
+      if (error && typeof error === 'object' && 'errorCode' in error) {
+        return error as LspOperationError;
+      }
+      return createLspError(
+        ErrorCode.LSPError,
+        `Operation failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined
+      );
     }
+  );
 
-    return operationResult;
-  } catch (error) {
+  // Handle cleanup on error
+  if (!executionResult.ok) {
     // Attempt to close file on error
     await closeFileWithStrategy(
       client,
       uri,
       preloadedFiles,
       strategy,
-      wasAlreadyOpen,
-      isPreloaded
+      wasAlreadyOpen
     );
-
-    return {
-      success: false,
-      error: createLspError(
-        ErrorCode.LSPError,
-        `Operation failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      ),
-    };
   }
+
+  return executionResult;
 }

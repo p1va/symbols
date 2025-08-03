@@ -21,7 +21,7 @@ describe('Shutdown Integration', () => {
           }
         });
       });
-    } catch (error) {
+    } catch {
       console.warn(
         'Skipping integration test: typescript-language-server not available'
       );
@@ -33,17 +33,18 @@ describe('Shutdown Integration', () => {
     // Spawn the server process
     const serverProcess: ChildProcess = spawn('node', [serverPath]);
 
-    let stdout = '';
     let stderr = '';
 
     if (serverProcess.stdout) {
       serverProcess.stdout.on('data', (data) => {
-        stdout += data.toString();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        void data.toString(); // Process stdout data (currently unused but received)
       });
     }
 
     if (serverProcess.stderr) {
       serverProcess.stderr.on('data', (data) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         stderr += data.toString();
       });
     }
@@ -110,7 +111,7 @@ describe('Shutdown Integration', () => {
           }
         });
       });
-    } catch (error) {
+    } catch {
       console.warn(
         'Skipping integration test: typescript-language-server not available'
       );

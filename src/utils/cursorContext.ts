@@ -6,13 +6,9 @@
  */
 
 import { LspClient, OneBasedPosition, toZeroBased } from '../types.js';
-import {
-  parseDocumentSymbolResponse,
-  SymbolInformation,
-  DocumentSymbol,
-  SymbolKindValue,
-  Range,
-} from '../types/lsp.js';
+import { getDocumentSymbols, SymbolKindValue } from '../types/lsp.js';
+import { formatFilePath } from '../tools/utils.js';
+import logger from './logger.js';
 
 export interface CursorContext {
   operation: string;
@@ -25,8 +21,8 @@ export interface CursorContext {
 
 export interface SymbolAtPosition {
   name: string;
-  kind: SymbolKindValue; // Properly typed LSP SymbolKind
-  range: Range; // Use LSP Range type
+  kind: SymbolKindValue;
+  containerName?: string;
 }
 
 /**
@@ -67,75 +63,35 @@ function symbolKindToString(kind: number): string {
 /**
  * Finds the symbol at the given position by requesting document symbols
  * and finding the one with the smallest range that contains the position.
- * Follows the algorithm specified in CURSOR_CONTEXT.mc
+ * Uses shared getDocumentSymbols utility for proper typing.
  */
 async function findSymbolAtPosition(
   client: LspClient,
   uri: string,
-  position: OneBasedPosition // 1-based position - need to convert to LSP 0-based
+  position: OneBasedPosition
 ): Promise<SymbolAtPosition | null> {
   try {
-    // Convert to 0-based position for LSP
-    const lspPosition = toZeroBased(position);
-
-    const params = {
-      textDocument: { uri },
-    };
-
-    const rawSymbols = await client.connection.sendRequest(
-      'textDocument/documentSymbol',
-      params
+    logger.info(
+      `Finding symbol at position ${position.line}:${position.character} in ${uri}`
     );
 
-    // Use typed parser to handle both SymbolInformation[] and DocumentSymbol[]
-    const symbolResult = parseDocumentSymbolResponse(rawSymbols);
+    // Convert to 0-based position for LSP
+    const lspPosition = toZeroBased(position);
+    logger.info(
+      `Converted to LSP position: ${lspPosition.line}:${lspPosition.character}`
+    );
 
-    if (symbolResult.symbols.length === 0) {
+    // Get flattened symbols using shared utility
+    const symbols = await getDocumentSymbols(client, uri);
+    logger.info(`Found ${symbols.length} document symbols`);
+
+    if (symbols.length === 0) {
+      logger.info('No symbols found, returning null');
       return null;
     }
 
-    let candidateSymbols: Array<{
-      name: string;
-      kind: SymbolKindValue;
-      range: Range;
-    }> = [];
-
-    if (symbolResult.type === 'symbolInformation') {
-      // SymbolInformation format - flat structure
-      candidateSymbols = symbolResult.symbols.map(
-        (symbol: SymbolInformation) => ({
-          name: symbol.name,
-          kind: symbol.kind,
-          range: symbol.location.range,
-        })
-      );
-    } else {
-      // DocumentSymbol format - flatten nested symbols
-      function flattenDocumentSymbols(
-        symbols: DocumentSymbol[]
-      ): Array<{ name: string; kind: SymbolKindValue; range: Range }> {
-        const flattened: Array<{
-          name: string;
-          kind: SymbolKindValue;
-          range: Range;
-        }> = [];
-        for (const symbol of symbols) {
-          flattened.push({
-            name: symbol.name,
-            kind: symbol.kind,
-            range: symbol.range,
-          });
-          if (symbol.children) {
-            flattened.push(...flattenDocumentSymbols(symbol.children));
-          }
-        }
-        return flattened;
-      }
-      candidateSymbols = flattenDocumentSymbols(symbolResult.symbols);
-    }
-
     // Find symbols that contain the position
-    const containingSymbols = candidateSymbols.filter((symbol) => {
+    const containingSymbols = symbols.filter((symbol) => {
       const range = symbol.range;
       const start = range.start;
       const end = range.end;
@@ -159,36 +115,62 @@ async function findSymbolAtPosition(
         return false;
       }
 
+      logger.info(`Symbol "${symbol.name}" contains position`, {
+        symbolName: symbol.name,
+        symbolKind: symbol.kind,
+        symbolRange: range,
+        targetPosition: lspPosition,
+      });
+
       return true;
     });
 
+    logger.info(`Found ${containingSymbols.length} containing symbols`);
+
     if (containingSymbols.length === 0) {
+      logger.info('No containing symbols found, returning null');
       return null;
     }
 
     // Sort by range size (smallest first - most specific symbol)
-    // As specified: "order by symbol with shorter spans first"
+    // Using same logic as C#: (endLine - startLine) * 10000 + (endChar - startChar)
     containingSymbols.sort((a, b) => {
       const aSize =
-        (a.range.end.line - a.range.start.line) * 1000 +
+        (a.range.end.line - a.range.start.line) * 10000 +
         (a.range.end.character - a.range.start.character);
       const bSize =
-        (b.range.end.line - b.range.start.line) * 1000 +
+        (b.range.end.line - b.range.start.line) * 10000 +
         (b.range.end.character - b.range.start.character);
       return aSize - bSize;
     });
 
     const bestMatch = containingSymbols[0];
     if (!bestMatch) {
+      logger.info('No best match found after sorting');
       return null;
     }
+
+    logger.info(
+      `Selected best match: "${bestMatch.name}" (kind: ${bestMatch.kind})`,
+      {
+        name: bestMatch.name,
+        kind: bestMatch.kind,
+        range: bestMatch.range,
+        containerName: bestMatch.containerName,
+      }
+    );
 
     return {
       name: bestMatch.name,
       kind: bestMatch.kind,
-      range: bestMatch.range,
+      ...(bestMatch.containerName && {
+        containerName: bestMatch.containerName,
+      }),
     };
   } catch (error) {
+    logger.error(
+      `Error in findSymbolAtPosition: ${error instanceof Error ? error.message : String(error)}`
+    );
     return null;
   }
 }
@@ -231,9 +213,15 @@ function createTextSnippet(
 /**
  * Gets file content from either preloaded files or by reading from filesystem
  */
+// Define interface for preloaded file data
+interface PreloadedFile {
+  content: string;
+  // Add other properties as needed
+}
+
 async function getFileContent(
   uri: string,
-  preloadedFiles: Map<string, any>,
+  preloadedFiles: Map<string, PreloadedFile>,
   filePath: string
 ): Promise<string | null> {
   // Check if file is preloaded
@@ -247,7 +235,7 @@ async function getFileContent(
     // Read from filesystem as fallback
     const fs = await import('fs');
     return await fs.promises.readFile(filePath, 'utf8');
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -261,7 +249,7 @@ export async function generateCursorContext(
   uri: string,
   filePath: string,
   position: OneBasedPosition, // 1-based user position
-  preloadedFiles: Map<string, any>
+  preloadedFiles: Map<string, PreloadedFile>
 ): Promise<CursorContext | null> {
   // Get file content
   const fileContent = await getFileContent(uri, preloadedFiles, filePath);
@@ -269,7 +257,7 @@ export async function generateCursorContext(
     return null;
   }
 
-  // Find the symbol at the position
+  // Find the symbol at the position using document symbols
   const symbolAtPosition = await findSymbolAtPosition(client, uri, position);
 
   // Create text snippet
@@ -302,7 +290,12 @@ export function formatCursorContext(context: CursorContext): string {
       ? `(${context.symbolKind}) ${context.symbolName}`
       : 'Unknown symbol';
 
-  return `${context.operation} on file ${context.file}:${context.position.line}:${context.position.character}
+  // Capitalize first letter of operation and format file path
+  const capitalizedOperation =
+    context.operation.charAt(0).toUpperCase() + context.operation.slice(1);
+  const formattedPath = formatFilePath(context.file);
+
+  return `${capitalizedOperation} on file ${formattedPath}:${context.position.line}:${context.position.character}
     Symbol: ${symbolInfo}
     Cursor: \`${context.snippet}\``;
 }

@@ -39,12 +39,10 @@ export function setupShutdown(
     shuttingDown = true;
 
     try {
-      // 1. LSP graceful shutdown sequence
       if (lspClient.isInitialized) {
         await lspClient.connection.sendRequest('shutdown', null);
-        lspClient.connection.sendNotification('exit', null);
+        await lspClient.connection.sendNotification('exit', null);
 
-        // 2. Send backup SIGTERM signal (some LSPs ignore JSON-RPC but respect signals)
         if (!lspProcess.killed) {
           lspProcess.kill('SIGTERM');
         }
@@ -63,7 +61,9 @@ export function setupShutdown(
 
       // 4. MCP server shutdown
       await server.close();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
+      //TODO: Log
       // Ensure process exits even if shutdown fails
       if (!lspProcess.killed) {
         lspProcess.kill('SIGKILL');
@@ -77,24 +77,28 @@ export function setupShutdown(
   };
 
   // Handle LSP process crash - if LSP dies unexpectedly, shut down cleanly
-  const lspCrashHandler = (code: number | null, signal: string | null) => {
+  const lspCrashHandler = (code: number | null) => {
     if (!shuttingDown && code !== null && code !== 0) {
       // LSP crashed with non-zero exit code, initiate clean shutdown
-      handler();
+      void handler(); // Fire-and-forget shutdown sequence
     }
   };
 
-  // Register signal handlers
-  process.on('SIGINT', handler);
-  process.on('SIGTERM', handler);
+  // Store references to the wrapper functions for cleanup
+  const sigintHandler = () => void handler();
+  const sigtermHandler = () => void handler();
+
+  // Register signal handlers with wrapper functions
+  process.on('SIGINT', sigintHandler);
+  process.on('SIGTERM', sigtermHandler);
 
   // Register LSP crash detection
   lspProcess.once('exit', lspCrashHandler);
 
   // Return disposer for cleanup
   return () => {
-    process.off('SIGINT', handler);
-    process.off('SIGTERM', handler);
+    process.off('SIGINT', sigintHandler);
+    process.off('SIGTERM', sigtermHandler);
     lspProcess.off('exit', lspCrashHandler);
   };
 }

@@ -21,7 +21,10 @@ export function registerCompletionTool(
     },
     async (request) => {
       const ctx = createContext();
-      if (!ctx.client) throw new Error('LSP client not initialized');
+
+      if (!ctx.client) {
+        throw new Error('LSP client not initialized');
+      }
 
       // Convert raw request to branded position type
       const symbolRequest = {
@@ -30,7 +33,9 @@ export function registerCompletionTool(
       };
 
       const result = await LspOperations.completion(ctx, symbolRequest);
-      if (!result.success) throw new Error(result.error.message);
+      if (!result.ok) {
+        throw new Error(result.error.message);
+      }
 
       // Format response with cursor context
       const { result: completions, cursorContext } = result.data;

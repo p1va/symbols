@@ -2,33 +2,33 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import * as path from 'path';
 
-import {
-  LspClient,
-  LspClientResult,
-  LspConfig,
-  LspContext,
-  WorkspaceState,
-  PreloadedFiles,
-  DiagnosticsStore,
-  WindowLogStore,
-} from '../types.js';
+import { createLspClient, initializeLspClient } from '../lsp-client.js';
+import { openFileWithStrategy } from '../lsp/fileLifecycle/index.js';
 import {
   createDiagnosticsStore,
   createWindowLogStore,
 } from '../state/index.js';
-import { createLspClient, initializeLspClient } from '../lsp-client.js';
-import { openFileWithStrategy } from '../lsp/fileLifecycle/index.js';
+import {
+  DiagnosticsStore,
+  LspClient,
+  LspConfig,
+  LspContext,
+  PreloadedFiles,
+  WindowLogStore,
+  WorkspaceState,
+} from '../types.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
+import logger from '../utils/logger.js';
 import { createServer } from './createServer.js';
 import { setupShutdown } from './shutdown.js';
 
 // Module-level state
 let lspClient: LspClient | null = null;
 let lspProcess: ChildProcessWithoutNullStreams | null = null;
-let preloadedFiles: PreloadedFiles = new Map();
-let diagnosticsStore: DiagnosticsStore = createDiagnosticsStore();
-let windowLogStore: WindowLogStore = createWindowLogStore();
-let workspaceState: WorkspaceState = {
+const preloadedFiles: PreloadedFiles = new Map();
+const diagnosticsStore: DiagnosticsStore = createDiagnosticsStore();
+const windowLogStore: WindowLogStore = createWindowLogStore();
+const workspaceState: WorkspaceState = {
   isLoading: false,
   isReady: false,
 };
@@ -53,13 +53,13 @@ async function initializeLsp(): Promise<void> {
       ],
     };
 
-    const clientResult = await createLspClient(
+    const clientResult = createLspClient(
       config,
       diagnosticsStore,
       windowLogStore
     );
 
-    if (!clientResult.success) {
+    if (!clientResult.ok) {
       throw new Error(clientResult.error.message);
     }
 
@@ -67,7 +67,7 @@ async function initializeLsp(): Promise<void> {
       clientResult.data.client,
       config
     );
-    if (!initResult.success) {
+    if (!initResult.ok) {
       throw new Error(initResult.error.message);
     }
 
@@ -115,7 +115,7 @@ async function initializeWorkspace(config: LspConfig): Promise<void> {
         preloadedFiles,
         'persistent'
       );
-      if (!result.success) {
+      if (!result.ok) {
         // Failed to open preloaded file ${filePath}: ${result.error}
       }
     }
@@ -156,6 +156,8 @@ function createContext(): LspContext {
  * Main entry point - initializes LSP and starts MCP server
  */
 export async function main(): Promise<void> {
+  logger.info('MCP server starting up');
+
   // Initialize LSP connection
   await initializeLsp();
 
@@ -171,6 +173,8 @@ export async function main(): Promise<void> {
   setupShutdown(server, lspClient, lspProcess);
 
   // Start receiving messages on stdin and sending messages on stdout
+  logger.info('Starting MCP server transport');
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  logger.info('MCP server connected and ready');
 }

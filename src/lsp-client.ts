@@ -5,12 +5,11 @@
 
 import * as cp from 'child_process';
 import * as rpc from 'vscode-jsonrpc';
-import * as path from 'path';
 import {
   InitializeParams,
   WorkspaceFolder,
   PublishDiagnosticsParams,
-  MessageType,
+  InitializeResult,
 } from 'vscode-languageserver-protocol';
 
 import {
@@ -25,11 +24,11 @@ import {
   ErrorCode,
 } from './types.js';
 
-export async function createLspClient(
-  config: LspConfig,
+export function createLspClient(
+  _config: LspConfig, // Configuration for future use (server command, args, env)
   diagnosticsStore: DiagnosticsStore,
   windowLogStore: WindowLogStore
-): Promise<Result<LspClientResult>> {
+): Result<LspClientResult> {
   try {
     // TODO: accept command, arguments and env vars from outside to be read from config
 
@@ -37,9 +36,12 @@ export async function createLspClient(
     const serverProcess = cp.spawn('typescript-language-server', ['--stdio']);
 
     // Create JSON-RPC connection using the overload that accepts streams directly
+    // vscode-jsonrpc expects Readable/Writable but child_process streams are compatible
     const connection = rpc.createMessageConnection(
-      serverProcess.stdout as any,
-      serverProcess.stdin as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      serverProcess.stdout as any, // Readable stream from child process
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      serverProcess.stdin as any // Writable stream to child process
     );
 
     // Set up notification handlers before listening
@@ -59,10 +61,10 @@ export async function createLspClient(
       process: serverProcess,
     };
 
-    return { success: true, data: result };
+    return { ok: true, data: result };
   } catch (error) {
     return {
-      success: false,
+      ok: false,
       error: createLspError(
         ErrorCode.LSPError,
         `Failed to create LSP client: ${error instanceof Error ? error.message : String(error)}`,
@@ -75,7 +77,7 @@ export async function createLspClient(
 export async function initializeLspClient(
   client: LspClient,
   config: LspConfig
-): Promise<Result<any>> {
+): Promise<Result<InitializeResult>> {
   try {
     // Initialize the server with proper workspace and capabilities
     const initParams: InitializeParams = {
@@ -89,12 +91,12 @@ export async function initializeLspClient(
       ],
       capabilities: {
         workspace: {
-          diagnostic: undefined, // null equivalent
+          // diagnostics capability disabled for now
         },
         textDocument: {
           publishDiagnostics: {
             relatedInformation: true,
-            versionSupported: true,
+            versionSupport: true,
             codeDescriptionSupport: true,
             dataSupport: true,
           },
@@ -110,7 +112,7 @@ export async function initializeLspClient(
       },
     };
 
-    const initResult = await client.connection.sendRequest(
+    const initResult: InitializeResult = await client.connection.sendRequest(
       'initialize',
       initParams
     );
@@ -119,12 +121,12 @@ export async function initializeLspClient(
     await client.connection.sendNotification('initialized', {});
 
     client.isInitialized = true;
-    client.capabilities = initResult;
+    client.serverCapabilities = initResult.capabilities;
 
-    return { success: true, data: initResult };
+    return { ok: true, data: initResult };
   } catch (error) {
     return {
-      success: false,
+      ok: false,
       error: createLspError(
         ErrorCode.LSPError,
         `Failed to initialize LSP client: ${error instanceof Error ? error.message : String(error)}`,
@@ -140,7 +142,7 @@ export async function shutdownLspClient(client: LspClient): Promise<void> {
       await client.connection.sendRequest('shutdown', null);
       await client.connection.sendNotification('exit', null);
     }
-  } catch (error) {
+  } catch {
     // Silent error handling - no console.log
   }
 }
@@ -164,20 +166,17 @@ function setupNotificationHandlers(
   });
 
   // Handle show message notifications (silent)
-  connection.onNotification(
-    'window/showMessage',
-    (params: { type: number; message: string }) => {
-      // Store or ignore as needed
-    }
-  );
+  connection.onNotification('window/showMessage', () => {
+    // Store or ignore as needed
+  });
 
   // Handle capability registration requests
-  connection.onRequest('client/registerCapability', (params: any) => {
+  connection.onRequest('client/registerCapability', () => {
     return {}; // Acknowledge
   });
 
   // Handle other notifications silently
-  connection.onNotification((method: string, params: any) => {
+  connection.onNotification(() => {
     // Silent handling of other notifications
   });
 }

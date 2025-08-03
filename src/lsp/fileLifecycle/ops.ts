@@ -5,18 +5,16 @@
 import {
   DidOpenTextDocumentParams,
   DidCloseTextDocumentParams,
-  TextDocumentIdentifier,
 } from 'vscode-languageserver-protocol';
 import * as path from 'path';
-import * as fs from 'fs';
 
 import {
   LspClient,
-  PreloadedFile,
   PreloadedFiles,
   Result,
   createLspError,
   ErrorCode,
+  tryResultAsync,
 } from '../../types.js';
 
 import { FileLifecycleStrategy } from './manager.js';
@@ -26,11 +24,12 @@ import { FileLifecycleStrategy } from './manager.js';
  */
 export function getLanguageId(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
+  // TODO: extend
   switch (ext) {
     case '.ts':
-    case '.tsx':
-      // TODO: this is typescriptreact
       return 'typescript';
+    case '.tsx':
+      return 'typescriptreact';
     case '.js':
     case '.jsx':
       return 'javascript';
@@ -46,8 +45,7 @@ export function getLanguageId(filePath: string): string {
  */
 export function decideShouldClose(
   strategy: FileLifecycleStrategy,
-  wasAlreadyOpen: boolean,
-  isPreloaded: boolean
+  wasAlreadyOpen: boolean
 ): boolean {
   switch (strategy) {
     case 'temporary':
@@ -72,33 +70,30 @@ export async function forceCloseFile(
   uri: string,
   preloadedFiles: PreloadedFiles
 ): Promise<Result<void>> {
-  try {
-    const closeParams: DidCloseTextDocumentParams = {
-      textDocument: { uri },
-    };
+  return await tryResultAsync(
+    async () => {
+      const closeParams: DidCloseTextDocumentParams = {
+        textDocument: { uri },
+      };
 
-    await client.connection.sendNotification(
-      'textDocument/didClose',
-      closeParams
-    );
+      await client.connection.sendNotification(
+        'textDocument/didClose',
+        closeParams
+      );
 
-    // Update preloaded files state
-    const preloaded = preloadedFiles.get(uri);
-    if (preloaded) {
-      preloaded.isOpen = false;
-    }
-
-    return { success: true, data: undefined };
-  } catch (error) {
-    return {
-      success: false,
-      error: createLspError(
+      // Update preloaded files state
+      const preloaded = preloadedFiles.get(uri);
+      if (preloaded) {
+        preloaded.isOpen = false;
+      }
+    },
+    (error) =>
+      createLspError(
         ErrorCode.LSPError,
         `Failed to close file ${uri}: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
-      ),
-    };
-  }
+      )
+  );
 }
 
 /**
@@ -112,45 +107,42 @@ export async function openFile(
   languageId: string,
   preloadedFiles: PreloadedFiles
 ): Promise<Result<void>> {
-  try {
-    const didOpenParams: DidOpenTextDocumentParams = {
-      textDocument: {
-        uri,
-        languageId,
-        version,
-        text: content,
-      },
-    };
+  return await tryResultAsync(
+    async () => {
+      const didOpenParams: DidOpenTextDocumentParams = {
+        textDocument: {
+          uri,
+          languageId,
+          version,
+          text: content,
+        },
+      };
 
-    await client.connection.sendNotification(
-      'textDocument/didOpen',
-      didOpenParams
-    );
+      await client.connection.sendNotification(
+        'textDocument/didOpen',
+        didOpenParams
+      );
 
-    // Update preloaded files state
-    const preloaded = preloadedFiles.get(uri);
-    if (preloaded) {
-      preloaded.isOpen = true;
-    } else {
-      preloadedFiles.set(uri, {
-        uri,
-        content,
-        version,
-        isOpen: true,
-      });
-    }
-
-    return { success: true, data: undefined };
-  } catch (error) {
-    return {
-      success: false,
-      error: createLspError(
+      // Update preloaded files state
+      const preloaded = preloadedFiles.get(uri);
+      if (preloaded) {
+        preloaded.isOpen = true;
+      } else {
+        preloadedFiles.set(uri, {
+          uri,
+          content,
+          version,
+          isOpen: true,
+        });
+      }
+    },
+    (error) =>
+      createLspError(
         ErrorCode.LSPError,
         `Failed to open file ${uri}: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
-      ),
-    };
-  }
+      )
+  );
 }
 
 /**
@@ -161,31 +153,28 @@ export async function closeFile(
   uri: string,
   preloadedFiles: PreloadedFiles
 ): Promise<Result<void>> {
-  try {
-    const closeParams: DidCloseTextDocumentParams = {
-      textDocument: { uri },
-    };
+  return await tryResultAsync(
+    async () => {
+      const closeParams: DidCloseTextDocumentParams = {
+        textDocument: { uri },
+      };
 
-    await client.connection.sendNotification(
-      'textDocument/didClose',
-      closeParams
-    );
+      await client.connection.sendNotification(
+        'textDocument/didClose',
+        closeParams
+      );
 
-    // Update preloaded files state
-    const preloaded = preloadedFiles.get(uri);
-    if (preloaded) {
-      preloaded.isOpen = false;
-    }
-
-    return { success: true, data: undefined };
-  } catch (error) {
-    return {
-      success: false,
-      error: createLspError(
+      // Update preloaded files state
+      const preloaded = preloadedFiles.get(uri);
+      if (preloaded) {
+        preloaded.isOpen = false;
+      }
+    },
+    (error) =>
+      createLspError(
         ErrorCode.LSPError,
         `Failed to close file ${uri}: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
-      ),
-    };
-  }
+      )
+  );
 }

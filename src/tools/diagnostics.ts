@@ -19,12 +19,12 @@ export function registerDiagnosticsTool(
         'Retrieves diagnostics (errors/warnings/hints) for a code file',
       inputSchema: fileSchema,
     },
-    async (request) => {
+    (request) => {
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
-      const result = await LspOperations.getDiagnostics(ctx, request);
-      if (!result.success) throw new Error(result.error.message);
+      const result = LspOperations.getDiagnostics(ctx, request);
+      if (!result.ok) throw new Error(result.error.message);
 
       return {
         content: [{ type: 'text', text: JSON.stringify(result.data, null, 2) }],

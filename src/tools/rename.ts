@@ -31,14 +31,17 @@ export function registerRenameTool(
       };
 
       const result = await LspOperations.rename(ctx, renameRequest);
-      if (!result.success) throw new Error(result.error.message);
+      if (!result.ok) throw new Error(result.error.message);
 
       // Format response with cursor context
       const { result: renameResult, cursorContext } = result.data;
 
+      // Calculate the number of files changed from the keys in RenameResult
+      const changeCount = Object.keys(renameResult).length;
+
       const responseText =
-        `Rename operation completed. Changed ${renameResult.changeCount} file(s):\n\n` +
-        JSON.stringify(renameResult.changes, null, 2);
+        `Rename operation completed. Changed ${changeCount} file(s):\n\n` +
+        JSON.stringify(renameResult, null, 2);
 
       const content: Array<{ type: 'text'; text: string }> = [];
       if (cursorContext) {
