@@ -1,10 +1,10 @@
 {
-  "name": "@p1va/lsp-use",
+  "name": "@p1va/symbols",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "bin": {
-    "lsp-use": "dist/index.js"
+    "symbols": "dist/index.js"
   },
   "files": [
     "dist"

@@ -1,8 +1,8 @@
 <div align="center">
 
-# lsp-use
+# symbols
 
-An MCP server to bring the structure of Language Servers to Coding Agents
+An MCP server for searching, reading, inspecting symbols in a codebase
 
 ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
@@ -14,12 +14,26 @@ An MCP server to bring the structure of Language Servers to Coding Agents
 
 ## Introduction
 
-By giving Coding Agents direct access to the same Language Server that powers VS Code and other IDEs the codebase becomes more structured, easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent use of the model's context.
+By giving Coding Agents a way to deal in code symbols like we do in IDEs the codebase becomes more structured, easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent use of the model's context.
+
+## Available Tools
+
+The MCP server provides the following tools:
+
+- **`search`**: searches symbols across the codebase
+- **`read`**: reads symbols in a given file with different level of details
+- **`inspect`**: inspects a given symbol and returns info about it, its definition and implementation
+- **`completion`**: suggests a list of completions
+- **`references`**: finds references of a given symbol across the codebase
+- **`rename`**: renames a symbol across the codebase
+- **`diagnostics`**: retrieves active diagnostics in a given document
+- **`logs`**: returns logs from the underlying LSP
+
 
 ## Installation
 
 ```bash
-npx -y @p1va/lsp-use
+npx -y @p1va/symbols
 ```
 
 The tool spawn a Language Server process and then communicates over stdio with it according to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). In order for the tool to work the Language Server for the language of choice needs to also be installed.
@@ -35,9 +49,12 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
 ```json
 {
   "mcpServers": {
-    "csharp": {
-      "command": "lsp-use",
-      "args": []
+    "symbols": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols"
+      ]
     }
   }
 }
@@ -55,8 +72,8 @@ Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo leve
 
 ```toml
 [mcp_servers.csharp]
-command = "lsp-use"
-args = ["--workspace=/path/to/repo", "--sln=/path/to/repo/solution.sln"]
+command = "npx"
+args = ["-y", "@p1va/symbols"]
 ```
 
 Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
@@ -72,9 +89,9 @@ Add or update your `.vscode/mcp.toml` to include this `csharp` server and provid
 ```json
 {
   "servers": {
-    "csharp": {
+    "symbols": {
       "type": "stdio",
-      "command": "npx -y @p1va/lsp-use",
+      "command": "npx -y @p1va/symbols",
       "args": []
     }
   }
@@ -82,19 +99,6 @@ Add or update your `.vscode/mcp.toml` to include this `csharp` server and provid
 ```
 
 </details>
-
-## Available Tools
-
-The server provides the following tools.
-
-- **`search`**: add description
-- **`read`**: add description
-- **`inspect`**: add description
-- **`completion`**: add description
-- **`references`**: add description
-- **`rename`**: add description
-- **`diagnostics`**: add description
-- **`logs`**: add description
 
 ## Development
 

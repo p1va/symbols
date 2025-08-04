@@ -7,7 +7,7 @@ import { registerAllTools } from '../tools/index.js';
  */
 export function createServer(createContext: () => LspContext): McpServer {
   const server = new McpServer({
-    name: 'lsp-use',
+    name: 'symbols',
     version: '1.0.0',
   });
 

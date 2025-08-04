@@ -1,4 +1,4 @@
-# Releasing `@p1va/lsp-use`
+# Releasing `@p1va/symbols`
 
 This note walks you through turning the repository into an npm-published CLI
 that is automatically built, tested and released whenever you push a Git tag
@@ -24,7 +24,7 @@ Legend
 ```jsonc
 {
   "bin": {
-    "lsp-use": "./dist/index.js",
+    "symbols": "./dist/index.js",
   },
   "exports": "./dist/index.js",
   "type": "module",
@@ -48,7 +48,7 @@ Legend
 
 ```jsonc
 {
-  "name": "@p1va/lsp-use",
+  "name": "@p1va/symbols",
   "version": "0.1.0",
   "files": ["dist", "README.md", "LICENSE"],
   "publishConfig": {
@@ -123,10 +123,10 @@ git push --follow-tags          # pushes commit **and** tag
 ```
 
 The pushed tag triggers the GitHub Action, which builds, tests and publishes
-`@p1va/lsp-use@X.Y.Z`. After the workflow is green you can test it via:
+`@p1va/symbols@X.Y.Z`. After the workflow is green you can test it via:
 
 ```bash
-npx -y @p1va/lsp-use --help
+npx -y @p1va/symbols --help
 ```
 
 ---

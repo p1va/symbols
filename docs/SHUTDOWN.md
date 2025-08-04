@@ -104,7 +104,7 @@ main().catch(() => {
 
 ---
 
-## Implementation roadmap for `lsp-use` (TypeScript/MCP)
+## Implementation roadmap for `symbols` (TypeScript/MCP)
 
 The sample above is generic. Below are **actionable, idiomatic TypeScript steps** that fit the existing source structure.
 

@@ -2,7 +2,7 @@
 import { main } from './main/index.js';
 import logger from './utils/logger.js';
 
-logger.info('Starting lsp-use...');
+logger.info('Starting...');
 
 // Start the server
 await main();

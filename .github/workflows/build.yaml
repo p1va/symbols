@@ -14,6 +14,8 @@ jobs:
         run: |
           npm install -g typescript typescript-language-server
           which typescript-language-server
+      - name: 🎨 Format
+        run: pnpm format
       - name: ⚒️ Build
         run: pnpm build
       - name: 🧪 Run tests

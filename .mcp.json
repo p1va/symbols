@@ -1,10 +1,6 @@
 {
   "mcpServers": {
-    "ts-old": {
-      "command": "lsp-use",
-      "args": []
-    },
-    "typescript": {
+    "symbols": {
       "command": "pnpm",
       "args": ["start"]
     }

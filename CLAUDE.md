@@ -1,4 +1,4 @@
-# lsp-use
+# symbols
 
 ## What we do
 

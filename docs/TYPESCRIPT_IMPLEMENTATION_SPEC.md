@@ -1,6 +1,6 @@
-# TypeScript Implementation Specification for lsp-use
+# TypeScript Implementation Specification for symbols
 
-This document provides a comprehensive specification for implementing the lsp-use ApplicationService in TypeScript, based on the existing C# implementation. It describes all the architectural patterns, LSP interactions, error handling, and business logic necessary for a complete port using plain English descriptions rather than code examples.
+This document provides a comprehensive specification for implementing the symbols ApplicationService in TypeScript, based on the existing C# implementation. It describes all the architectural patterns, LSP interactions, error handling, and business logic necessary for a complete port using plain English descriptions rather than code examples.
 
 ## Architecture Overview
 
