@@ -6,7 +6,13 @@
  */
 
 import { LspClient, OneBasedPosition, toZeroBased } from '../types.js';
-import { getDocumentSymbols, SymbolKindValue } from '../types/lsp.js';
+import {
+  getDocumentSymbols,
+  SymbolKindValue,
+  getSemanticTokens,
+  findSemanticTokenAtPosition,
+  SemanticToken,
+} from '../types/lsp.js';
 import { formatFilePath } from '../tools/utils.js';
 import logger from './logger.js';
 
@@ -16,6 +22,9 @@ export interface CursorContext {
   position: OneBasedPosition; // 1-based user position
   symbolName?: string;
   symbolKind?: string;
+  tokenName?: string;
+  tokenType?: string;
+  tokenModifiers?: string[];
   snippet: string; // Text snippet showing cursor position with | marker
 }
 
@@ -58,6 +67,66 @@ function symbolKindToString(kind: number): string {
     'TypeParameter',
   ];
   return kinds[kind - 1] || 'Unknown';
+}
+
+/**
+ * Finds the semantic token at the given position by requesting semantic tokens
+ * and finding the one that contains the exact cursor position.
+ */
+async function findSemanticTokenAtCursorPosition(
+  client: LspClient,
+  uri: string,
+  position: OneBasedPosition,
+  fileContent: string
+): Promise<SemanticToken | null> {
+  try {
+    logger.info(
+      `Finding semantic token at position ${position.line}:${position.character} in ${uri}`
+    );
+
+    // Convert to 0-based position for semantic tokens
+    const lspPosition = toZeroBased(position);
+    logger.info(
+      `Converted to LSP position: ${lspPosition.line}:${lspPosition.character}`
+    );
+
+    // Get semantic tokens
+    const semanticTokensResult = await getSemanticTokens(
+      client,
+      uri,
+      fileContent
+    );
+
+    if (
+      !semanticTokensResult?.tokens ||
+      semanticTokensResult.tokens.length === 0
+    ) {
+      logger.info('No semantic tokens found, returning null');
+      return null;
+    }
+
+    // Find token at exact position
+    const token = findSemanticTokenAtPosition(
+      semanticTokensResult.tokens,
+      lspPosition.line,
+      lspPosition.character
+    );
+
+    if (token) {
+      logger.info(
+        `Found semantic token: "${token.text}" type: ${token.tokenType} modifiers: [${token.tokenModifiers.join(', ')}]`
+      );
+    } else {
+      logger.info('No semantic token found at position');
+    }
+
+    return token;
+  } catch (error) {
+    logger.error(
+      `Error in findSemanticTokenAtCursorPosition: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
+  }
 }
 
 /**
@@ -260,6 +329,14 @@ export async function generateCursorContext(
   // Find the symbol at the position using document symbols
   const symbolAtPosition = await findSymbolAtPosition(client, uri, position);
 
+  // Find the semantic token at the position
+  const semanticToken = await findSemanticTokenAtCursorPosition(
+    client,
+    uri,
+    position,
+    fileContent
+  );
+
   // Create text snippet
   const snippet = createTextSnippet(fileContent, position);
 
@@ -278,6 +355,21 @@ export async function generateCursorContext(
     result.symbolKind = symbolKindToString(symbolAtPosition.kind);
   }
 
+  if (semanticToken?.text) {
+    result.tokenName = semanticToken.text;
+  }
+
+  if (semanticToken?.tokenType) {
+    result.tokenType = semanticToken.tokenType;
+  }
+
+  if (
+    semanticToken?.tokenModifiers &&
+    semanticToken.tokenModifiers.length > 0
+  ) {
+    result.tokenModifiers = semanticToken.tokenModifiers;
+  }
+
   return result;
 }
 
@@ -285,17 +377,29 @@ export async function generateCursorContext(
  * Formats cursor context for display in MCP responses
  */
 export function formatCursorContext(context: CursorContext): string {
+  // Document symbol info (broader structural context)
   const symbolInfo =
     context.symbolName && context.symbolKind
       ? `(${context.symbolKind}) ${context.symbolName}`
-      : 'Unknown symbol';
+      : 'No symbol at this line';
+
+  // Semantic token info (precise clicked token)
+  const targetToken =
+    context.tokenName && context.tokenType
+      ? `(${context.tokenType}) ${context.tokenName}${
+          context.tokenModifiers && context.tokenModifiers.length > 0
+            ? ` [${context.tokenModifiers.join(', ')}]`
+            : ''
+        }`
+      : 'Unknown token';
 
   // Capitalize first letter of operation and format file path
   const capitalizedOperation =
     context.operation.charAt(0).toUpperCase() + context.operation.slice(1);
   const formattedPath = formatFilePath(context.file);
 
-  return `${capitalizedOperation} on file ${formattedPath}:${context.position.line}:${context.position.character}
-    Symbol: ${symbolInfo}
-    Cursor: \`${context.snippet}\``;
+  return `${capitalizedOperation} on ${formattedPath}:${context.position.line}:${context.position.character}
+    Cursor: \`${context.snippet}\`
+    Target: ${targetToken}
+    Symbol: ${symbolInfo}`;
 }

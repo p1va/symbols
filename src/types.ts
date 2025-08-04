@@ -1,8 +1,3 @@
-/**
- * Core types for the LSP-to-MCP server
- * Based on the functional architecture defined in IMPLEMENTATION_PLAN.md
- */
-
 import * as rpc from 'vscode-jsonrpc';
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import {
@@ -11,6 +6,15 @@ import {
   LogMessageParams,
   ServerCapabilities,
 } from 'vscode-languageserver-protocol';
+// Import and re-export position types
+import {
+  OneBasedPosition,
+  ZeroBasedPosition,
+  createOneBasedPosition,
+  createZeroBasedPosition,
+  toZeroBased,
+  toOneBased,
+} from './types/position.js';
 
 // Error codes for LSP operations
 export enum ErrorCode {
@@ -174,16 +178,6 @@ export interface WindowLogStore {
   getMessages(): LogMessage[];
   clear(): void;
 }
-
-// Import and re-export position types
-import {
-  OneBasedPosition,
-  ZeroBasedPosition,
-  createOneBasedPosition,
-  createZeroBasedPosition,
-  toZeroBased,
-  toOneBased,
-} from './types/position.js';
 
 export {
   OneBasedPosition,

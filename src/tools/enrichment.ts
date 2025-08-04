@@ -33,6 +33,23 @@ interface FileCache {
 }
 
 /**
+ * Converts a file:// URI to a local file path with proper URL decoding
+ */
+function decodeFileUriToPath(uri: string): string {
+  // Remove file:// prefix
+  let path = uri.replace('file://', '');
+
+  // Decode URL encoding (like %40 -> @)
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // If decoding fails, use the original path
+  }
+
+  return path;
+}
+
+/**
  * Enriches a list of symbols with code snippets by reading their source files
  */
 export async function enrichSymbolsWithCode<T extends EnrichableSymbol>(
@@ -46,7 +63,7 @@ export async function enrichSymbolsWithCode<T extends EnrichableSymbol>(
   for (const symbol of symbols) {
     const uri = extractUriFromSymbol(symbol);
     if (uri) {
-      const filePath = uri.replace('file://', '');
+      const filePath = decodeFileUriToPath(uri);
       if (!symbolsByFile.has(filePath)) {
         symbolsByFile.set(filePath, []);
       }
@@ -233,7 +250,7 @@ export async function enrichSymbolLocations(
 
   for (const location of locations) {
     try {
-      const filePath = location.uri.replace('file://', '');
+      const filePath = decodeFileUriToPath(location.uri);
 
       // Load file if not cached
       if (!fileCache[filePath]) {

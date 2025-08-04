@@ -124,36 +124,55 @@ function extractHoverContent(hover: Hover): string | null {
 
   // Handle different hover content formats according to LSP spec
   if (typeof contents === 'string') {
-    return contents;
+    return contents.trim();
   }
 
-  // Handle MarkupContent
+  // Handle MarkupContent (most common with TypeScript)
   if (
     typeof contents === 'object' &&
     'kind' in contents &&
     'value' in contents
   ) {
-    return contents.value;
+    const markupContent = contents as { kind: string; value: string };
+    // Remove markdown code fences if present for cleaner display
+    let value = markupContent.value;
+    if (markupContent.kind === 'markdown') {
+      // Clean up common markdown patterns for better readability
+      value = value
+        .replace(/^```typescript\n/, '')
+        .replace(/^```ts\n/, '')
+        .replace(/\n```$/, '')
+        .replace(/^```\n/, '')
+        .replace(/\n```$/, '');
+    }
+    return value.trim();
   }
 
-  // Handle MarkedString array
+  // Handle MarkedString array (multiple content pieces)
   if (Array.isArray(contents)) {
     return contents
       .map((item: MarkedString) => {
         if (typeof item === 'string') return item;
         if (typeof item === 'object' && 'value' in item) {
-          return item.value;
+          const markedItem = item as { language?: string; value: string };
+          // For code blocks, preserve them but clean up formatting
+          if (markedItem.language) {
+            return markedItem.value; // Return raw code without fences
+          }
+          return markedItem.value;
         }
         return JSON.stringify(item);
       })
-      .join('\n\n');
+      .filter(Boolean) // Remove empty strings
+      .join('\n\n')
+      .trim();
   }
 
   // Handle single MarkedString object
   if (typeof contents === 'object' && 'value' in contents) {
     const markedString = contents as MarkedString;
     if (typeof markedString === 'object' && 'value' in markedString) {
-      return markedString.value;
+      return markedString.value.trim();
     }
   }
 
@@ -214,7 +233,7 @@ async function formatLocationGroup(
   const fileCount = fileGroups.size;
   const plural = fileCount === 1 ? '' : 's';
 
-  let result = `${groupTitle}\nFound ${totalCount} location${totalCount === 1 ? '' : 's'} across ${fileCount} file${plural}\n\n`;
+  let result = `${groupTitle}: ${totalCount} location${totalCount === 1 ? '' : 's'} across ${fileCount} file${plural}\n`;
 
   for (const [filePath, fileLocations] of fileGroups) {
     result += `${filePath} (${fileLocations.length} location${fileLocations.length === 1 ? '' : 's'})\n`;
@@ -223,12 +242,14 @@ async function formatLocationGroup(
       const signaturePreview = codeSnippet
         ? createSignaturePreview(codeSnippet, 100)
         : null;
-      result += `  @${location.range.start.line}:${location.range.start.character}`;
 
       if (signaturePreview) {
-        result += `\n    \`${signaturePreview}\``;
+        // Inline format: position - code
+        result += `  @${location.range.start.line}:${location.range.start.character} - \`${signaturePreview}\`\n`;
+      } else {
+        // Just the position if no code available
+        result += `  @${location.range.start.line}:${location.range.start.character}\n`;
       }
-      result += '\n';
     }
   }
 

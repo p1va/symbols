@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist",
-    "build": "eslint . && tsc -p tsconfig.build.json",
+    "build": "rimraf ./dist && eslint . && tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "lint": "eslint .",

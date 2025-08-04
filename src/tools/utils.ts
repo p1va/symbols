@@ -37,7 +37,14 @@ export function getSymbolKindName(kind: number): string {
 
 export function formatFilePath(path: string): string {
   // Remove file:// prefix if present
-  const cleanPath = path.replace('file://', '');
+  let cleanPath = path.replace('file://', '');
+
+  // Decode URL encoding (like %40 -> @)
+  try {
+    cleanPath = decodeURIComponent(cleanPath);
+  } catch {
+    // If decoding fails, use the original path
+  }
 
   // Make path relative to current working directory if it starts with it
   const cwd = process.cwd();

@@ -41,6 +41,10 @@ import {
   DidChangeTextDocumentParams,
   LogMessageParams,
   PublishDiagnosticsParams,
+
+  // Semantic tokens types
+  SemanticTokensParams,
+  SemanticTokens,
 } from 'vscode-languageserver-protocol';
 import logger from '../utils/logger.js';
 import { LspClient } from '../types.js';
@@ -74,6 +78,8 @@ export {
   DidChangeTextDocumentParams,
   LogMessageParams,
   PublishDiagnosticsParams,
+  SemanticTokensParams,
+  SemanticTokens,
 };
 
 // Keep our custom discriminated union helper since it's useful
@@ -158,6 +164,16 @@ export interface RenameResult {
 export interface LogMessageResult {
   type: number;
   message: string;
+}
+
+/** Semantic token at a specific position */
+export interface SemanticToken {
+  line: number; // 0-based
+  character: number; // 0-based
+  length: number;
+  tokenType: string;
+  tokenModifiers: string[];
+  text: string;
 }
 
 // The textDocument/documentSymbol response can be either format
@@ -271,5 +287,178 @@ export async function getDocumentSymbols(
 
     flattenDocumentSymbols(symbolResult.symbols);
     return results;
+  }
+}
+
+/**
+ * Decodes semantic tokens from the LSP relative format into absolute positions
+ */
+export function decodeSemanticTokens(
+  data: number[],
+  tokenTypes: string[],
+  tokenModifiers: string[],
+  fileContent: string
+): SemanticToken[] {
+  const tokens: SemanticToken[] = [];
+  const lines = fileContent.split('\n');
+
+  let currentLine = 0;
+  let currentChar = 0;
+
+  for (let i = 0; i < data.length; i += 5) {
+    // Ensure we have all required indices with proper type checking
+    if (i + 4 >= data.length) break;
+
+    const deltaLine = data[i];
+    const deltaStart = data[i + 1];
+    const length = data[i + 2];
+    const tokenType = data[i + 3];
+    const tokenModifiersBits = data[i + 4];
+
+    // Validate all values are defined numbers
+    if (
+      deltaLine === undefined ||
+      deltaStart === undefined ||
+      length === undefined ||
+      tokenType === undefined ||
+      tokenModifiersBits === undefined
+    ) {
+      continue; // Skip malformed token data
+    }
+
+    // Calculate absolute position
+    currentLine += deltaLine;
+    currentChar = deltaLine === 0 ? currentChar + deltaStart : deltaStart;
+
+    // Extract token text with safe length
+    const tokenText =
+      lines[currentLine]?.substring(currentChar, currentChar + length) || '';
+
+    // Decode modifiers with safe array access
+    const modifiersList: string[] = [];
+    for (let bit = 0; bit < tokenModifiers.length; bit++) {
+      if (tokenModifiersBits & (1 << bit)) {
+        const modifier = tokenModifiers[bit];
+        if (modifier !== undefined) {
+          modifiersList.push(modifier);
+        }
+      }
+    }
+
+    // Safe array access with bounds checking
+    const safeTokenType: string =
+      tokenType >= 0 && tokenType < tokenTypes.length
+        ? (tokenTypes[tokenType] as string)
+        : 'unknown';
+
+    tokens.push({
+      line: currentLine,
+      character: currentChar,
+      length,
+      tokenType: safeTokenType,
+      tokenModifiers: modifiersList,
+      text: tokenText,
+    });
+  }
+
+  return tokens;
+}
+
+/**
+ * Finds the semantic token at the given position (0-based coordinates)
+ * Returns null if no token found at that position
+ */
+export function findSemanticTokenAtPosition(
+  tokens: SemanticToken[],
+  line: number,
+  character: number
+): SemanticToken | null {
+  for (const token of tokens) {
+    if (token.line === line) {
+      // Check if position falls within token's character range
+      if (
+        character >= token.character &&
+        character < token.character + token.length
+      ) {
+        return token;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Gets semantic tokens for a document and caches token type/modifier legends
+ */
+export async function getSemanticTokens(
+  client: LspClient,
+  uri: string,
+  fileContent: string
+): Promise<{
+  tokens: SemanticToken[];
+  legend?: { tokenTypes: string[]; tokenModifiers: string[] };
+} | null> {
+  try {
+    logger.info(`getSemanticTokens called for ${uri}`);
+
+    const params: SemanticTokensParams = {
+      textDocument: { uri },
+    };
+
+    const response: SemanticTokens = await client.connection.sendRequest(
+      'textDocument/semanticTokens/full',
+      params
+    );
+
+    if (!response?.data || response.data.length === 0) {
+      logger.info('No semantic tokens data received');
+      return null;
+    }
+
+    // Get the legend from the server capabilities (should be cached from initialization)
+    // For now, we'll use TypeScript's common token types and modifiers
+    // This should ideally come from the server's initialize response
+    const tokenTypes = [
+      'class',
+      'enum',
+      'interface',
+      'namespace',
+      'typeParameter',
+      'type',
+      'parameter',
+      'variable',
+      'enumMember',
+      'property',
+      'function',
+      'member',
+    ];
+
+    const tokenModifiers = [
+      'declaration',
+      'static',
+      'async',
+      'readonly',
+      'defaultLibrary',
+      'local',
+    ];
+
+    const decodedTokens = decodeSemanticTokens(
+      response.data,
+      tokenTypes,
+      tokenModifiers,
+      fileContent
+    );
+
+    logger.info(`Decoded ${decodedTokens.length} semantic tokens`);
+
+    return {
+      tokens: decodedTokens,
+      legend: { tokenTypes, tokenModifiers },
+    };
+  } catch (error) {
+    logger.error(
+      `Error in getSemanticTokens: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
   }
 }
