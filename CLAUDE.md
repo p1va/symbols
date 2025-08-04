@@ -1,33 +1,19 @@
-# TypeScript LSP-to-MCP Server Project
+# lsp-use
 
-## Project Overview
+## What we do
 
-We are building a **TypeScript MCP (Model Context Protocol) server** that provides intelligent code navigation and analysis tools by orchestrating LSP (Language Server Protocol) requests internally. This server will help Claude Code understand and navigate codebases more effectively.
+We are building an MCP (Model Context Protocol) server that provides a set of tools intended to offer a more productive way of navigating the codebase. This is done by spawning, interacting and orchestrating requests to a Language Server based on the Language Server Protocol specs.
+You are both developing these tools in this codebase and using its last successful build via MCP.
 
-## Background & Context
+## Decisions
 
-### Original C# Implementation
-
-- We have an existing C# tool (MCP server) called **"typescript"** that provides similar functionality
-- The C# version uses ApplicationService pattern with comprehensive LSP orchestration
-- Detailed specification available in `TYPESCRIPT_IMPLEMENTATION_SPEC.md`
-- Analysis of the C# approach documented in `MCP_SERVER_UNDERSTANDING.md`
-
-### Why TypeScript Port?
-
-- **TypeScript-native**: Better suited for TypeScript language server integration
-- **Modern patterns**: Embrace functional programming over OOP translation
-- **Performance**: Direct JSON-RPC communication without C# overhead
-- **Maintenance**: Easier for TypeScript developers to contribute
-
-## Architecture Decision
-
-We chose a **pure functional approach** (documented in `IMPLEMENTATION_PLAN.md`) because:
-
-- **TypeScript-idiomatic**: Modern TS/JS functional patterns vs OOP
-- **Precise dependencies**: Functions only receive what they need
-- **Highly testable**: Easy to mock specific dependencies
-- **Composable**: Pure functions that combine easily
+- We have chosen Typescript as the language and pnpm as the package manager.
+- We want to enfore strict type safety to benefit from the typescript compiler when developing
+- We have chosen to use **pure functional approach**
+  - **TypeScript-idiomatic**: Modern TS/JS functional patterns vs OOP
+  - **Precise dependencies**: Functions only receive what they need
+  - **Highly testable**: Easy to mock specific dependencies
+  - **Composable**: Pure functions that combine easily
 
 ## Core Components
 

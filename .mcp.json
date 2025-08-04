@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "typescript": {
+    "ts-old": {
       "command": "lsp-use",
       "args": []
     },
-    "typescript-new": {
+    "typescript": {
       "command": "pnpm",
       "args": ["start"]
     }
