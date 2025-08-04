@@ -8,7 +8,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - name: Install dependencies
+      - name: 🧑‍💻 Install dependencies
         run: pnpm install
-      - run: pnpm test
-      - run: pnpm build
+      - name: 🙊 Install language servers
+        run: |
+          npm install -g typescript typescript-language-server
+      - name: 🧪 Run tests
+        run: pnpm test
+      - name: ⚒️ Build
+        run: pnpm build
