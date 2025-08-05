@@ -1,15 +1,18 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import * as path from 'path';
+import { parseCliArgs, showHelp, resolveConfig } from '../utils/cli.js';
 
 import { createLspClient, initializeLspClient } from '../lsp-client.js';
 import { openFileWithStrategy } from '../lsp/fileLifecycle/index.js';
 import {
   createDiagnosticsStore,
+  createDiagnosticProviderStore,
   createWindowLogStore,
 } from '../state/index.js';
 import {
   DiagnosticsStore,
+  DiagnosticProviderStore,
   LspClient,
   LspConfig,
   LspContext,
@@ -17,6 +20,7 @@ import {
   WindowLogStore,
   WorkspaceState,
 } from '../types.js';
+import { getLspConfig, autoDetectLsp } from '../config/lsp-config.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
 import logger from '../utils/logger.js';
 import { createServer } from './createServer.js';
@@ -25,8 +29,12 @@ import { setupShutdown } from './shutdown.js';
 // Module-level state
 let lspClient: LspClient | null = null;
 let lspProcess: ChildProcessWithoutNullStreams | null = null;
+let lspName: string = '';
+let workspaceUri: string = '';
+let workspacePath: string = '';
 const preloadedFiles: PreloadedFiles = new Map();
 const diagnosticsStore: DiagnosticsStore = createDiagnosticsStore();
+const diagnosticProviderStore: DiagnosticProviderStore = createDiagnosticProviderStore();
 const windowLogStore: WindowLogStore = createWindowLogStore();
 const workspaceState: WorkspaceState = {
   isLoading: false,
@@ -38,24 +46,77 @@ const workspaceState: WorkspaceState = {
  */
 async function initializeLsp(): Promise<void> {
   try {
-    const workspacePath = process.cwd();
-    // TODO: this has a file prefix but is a folder?
-    const workspaceUri = `file://${path.resolve(workspacePath)}`;
+    // Parse CLI arguments and resolve configuration
+    const cliArgs = parseCliArgs();
+    
+    // Handle help request
+    if (cliArgs.help) {
+      showHelp();
+      process.exit(0);
+    }
+    
+    const config = resolveConfig(cliArgs);
+    
+    // Set up workspace paths
+    workspacePath = config.workspace;
+    workspaceUri = `file://${path.resolve(workspacePath)}`;
     const workspaceName = path.basename(workspacePath);
 
-    const config: LspConfig = {
+    // Set log level from config (this will affect winston logger)
+    if (process.env.LOGLEVEL !== config.loglevel) {
+      process.env.LOGLEVEL = config.loglevel;
+    }
+
+    // Get LSP server name - try CLI args/environment, then auto-detection, then default to typescript
+    lspName = config.lsp || '';
+    
+    if (!lspName) {
+      // Try auto-detection based on workspace files
+      const detectedLsp = autoDetectLsp(workspacePath);
+      if (detectedLsp) {
+        lspName = detectedLsp;
+        logger.info('Auto-detected LSP server', { lspName, workspacePath });
+      } else {
+        lspName = 'typescript';
+        logger.info('No LSP auto-detected, using default', { lspName });
+      }
+    } else {
+      const source = cliArgs.lsp ? 'CLI argument' : 'environment variable';
+      logger.info(`Using LSP from ${source}`, { lspName });
+    }
+
+    logger.info('Initializing LSP client', {
+      lspName,
+      workspacePath,
+      workspaceUri,
+      workspaceName
+    });
+
+    // Load LSP configuration
+    const lspConfig = getLspConfig(lspName);
+    if (!lspConfig) {
+      logger.error(`LSP configuration not found for: ${lspName}`);
+      throw new Error(`LSP configuration not found for: ${lspName}`);
+    }
+
+    logger.debug('LSP configuration loaded', {
+      lspName,
+      command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
+      extensions: Object.keys(lspConfig.extensions),
+      diagnosticsStrategy: lspConfig.diagnostics.strategy
+    });
+
+    const workspaceConfig: LspConfig = {
       workspaceUri,
       workspaceName,
-      preloadFiles: [
-        './src/index.ts',
-        './src/types.ts',
-        './src/lsp-operations.ts',
-      ],
+      preloadFiles: ['./src/index.ts'],
     };
 
     const clientResult = createLspClient(
-      config,
+      workspaceConfig,
+      lspConfig,
       diagnosticsStore,
+      diagnosticProviderStore,
       windowLogStore
     );
 
@@ -65,7 +126,8 @@ async function initializeLsp(): Promise<void> {
 
     const initResult = await initializeLspClient(
       clientResult.data.client,
-      config
+      workspaceConfig,
+      diagnosticProviderStore
     );
     if (!initResult.ok) {
       throw new Error(initResult.error.message);
@@ -75,7 +137,7 @@ async function initializeLsp(): Promise<void> {
     lspProcess = clientResult.data.process;
 
     // Initialize workspace by opening preloaded files
-    await initializeWorkspace(config);
+    await initializeWorkspace(workspaceConfig);
   } catch (error) {
     throw new Error(
       `Failed to initialize LSP: ${error instanceof Error ? error.message : String(error)}`
@@ -147,8 +209,12 @@ function createContext(): LspContext {
     client: lspClient,
     preloadedFiles,
     diagnosticsStore,
+    diagnosticProviderStore,
     windowLogStore,
     workspaceState,
+    workspaceUri,
+    workspacePath,
+    lspName,
   };
 }
 

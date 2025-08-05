@@ -4,7 +4,13 @@
  */
 
 // Import all the official LSP types instead of defining our own
-import {
+// Import the single runtime value we rely on.
+import { SymbolKind } from 'vscode-languageserver-protocol';
+
+// Import the remainder purely as types so they are erased from the runtime
+// import. This avoids Node complaining that these names are not available as
+// value exports when executing the code via `tsx` (pnpm dev).
+import type {
   // Basic types
   DocumentUri,
   Position,
@@ -15,7 +21,6 @@ import {
   // Symbol types
   SymbolInformation,
   DocumentSymbol,
-  SymbolKind,
   WorkspaceSymbol,
 
   // Request/Response parameter types
@@ -42,6 +47,11 @@ import {
   LogMessageParams,
   PublishDiagnosticsParams,
 
+  // Diagnostic types for pull diagnostics (used in operations)
+  DocumentDiagnosticParams,
+  DocumentDiagnosticReport,
+  RelatedFullDocumentDiagnosticReport,
+
   // Semantic tokens types
   SemanticTokensParams,
   SemanticTokens,
@@ -50,7 +60,7 @@ import logger from '../utils/logger.js';
 import { LspClient } from '../types.js';
 
 // Re-export the official types
-export {
+export type {
   DocumentUri,
   Position,
   Range,
@@ -58,7 +68,6 @@ export {
   uinteger,
   SymbolInformation,
   DocumentSymbol,
-  SymbolKind,
   WorkspaceSymbol,
   InitializeParams,
   InitializeResult,
@@ -78,9 +87,17 @@ export {
   DidChangeTextDocumentParams,
   LogMessageParams,
   PublishDiagnosticsParams,
+  // Diagnostic types for pull diagnostics (used in operations)
+  DocumentDiagnosticParams,
+  DocumentDiagnosticReport,
+  RelatedFullDocumentDiagnosticReport,
   SemanticTokensParams,
   SemanticTokens,
 };
+
+// Export the runtime SymbolKind value separately so both type and runtime
+// consumers continue to function.
+export { SymbolKind };
 
 // Keep our custom discriminated union helper since it's useful
 export type SymbolKindValue = (typeof SymbolKind)[keyof typeof SymbolKind];

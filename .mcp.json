@@ -3,6 +3,16 @@
     "symbols": {
       "command": "pnpm",
       "args": ["start"]
+    },
+    "pyright-symbols": {
+      "command": "pnpm",
+      "args": [
+        "start",
+        "--lsp",
+        "pyright",
+        "--workspace",
+        "/home/truelayer/Repo/symbols/test/python/test-project"
+      ]
     }
   }
 }

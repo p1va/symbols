@@ -8,13 +8,16 @@ import {
 } from 'vscode-languageserver-protocol';
 // Import and re-export position types
 import {
-  OneBasedPosition,
-  ZeroBasedPosition,
   createOneBasedPosition,
   createZeroBasedPosition,
   toZeroBased,
   toOneBased,
 } from './types/position.js';
+
+// Import types separately so they are erased at runtime. This prevents
+// Node from expecting the corresponding value exports during `pnpm dev`
+// where the code is executed directly via `tsx`.
+import type { OneBasedPosition, ZeroBasedPosition } from './types/position.js';
 
 // Error codes for LSP operations
 export enum ErrorCode {
@@ -161,11 +164,27 @@ export interface PreloadedFile {
 
 export type PreloadedFiles = Map<string, PreloadedFile>;
 
+// Diagnostic provider information
+export interface DiagnosticProvider {
+  id: string;
+  documentSelector?: Array<{ language?: string; scheme?: string; pattern?: string }>;
+  interFileDependencies?: boolean;
+  workspaceDiagnostics?: boolean;
+}
+
 // Stores for cached data
 export interface DiagnosticsStore {
   diagnostics: Map<string, Diagnostic[]>;
   addDiagnostics(uri: string, diagnostics: Diagnostic[]): void;
   getDiagnostics(uri: string): Diagnostic[];
+  clear(): void;
+}
+
+export interface DiagnosticProviderStore {
+  providers: DiagnosticProvider[];
+  addProvider(provider: DiagnosticProvider): void;
+  getProviders(): DiagnosticProvider[];
+  getProvidersForDocument(uri: string, languageId?: string): DiagnosticProvider[];
   clear(): void;
 }
 
@@ -179,9 +198,9 @@ export interface WindowLogStore {
   clear(): void;
 }
 
+export type { OneBasedPosition, ZeroBasedPosition };
+
 export {
-  OneBasedPosition,
-  ZeroBasedPosition,
   createOneBasedPosition,
   createZeroBasedPosition,
   toZeroBased,
@@ -213,8 +232,12 @@ export interface LspContext {
   readonly client: LspClient;
   readonly preloadedFiles: PreloadedFiles;
   readonly diagnosticsStore: DiagnosticsStore;
+  readonly diagnosticProviderStore: DiagnosticProviderStore;
   readonly windowLogStore: WindowLogStore;
   readonly workspaceState: WorkspaceState;
+  readonly workspaceUri: string;
+  readonly workspacePath: string;
+  readonly lspName?: string;
 }
 
 // Additional error codes for validation (extending the main ErrorCode enum)

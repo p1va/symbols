@@ -3,7 +3,8 @@
  */
 
 import { z } from 'zod';
-import { createOneBasedPosition, OneBasedPosition } from '../types/position.js';
+import { createOneBasedPosition } from '../types/position.js';
+import type { OneBasedPosition } from '../types/position.js';
 
 // TODO: Apply descrition everywhere
 

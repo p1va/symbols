@@ -2,75 +2,63 @@
 
 ## What we do
 
-We are building an MCP (Model Context Protocol) server that provides a set of tools intended to offer a more productive way of navigating the codebase. This is done by spawning, interacting and orchestrating requests to a Language Server based on the Language Server Protocol specs.
-You are both developing these tools in this codebase and using its last successful build via MCP.
+We are building an MCP (Model Context Protocol) server called "symbols" that provides a set of tools for a more productive and precise way to explore and work in a codebase.
+This server under the hood spawn, interact and orchestrating requests to a Language Server based on the LSP specs.
+Right now we are developing against the Typescript language server but the goal is to build a generic tool which we can use with most language servers.
+You are both working in the codebase where these tools source code is and using their last successful build via MCP.
 
 ## Decisions
 
 - We have chosen Typescript as the language and pnpm as the package manager.
 - We want to enfore strict type safety to benefit from the typescript compiler when developing
-- We have chosen to use **pure functional approach**
-  - **TypeScript-idiomatic**: Modern TS/JS functional patterns vs OOP
-  - **Precise dependencies**: Functions only receive what they need
-  - **Highly testable**: Easy to mock specific dependencies
-  - **Composable**: Pure functions that combine easily
+- We have chosen to use **pure functional approach** and write modern TS preferring functional patterns to OOP
 
-## Core Components
+## Tool Usage Policy Addendum
 
-### 1. **MCP Server Layer** (`index.ts`)
+The MCP server provides the following tools:
 
-- Registers 8 MCP tools that Claude Code can use
-- Handles tool requests and response formatting
-- Manages module-level state (LSP connection, stores)
+- Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
+- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `full` symbols in a given file with different level of details.
+- Use **`mcp__symbols__inspect`** when unsure about what a given symbol does, where it lives, which signature it needs. Then eventually keep exploring the suggested definition, implementation locations with `mcp__symbols__read`
+- **`mcp__symbols__completion`**: suggests a list of completions
+- Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
+- Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase
+- Use **`mcp__symbols__diagnostics`** to retrieve active diagnostics for a given document
 
-### 2. **LspOperations** (Public API)
+## Core Architecture
 
-Only functions corresponding to actual MCP tools:
+### 1. **MCP Server Layer** (`src/main/`)
 
-```typescript
-export const inspectSymbol = async (client, preloadedFiles, request) =>
-  Promise<Result<InspectSymbolResult>>;
-export const findReferences = async (client, preloadedFiles, request) =>
-  Promise<Result<SymbolLocation[]>>;
-export const getCompletion = async (client, preloadedFiles, request) =>
-  Promise<Result<CompletionItem[]>>;
-export const searchSymbols = async (client, query) =>
-  Promise<Result<WorkspaceSymbol[]>>;
-export const getDocumentSymbols = async (client, preloadedFiles, request) =>
-  Promise<Result<DocumentSymbol[]>>;
-export const getDiagnostics = async (
-  client,
-  diagnosticsStore,
-  preloadedFiles,
-  request
-) => Promise<Result<Diagnostic[]>>;
-export const renameSymbol = async (client, preloadedFiles, request) =>
-  Promise<Result<RenameResult>>;
-export const getWindowLogMessages = async (windowLogStore) =>
-  Promise<Result<WindowLogMessage[]>>;
-export const initialize = async (client, config, preloadedFiles) =>
-  Promise<Result<InitializeResult>>;
-```
+- **Main Entry**: `src/main/index.ts` - Context creation and initialization
+- **Server Factory**: `src/main/createServer.ts` - MCP server creation
+- **LSP Client**: `src/lsp-client.ts` - LSP communication layer
 
-### 3. **Internal Helpers** (Private)
+### 2. **Tools Layer** (`src/tools/`)
 
-LSP request functions and utilities that are implementation details:
+- **Tool Registration**: `src/tools/index.ts` - Registers all 8 MCP tools
+- **Individual Tools**: Each tool has its own file with registration and formatting logic
+- **Tool Types**: read, inspect, search, references, completion, rename, diagnostics, logs
 
-- `getDefinitionInternal`, `getHoverInternal`, `getTypeDefinitionInternal`, etc.
-- `findSymbolAtPosition`, `enrichWithText`, `executeWithFileLifecycle`
-- These are NOT exported - purely internal to operations
+### 3. **LSP Operations** (`src/lsp/operations/`)
 
-## The 8 MCP Tools We're Building
+- **Core Operations**: `src/lsp/operations/operations.ts` - LSP request handlers
+- **File Lifecycle**: `src/lsp/fileLifecycle/` - File management for LSP operations
 
-1. **`initialize`** - Set up LSP connection and workspace
-2. **`inspect_symbol`** - Comprehensive symbol info (hover + all navigation)
-3. **`find_references`** - Find all uses of a symbol
-4. **`get_completion`** - Code completion suggestions
-5. **`search_symbols`** - Search symbols across workspace
-6. **`rename_symbol`** - Rename symbol across codebase
-7. **`get_document_symbols`** - Get all symbols in a file
-8. **`get_diagnostics`** - Get errors/warnings for a file
-9. **`get_window_logs`** - Access LSP server log messages
+### 4. **State Management** (`src/state/`)
+
+- **Stores**: `src/state/stores.ts` - DiagnosticsStore, WindowLogStore, WorkspaceState
+- **Coordination**: `src/state/index.ts` - State management coordination
+
+## The 8 MCP Tools (✅ Implemented)
+
+1. **`read`** - Get document symbols with 4-tier preview system (none/signature/full/raw)
+2. **`inspect`** - Comprehensive symbol info (hover + all navigation)
+3. **`references`** - Find all uses of a symbol across the codebase
+4. **`completion`** - Code completion suggestions at cursor position
+5. **`search`** - Search symbols across workspace by query
+6. **`rename`** - Rename symbol across entire codebase
+7. **`diagnostics`** - Get errors/warnings for a file
+8. **`logs`** - Access LSP server log messages
 
 ## Critical Implementation Details
 
@@ -96,11 +84,12 @@ LSP request functions and utilities that are implementation details:
 
 ### **Current Development State**
 
-- ✅ Basic LSP communication working (see `playground/dotnet.ts`)
-- ✅ MCP TypeScript tools available for reference during development
-- ✅ Architecture and implementation plan documented
-- ✅ **typescript-new MCP server running** - Basic MCP infrastructure working (tested with example_tool)
-- 🔄 Ready to implement the 8 LSP tools (currently only has example addition tool)
+- ✅ **Complete MCP Server Implementation** - All 8 tools fully implemented and working
+- ✅ **LSP Communication Layer** - Robust TypeScript LSP client with proper lifecycle management
+- ✅ **4-Tier Symbol Reading** - Sophisticated preview system (none/signature/full/raw)
+- ✅ **Type Safety** - Strict TypeScript with comprehensive error handling
+- ✅ **State Management** - Proper stores for diagnostics, logs, and workspace state
+- ✅ **File Lifecycle Management** - Efficient preloaded file handling
 
 ### **Using Existing "typescript" MCP Tool During Development**
 
@@ -124,7 +113,7 @@ Instead of using `console.log(Object.keys(require('module')))` or similar runtim
 console.log(Object.keys(require('vscode-jsonrpc')));
 
 // ✅ Use TypeScript MCP tools
-mcp__typescript__get_symbols("node_modules/vscode-jsonrpc/lib/node/main.d.ts", maxDepth: 3)
+mcp__symbols__read("node_modules/vscode-jsonrpc/lib/node/main.d.ts", maxDepth: 3)
 ```
 
 #### **Inspecting Import/Export Types**
@@ -133,11 +122,11 @@ When facing TypeScript import errors or wanting to understand available exports:
 
 ```typescript
 // Use inspect tool on import statements to see resolved types
-mcp__typescript__inspect(file: "playground/dotnet.ts", line: 20, character: 25)
+mcp__symbols__inspect(file: "playground/dotnet.ts", line: 20, character: 25)
 // Shows where 'vscode-jsonrpc' resolves and what's available
 
 // Use get_symbols to explore declaration files in detail
-mcp__typescript__get_symbols("node_modules/vscode-jsonrpc/node.d.ts", maxDepth: 2)
+mcp__symbols__read("node_modules/vscode-jsonrpc/node.d.ts", maxDepth: 2)
 ```
 
 #### **Understanding Function Overloads**
@@ -146,7 +135,7 @@ When encountering issues with function signatures or overloads:
 
 ```typescript
 // Inspect specific function calls to see all available overloads
-mcp__typescript__inspect(file: "playground/dotnet.ts", line: 45, character: 31)
+mcp__symbols__inspect(file: "playground/dotnet.ts", line: 45, character: 31)
 // Shows createMessageConnection overloads and their type signatures
 ```
 
@@ -160,61 +149,9 @@ mcp__typescript__inspect(file: "playground/dotnet.ts", line: 45, character: 31)
 
 This approach is much more reliable than runtime inspection and provides the exact information TypeScript uses for compilation.
 
-### **Implementation Phases**
+## Usage
 
-1. **Phase 1**: Core infrastructure (context, config, file lifecycle)
-2. **Phase 2**: Simple operations (init, logs, document symbols, diagnostics)
-3. **Phase 3**: Complex operations (references, search, completion)
-4. **Phase 4**: Advanced operations (inspect symbol orchestration, rename)
-
-## Key Files & Documentation
-
-### **Planning & Analysis**
-
-- `PLAN.md` - Original C# analysis and request/notification mapping
-- `TYPESCRIPT_IMPLEMENTATION_SPEC.md` - Detailed C# implementation spec
-- `MCP_SERVER_UNDERSTANDING.md` - Our analysis and understanding
-- `IMPLEMENTATION_PLAN.md` - **Main technical implementation guide**
-
-### **Code**
-
-- `playground/dotnet.ts` - Working LSP communication examples
-- `index.ts` - MCP server entry point (to be implemented)
-- `src/LspOperations.ts` - Public tool functions (to be implemented)
-- `src/lsp-internals.ts` - Private helper functions (to be implemented)
-
-## Testing Strategy
-
-### **Available Tools for Testing**
-
-- **Existing MCP "typescript" tool**: Reference implementation
-- **TypeScript LSP server**: Real language server for integration tests
-- **Playground**: Direct LSP communication testing
-
-### **Test Types**
-
-- **Unit**: Pure functions with mocked dependencies
-- **Integration**: Real LSP server communication
-- **End-to-end**: Full MCP tool workflow
-- **Comparison**: TypeScript vs C# implementation outputs
-
-## Success Criteria
-
-1. **Functional parity**: All 8 tools work as well as C# version
-2. **Performance**: Comparable or better response times
-3. **Type safety**: Full TypeScript type coverage
-4. **Maintainability**: Clear functional patterns, easy to extend
-5. **Claude Code integration**: Provides useful code navigation for Claude
-
-## Getting Started
-
-1. **Review**: Read `IMPLEMENTATION_PLAN.md` for detailed technical approach
-2. **Reference**: Use existing "typescript" MCP tool for comparison
-3. **Test**: Run `pnpm play playground/dotnet.ts` to see LSP communication
-4. **Implement**: Start with Phase 1 (core infrastructure)
-5. **Validate**: Compare outputs with existing C# implementation
-
-The goal is to build a robust, maintainable TypeScript MCP server that provides excellent code intelligence for Claude Code while embracing modern TypeScript functional programming patterns.
+The MCP server is fully implemented and ready for use. All 8 tools provide comprehensive LSP-based code intelligence for Claude Code, enabling precise codebase exploration and manipulation with strict type safety and functional programming patterns.
 
 # Tool Usage Policy Addendum
 
@@ -259,14 +196,13 @@ The `full` mode implements intelligent leaf symbol detection to prevent code dup
 
 ```typescript
 // Architecture overview
-mcp__typescript - new__read({ file: 'src/tools/read.ts', previewMode: 'none' });
+mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'none' });
 
 // API exploration with signatures
-mcp__typescript -
-  new__read({ file: 'src/tools/read.ts', previewMode: 'signature' });
+mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'signature' });
 
 // Implementation details
-mcp__typescript - new__read({ file: 'src/tools/read.ts', previewMode: 'full' });
+mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'full' });
 
 // Complete context
 Read({ file_path: '/path/to/file.ts' });
@@ -281,344 +217,8 @@ Read({ file_path: '/path/to/file.ts' });
 
 This tiered approach provides surgical precision in information density, allowing users to get exactly the right level of detail for their current task without information overload or missing context.
 
-# TypeScript Type Safety Guidelines
-
-## Critical Type Safety Rules
-
-**STRICT ENFORCEMENT**: The build will fail if any of these violations are present. We use ESLint before TypeScript compilation to catch type safety issues early.
-
-### 1. **NEVER Use Explicit `any` Types**
-
-```typescript
-// ❌ FORBIDDEN - Explicit any types
-function process(data: any): any {
-  return data.someProperty;
-}
-
-// ✅ REQUIRED - Proper typing
-function process<T>(data: T): string {
-  return (data as { someProperty: string }).someProperty;
-}
-
-// ✅ BETTER - Use proper interfaces
-interface DataWithProperty {
-  someProperty: string;
-}
-function process(data: DataWithProperty): string {
-  return data.someProperty;
-}
-```
-
-### 2. **Handle Unknown Types Properly**
-
-```typescript
-// ❌ FORBIDDEN - any casting
-const result = (response as any).data;
-
-// ✅ REQUIRED - Type guards and proper checking
-function isResponseWithData(obj: unknown): obj is { data: unknown } {
-  return typeof obj === 'object' && obj !== null && 'data' in obj;
-}
-
-if (isResponseWithData(response)) {
-  const result = response.data;
-}
-
-// ✅ ALTERNATIVE - Use proper typing from libraries
-import { LSPResponse } from 'vscode-languageserver-protocol';
-const result: LSPResponse = response;
-```
-
-### 3. **Proper Promise Handling**
-
-```typescript
-// ❌ FORBIDDEN - Floating promises
-client.sendRequest('textDocument/definition', params);
-
-// ✅ REQUIRED - Always handle promises
-await client.sendRequest('textDocument/definition', params);
-
-// ✅ ALTERNATIVE - Explicit void for fire-and-forget
-void client.sendRequest('textDocument/definition', params);
-
-// ✅ PROPER - With error handling
-try {
-  const result = await client.sendRequest('textDocument/definition', params);
-  return result;
-} catch (error) {
-  console.error('LSP request failed:', error);
-  throw error;
-}
-```
-
-### 4. **Function Type Definitions**
-
-```typescript
-// ❌ FORBIDDEN - Generic Function type
-const handler: Function = (data) => { ... };
-
-// ✅ REQUIRED - Specific function signatures
-type EventHandler = (data: EventData) => Promise<void>;
-const handler: EventHandler = async (data) => { ... };
-
-// ✅ ALTERNATIVE - Inline function types
-const handler: (data: EventData) => Promise<void> = async (data) => { ... };
-```
-
-### 5. **Method Binding and `this` Context**
-
-```typescript
-// ❌ FORBIDDEN - Unbound method references
-process.on('exit', client.dispose);
-
-// ✅ REQUIRED - Proper binding
-process.on('exit', () => client.dispose());
-
-// ✅ ALTERNATIVE - Explicit void annotation for methods without this
-class Client {
-  dispose(this: void): void { ... }
-}
-process.on('exit', client.dispose); // Now safe
-```
-
-### 6. **Unused Variables and Parameters**
-
-```typescript
-// ❌ FORBIDDEN - Unused parameters
-function handler(method: string, params: any) {
-  console.log('handling request');
-}
-
-// ✅ REQUIRED - Use underscore prefix for intentionally unused
-function handler(_method: string, _params: RequestParams) {
-  console.log('handling request');
-}
-
-// ✅ BETTER - Remove unused parameters entirely
-function handler() {
-  console.log('handling request');
-}
-```
-
-### 7. **LSP Protocol Type Usage**
-
-```typescript
-// ❌ FORBIDDEN - Manual type definitions for LSP
-interface Position {
-  line: number;
-  character: number;
-}
-
-// ✅ REQUIRED - Use official LSP types
-import { Position, Location, Range } from 'vscode-languageserver-protocol';
-
-function getDefinition(position: Position): Promise<Location[]> {
-  // Implementation
-}
-```
-
-### 8. **Generic Constraints and Type Safety**
-
-```typescript
-// ❌ FORBIDDEN - Unconstrained generics that lead to any
-function processLspResponse<T>(response: T): T {
-  return (response as any).result;
-}
-
-// ✅ REQUIRED - Proper generic constraints
-interface LspResponse<T> {
-  id: number;
-  result: T;
-}
-
-function processLspResponse<T>(response: LspResponse<T>): T {
-  return response.result;
-}
-```
-
-## Development Workflow
-
-### Before Implementing
-
-1. **Use existing MCP TypeScript tools** to understand type structures:
-
-   ```typescript
-   // Explore LSP protocol types
-   mcp__typescript__get_symbols("node_modules/vscode-languageserver-protocol/lib/common/protocol.d.ts")
-
-   // Understand function signatures
-   mcp__typescript__inspect(file: "src/file.ts", line: X, character: Y)
-   ```
-
-2. **Check imports and exports** before using external libraries
-3. **Define interfaces first** before implementing functions
-
-### During Implementation
-
-1. **Never use `any`** - always find the proper type
-2. **Use type assertions sparingly** and with type guards
-3. **Handle all promise chains** with await or explicit void
-4. **Remove unused variables** or prefix with underscore
-
-### Before Committing
-
-1. **Run `pnpm build`** - must pass without errors
-2. **Check that all LSP protocol interactions are properly typed**
-3. **Verify no floating promises or unsafe operations**
-
-## Build Commands Reference
-
-- `pnpm lint` - Show violations without building
-- `pnpm lint:fix` - Auto-fix simple violations
-- `pnpm build` - **MUST PASS** - Lint + TypeScript compilation
-- Build failure = type safety violations that must be fixed
-
-## Type Safety Best Practices - Lessons Learned
-
-### **Preventing Type Safety Drift**
-
-Based on our experience fixing 291 type safety violations, here are key practices to prevent future drift:
-
-#### 1. **Build Early and Often**
-
-```bash
-# Run before every commit - build must pass
-pnpm build
-
-# Quick type check without artifacts
-npx tsc --noEmit
-```
-
-#### 2. **Progressive Type Safety**
-
-```typescript
-// ✅ GOOD - Start with proper types from the beginning
-function processLspResponse(response: LspResponse): Location[] {
-  return response.locations;
-}
-
-// ❌ AVOID - Don't use any as a "temporary" solution
-function processLspResponse(response: any): any {
-  return response.locations; // This "temporary" fix becomes permanent
-}
-```
-
-#### 3. **Discriminated Unions for Complex Types**
-
-```typescript
-// ✅ RECOMMENDED - Use discriminated unions for LSP response types
-type LspLocationResponse =
-  | { type: 'single'; location: Location }
-  | { type: 'multiple'; locations: Location[] }
-  | { type: 'none'; locations: null };
-
-function handleLocationResponse(response: LspLocationResponse) {
-  switch (response.type) {
-    case 'single':
-      return [response.location];
-    case 'multiple':
-      return response.locations;
-    case 'none':
-      return [];
-  }
-}
-```
-
-#### 4. **Type Guards for Safety**
-
-```typescript
-// ✅ REQUIRED - Create type guards for uncertain data
-function isLocationArray(data: unknown): data is Location[] {
-  return (
-    Array.isArray(data) &&
-    data.every(
-      (item) =>
-        typeof item === 'object' &&
-        item !== null &&
-        'uri' in item &&
-        'range' in item
-    )
-  );
-}
-
-function processLocations(response: unknown): Location[] {
-  if (isLocationArray(response)) {
-    return response; // TypeScript knows this is Location[]
-  }
-  return [];
-}
-```
-
-#### 5. **Test Type Safety**
-
-```typescript
-// ✅ GOOD - Create proper mock types
-type MockLspClient = Pick<LspClient, 'connection' | 'isInitialized'>;
-
-const mockClient: MockLspClient = {
-  connection: {
-    /* proper mock */
-  },
-  isInitialized: true,
-};
-
-// ❌ AVOID - Don't use any for test mocks
-const mockClient = {
-  connection: vi.fn() as any, // Type safety lost
-  isInitialized: true,
-};
-```
-
-#### 6. **Handle Optional Properties Explicitly**
-
-```typescript
-// ✅ REQUIRED - Always check optional properties
-function processSymbol(symbol: { uri?: string; range?: Range }) {
-  if (!symbol.uri || !symbol.range) {
-    return null; // Explicit handling of missing properties
-  }
-  return { uri: symbol.uri, range: symbol.range }; // TypeScript knows these exist
-}
-
-// ❌ FORBIDDEN - Direct access to optional properties
-function processSymbol(symbol: { uri?: string; range?: Range }) {
-  return { uri: symbol.uri, range: symbol.range }; // uri and range might be undefined
-}
-```
-
-#### 7. **Red Flags - Stop and Fix Immediately**
-
-Watch for these patterns that indicate growing type safety debt:
-
-- **Multiple `as any` in the same file** → Time to create proper types
-- **ESLint disable comments growing** → Type system is fighting your design
-- **"TODO: fix types" comments** → These never get fixed, address immediately
-- **Build time increasing significantly** → Type checking overhead from poor types
-
-#### 8. **Tools and Workflow**
-
-```bash
-# Set up pre-commit hooks to prevent type safety violations
-echo "pnpm build" > .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-
-# Use TypeScript strict mode features
-# tsconfig.json should include:
-"exactOptionalPropertyTypes": true,
-"noUncheckedIndexedAccess": true,
-"strict": true
-```
-
-#### 9. **Emergency Type Safety Restoration**
-
-If you find type safety has drifted significantly:
-
-1. **Isolate the scope**: `npx tsc --noEmit 2>&1 | head -20`
-2. **Fix by area**: Start with core types (not tests)
-3. **Use discriminated unions**: For complex response handling
-4. **Create type guards**: For runtime safety
-5. **Add proper tests**: With correct mock types
-
-### **Key Insight**
-
-Type safety violations compound exponentially. Fixing 1 violation immediately is easier than fixing 291 violations later. The build pipeline is your safety net - never allow it to fail for extended periods.
+## Development Guidelines
+
+- Follow strict TypeScript patterns and type safety rules (@docs/TYPE_SAFETY.md)
+- Use functional programming approach - prefer pure functions over OOP
+- All builds must pass (`pnpm build`) - type safety violations will fail the build

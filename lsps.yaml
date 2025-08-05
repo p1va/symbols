@@ -1,0 +1,52 @@
+lsps:
+  typescript:
+    command: 'typescript-language-server --stdio'
+    extensions:
+      '.js': 'javascript'
+      '.mjs': 'javascript'
+      '.cjs': 'javascript'
+      '.jsx': 'javascriptreact'
+      '.ts': 'typescript'
+      '.mts': 'typescript'
+      '.cts': 'typescript'
+      '.tsx': 'typescriptreact'
+
+      # Config files
+      '.json': 'json' # JSON configuration
+    workspace_files: ['package.json', 'tsconfig.json']
+    diagnostics:
+      strategy: 'push' # TypeScript sends diagnostics via notifications
+      wait_timeout_ms: 2000 # Wait 3 seconds for diagnostics after file operations
+
+  pyright:
+    command: 'pyright-langserver --stdio'
+    extensions:
+      '.py': 'python'
+    workspace_files:
+      ['pyproject.toml', 'requirements.txt', 'setup.py', 'Pipfile']
+    diagnostics:
+      strategy: 'pull'
+
+  go:
+    command: 'gopls'
+    extensions:
+      '.go': 'go'
+    workspace_files: ['go.mod', 'go.work']
+    diagnostics:
+      strategy: 'pull'
+      wait_timeout_ms: 2000
+    environment:
+      GOPATH: '/usr/local/go'
+      GOCACHE: '/tmp/go-build'
+      GOMODCACHE: '/tmp/go/pkg/mod'
+
+  csharp:
+    command: 'Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --stdio'
+    extensions:
+      '.cs': 'csharp' # C# source files
+      '.csx': 'csharp' # C# script files
+      '.cake': 'csharp' # Cake build scripts
+      '.cshtml': 'razor' # Razor pages (ASP.NET)
+      '.razor': 'razor' # Blazor components
+    workspace_files:
+      ['*.sln', '*.csproj', '*.fsproj', 'global.json', 'Directory.Build.props']

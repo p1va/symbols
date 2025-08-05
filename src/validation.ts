@@ -48,11 +48,14 @@ export function validateWorkspaceReady(ctx: LspContext): ValidationResult {
  * Validates file existence and converts to absolute path
  */
 export function validateAndNormalizeFilePath(
-  filePath: string
+  filePath: string,
+  workspaceDir?: string
 ): ValidationResult & { absolutePath?: string } {
   try {
-    // Convert to absolute path
-    const absolutePath = path.resolve(filePath);
+    // Convert to absolute path using workspace directory if provided
+    const absolutePath = workspaceDir 
+      ? path.resolve(workspaceDir, filePath)
+      : path.resolve(filePath);
 
     // Check if file exists
     if (!fs.existsSync(absolutePath)) {
@@ -164,8 +167,8 @@ export function validateFileRequest(
     return workspaceCheck;
   }
 
-  // Validate and normalize file path
-  const pathCheck = validateAndNormalizeFilePath(request.file);
+  // Validate and normalize file path using workspace context
+  const pathCheck = validateAndNormalizeFilePath(request.file, ctx.workspacePath);
   if (!pathCheck.valid) {
     return pathCheck;
   }
@@ -188,8 +191,8 @@ export async function validateSymbolPositionRequest(
     return workspaceCheck;
   }
 
-  // Validate and normalize file path
-  const pathCheck = validateAndNormalizeFilePath(request.file);
+  // Validate and normalize file path using workspace context
+  const pathCheck = validateAndNormalizeFilePath(request.file, ctx.workspacePath);
   if (!pathCheck.valid) {
     return pathCheck;
   }

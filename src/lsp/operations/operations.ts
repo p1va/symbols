@@ -18,6 +18,10 @@ import {
   tryResultAsync,
   ValidationError,
   ValidationErrorCode,
+  DiagnosticsStore,
+  DiagnosticProviderStore,
+  DiagnosticProvider,
+  LspClient,
 } from '../../types.js';
 import logger from '../../utils/logger.js';
 import {
@@ -25,11 +29,13 @@ import {
   CompletionList,
   CompletionParams,
   CompletionResult,
+  DocumentDiagnosticParams,
   FlattenedSymbol,
   getDocumentSymbols,
   Hover,
   Location,
   LogMessageResult,
+  Range,
   ReferenceParams,
   RenameParams,
   RenameResult,
@@ -48,6 +54,7 @@ import {
   validateSymbolPositionRequest,
   validateWorkspaceOperation,
 } from '../../validation.js';
+import { getLspConfig } from '../../config/lsp-config.js';
 import {
   executeWithCursorContext,
   executeWithExplicitLifecycle,
@@ -499,12 +506,16 @@ export async function readSymbols(
 // TODO: Move somewhere else
 export interface DiagnosticEntry {
   code: string;
+  message: string;
+  severity: number;
+  range: Range;
+  source: string;
 }
 
-export function getDiagnostics(
+export async function getDiagnostics(
   ctx: LspContext,
   request: FileRequest
-): Result<DiagnosticEntry[]> {
+): Promise<Result<DiagnosticEntry[]>> {
   // Validate request
   const validation = validateFileRequest(ctx, request);
   if (!validation.valid) {
@@ -514,12 +525,152 @@ export function getDiagnostics(
     };
   }
 
-  // const { client, diagnosticsStore, preloadedFiles } = ctx;
-  // TODO: Implement get errors/warnings for a file
-  return {
-    ok: false,
-    error: createLspError(ErrorCode.LSPError, 'Not implemented yet'),
-  };
+  const { client, preloadedFiles, diagnosticsStore, diagnosticProviderStore, lspName } = ctx;
+  const filePath = validation.absolutePath!;
+
+  // Determine diagnostic strategy from LSP configuration
+  const lspConfig = lspName ? getLspConfig(lspName) : null;
+  const strategy = lspConfig?.diagnostics?.strategy || 'push';
+
+  logger.debug('Using diagnostic strategy', { strategy, lspName, filePath });
+
+  // Execute with explicit file lifecycle management
+  return await executeWithExplicitLifecycle(
+    client,
+    filePath,
+    preloadedFiles,
+    'transient',
+    async (uri): Promise<Result<DiagnosticEntry[]>> => {
+      return await tryResultAsync(
+        async () => {
+          if (strategy === 'pull') {
+            // Pull strategy: request diagnostics from LSP server
+            return await getPullDiagnostics(client, diagnosticProviderStore, uri);
+          } else {
+            // Push strategy: wait for and retrieve diagnostics from store
+            return await getPushDiagnostics(diagnosticsStore, uri);
+          }
+        },
+        (error) =>
+          createLspError(
+            ErrorCode.LSPError,
+            `Get diagnostics failed: ${error instanceof Error ? error.message : String(error)}`,
+            error instanceof Error ? error : undefined
+          )
+      );
+    }
+  );
+}
+
+async function getPushDiagnostics(
+  diagnosticsStore: DiagnosticsStore,
+  uri: string
+): Promise<DiagnosticEntry[]> {
+  // Give LSP a moment to send diagnostics after opening the file
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  // Get diagnostics from store (populated by push notifications)
+  const diagnostics = diagnosticsStore.getDiagnostics(uri);
+
+  // Convert to DiagnosticEntry format
+  const diagnosticEntries: DiagnosticEntry[] = diagnostics.map(
+    (diagnostic) => ({
+      code: diagnostic.code?.toString() || 'unknown',
+      message: diagnostic.message,
+      severity: diagnostic.severity || 1, // Error by default
+      range: diagnostic.range,
+      source: diagnostic.source || 'unknown',
+    })
+  );
+
+  return diagnosticEntries;
+}
+
+async function getPullDiagnostics(
+  client: LspClient,
+  diagnosticProviderStore: DiagnosticProviderStore,
+  uri: string
+): Promise<DiagnosticEntry[]> {
+  const allDiagnostics: DiagnosticEntry[] = [];
+  
+  // Get all diagnostic providers that support this document
+  const providers: DiagnosticProvider[] = diagnosticProviderStore.getProvidersForDocument(uri);
+  
+  logger.debug('Found diagnostic providers for document', { 
+    uri, 
+    providerCount: providers.length,
+    providerIds: providers.map(p => p.id)
+  });
+
+  // Request diagnostics from each provider
+  for (const provider of providers) {
+    try {
+      logger.debug('Requesting diagnostics from provider', { 
+        providerId: provider.id,
+        uri 
+      });
+
+      const params: DocumentDiagnosticParams = {
+        textDocument: { uri },
+        identifier: provider.id,
+        // previousResultId omitted for first request
+      };
+
+      const diagnosticReport = await client.connection.sendRequest('textDocument/diagnostic', params);
+
+      // Handle different types of diagnostic reports
+      if ((diagnosticReport as { kind?: string }).kind === 'full') {
+        const fullReport = diagnosticReport as { items: unknown[] };
+        
+        // Convert diagnostics to our format
+        const diagnosticEntries: DiagnosticEntry[] = fullReport.items.map(
+          (diagnostic: unknown) => {
+            const d = diagnostic as {
+              code?: { value: string | number } | string | number;
+              message: string;
+              severity?: number;
+              range: Range;
+              source?: string;
+            };
+            return {
+              code: typeof d.code === 'object' && d.code && 'value' in d.code ? 
+                    String(d.code.value) : 
+                    (d.code ? String(d.code) : 'unknown'),
+              message: d.message,
+              severity: d.severity || 1, // Error by default
+              range: d.range,
+              source: d.source || provider.id,
+            };
+          }
+        );
+
+        allDiagnostics.push(...diagnosticEntries);
+        
+        logger.debug('Retrieved diagnostics from provider', { 
+          providerId: provider.id,
+          diagnosticCount: diagnosticEntries.length
+        });
+      } else {
+        logger.debug('Provider returned unchanged diagnostics', { 
+          providerId: provider.id 
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to get diagnostics from provider', {
+        providerId: provider.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      // Continue with other providers
+    }
+  }
+
+  logger.info('Completed pull diagnostics request', {
+    uri,
+    totalDiagnostics: allDiagnostics.length,
+    providerCount: providers.length
+  });
+
+  return allDiagnostics;
 }
 
 export async function rename(
