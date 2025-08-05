@@ -38,25 +38,31 @@ export function registerReferencesTool(
       // Format response with cursor context
       const { result: references, cursorContext } = result.data;
 
-      const content: Array<{ type: 'text'; text: string }> = [];
-
-      // Add cursor context at the top
-      if (cursorContext) {
-        content.push({
-          type: 'text' as const,
-          text: formatCursorContext(cursorContext),
-        });
-      }
-
       // Format references with file grouping and signature previews
       const symbolName = cursorContext?.symbolName || 'symbol';
-      const formattedContent = await formatReferencesResults(
+      const formattedText = await formatReferencesResults(
         references,
         symbolName
       );
-      content.push(...formattedContent);
 
-      return { content };
+      const sections: string[] = [];
+
+      if (cursorContext) {
+        sections.push(formatCursorContext(cursorContext));
+      }
+
+      sections.push(formattedText);
+
+      const finalText = sections.join('\n\n');
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: finalText,
+          },
+        ],
+      };
     }
   );
 }
@@ -64,14 +70,9 @@ export function registerReferencesTool(
 async function formatReferencesResults(
   references: Location[],
   symbolName: string
-): Promise<Array<{ type: 'text'; text: string }>> {
+): Promise<string> {
   if (references.length === 0) {
-    return [
-      {
-        type: 'text' as const,
-        text: 'Found no references',
-      },
-    ];
+    return 'Found no references';
   }
 
   // Convert references to enrichable symbols format with expanded ranges for full line context
@@ -126,19 +127,14 @@ async function formatReferencesResults(
     });
   }
 
-  const contentBlocks: Array<{ type: 'text'; text: string }> = [];
-
-  // Add summary block
+  // Add summary
   const fileText = groupedByFile.size === 1 ? 'file' : 'files';
-  contentBlocks.push({
-    type: 'text' as const,
-    text: `Found ${references.length} reference(s) across ${groupedByFile.size} ${fileText}`,
-  });
+  let result = `Found ${references.length} reference(s) across ${groupedByFile.size} ${fileText}`;
 
-  // Add one content block per file
+  // Add files with references
   for (const [uri, fileReferences] of groupedByFile) {
     const filePath = formatFilePath(uri);
-    let fileContent = `${filePath} (${fileReferences.length} references)\n`;
+    result += `\n\n${filePath} (${fileReferences.length} references)\n`;
 
     // Sort references by line number for natural reading order
     const sortedReferences = fileReferences.sort((a, b) => {
@@ -151,21 +147,17 @@ async function formatReferencesResults(
       const line = ref.range.start.line + 1; // Convert to 1-based
       const char = ref.range.start.character + 1; // Convert to 1-based
 
-      fileContent += `  @${line}:${char} ${symbolName}\n`;
+      result += `  @${line}:${char} ${symbolName}`;
 
       // Add signature preview if available
       if (ref.signaturePreview) {
-        fileContent += `    \`${ref.signaturePreview}\`\n`;
+        result += `\n    \`${ref.signaturePreview}\``;
       } else if (ref.error) {
-        fileContent += `    // ${ref.error}\n`;
+        result += `\n    // ${ref.error}`;
       }
+      result += `\n`;
     }
-
-    contentBlocks.push({
-      type: 'text' as const,
-      text: fileContent.trim(),
-    });
   }
 
-  return contentBlocks;
+  return result.trim();
 }

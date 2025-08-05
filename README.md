@@ -29,7 +29,6 @@ The MCP server provides the following tools:
 - **`diagnostics`**: retrieves active diagnostics in a given document
 - **`logs`**: returns logs from the underlying LSP
 
-
 ## Installation
 
 ```bash
@@ -51,10 +50,7 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
   "mcpServers": {
     "symbols": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@p1va/symbols"
-      ]
+      "args": ["-y", "@p1va/symbols"]
     }
   }
 }

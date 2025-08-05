@@ -40,24 +40,18 @@ export function registerInspectTool(
       // Format response with cursor context
       const { result: inspectData, cursorContext } = result.data;
 
-      const content: Array<{ type: 'text'; text: string }> = [];
+      const sections: string[] = [];
 
       // Always add cursor context first
       if (cursorContext) {
-        content.push({
-          type: 'text' as const,
-          text: formatCursorContext(cursorContext),
-        });
+        sections.push(formatCursorContext(cursorContext));
       }
 
       // Add hover information if available
       if (inspectData.hover && inspectData.hover.contents) {
         const hoverContent = extractHoverContent(inspectData.hover);
         if (hoverContent) {
-          content.push({
-            type: 'text' as const,
-            text: `Documentation\n${hoverContent}`,
-          });
+          sections.push(`Documentation\n${hoverContent}`);
         }
       }
 
@@ -69,12 +63,10 @@ export function registerInspectTool(
       ) {
         const definitionText = await formatLocationGroup(
           inspectData.definition,
-          'Definition'
+          'Definition',
+          cursorContext
         );
-        content.push({
-          type: 'text' as const,
-          text: definitionText,
-        });
+        sections.push(definitionText);
       }
 
       // Add type definition locations if available
@@ -85,12 +77,10 @@ export function registerInspectTool(
       ) {
         const typeDefText = await formatLocationGroup(
           inspectData.typeDefinition,
-          'Type Definition'
+          'Type Definition',
+          cursorContext
         );
-        content.push({
-          type: 'text' as const,
-          text: typeDefText,
-        });
+        sections.push(typeDefText);
       }
 
       // Add implementation locations if available
@@ -101,15 +91,20 @@ export function registerInspectTool(
       ) {
         const implText = await formatLocationGroup(
           inspectData.implementation,
-          'Implementation'
+          'Implementation',
+          cursorContext
         );
-        content.push({
-          type: 'text' as const,
-          text: implText,
-        });
+        sections.push(implText);
       }
 
-      return { content };
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: sections.join('\n\n'),
+          },
+        ],
+      };
     }
   );
 }
@@ -184,7 +179,8 @@ function extractHoverContent(hover: Hover): string | null {
  */
 async function formatLocationGroup(
   locations: Location[],
-  groupTitle: string
+  groupTitle: string,
+  cursorContext?: { symbolName?: string } | null
 ): Promise<string> {
   if (!locations || locations.length === 0) return '';
 
@@ -209,12 +205,17 @@ async function formatLocationGroup(
   // Group by file
   const fileGroups = new Map<
     string,
-    Array<{ location: Location; codeSnippet: string | null }>
+    Array<{
+      location: Location;
+      originalLocation: Location;
+      codeSnippet: string | null;
+    }>
   >();
 
   enrichmentResults.forEach((result, index: number) => {
     const location = symbolLocations[index];
-    if (!location) return; // Skip if location is undefined
+    const originalLocation = locations[index];
+    if (!location || !originalLocation) return; // Skip if location is undefined
 
     const filePath = formatFilePath(location.uri);
 
@@ -224,6 +225,7 @@ async function formatLocationGroup(
 
     fileGroups.get(filePath)!.push({
       location,
+      originalLocation,
       codeSnippet: result.codeSnippet,
     });
   });
@@ -233,23 +235,42 @@ async function formatLocationGroup(
   const fileCount = fileGroups.size;
   const plural = fileCount === 1 ? '' : 's';
 
-  let result = `${groupTitle}: ${totalCount} location${totalCount === 1 ? '' : 's'} across ${fileCount} file${plural}\n`;
+  // Get symbol name from cursor context if available
+  const symbolName = cursorContext?.symbolName || 'symbol';
+
+  // Create more descriptive headers based on the group title
+  let contextualTitle;
+  if (groupTitle === 'Definition') {
+    contextualTitle = `Definition: ${totalCount} location${totalCount === 1 ? '' : 's'} where ${symbolName} is defined`;
+  } else if (groupTitle === 'Type Definition') {
+    contextualTitle = `Type Definition: ${totalCount} location${totalCount === 1 ? '' : 's'} where the type is defined`;
+  } else if (groupTitle === 'Implementation') {
+    contextualTitle = `Implementation: ${totalCount} location${totalCount === 1 ? '' : 's'} where ${symbolName} is implemented`;
+  } else {
+    contextualTitle = `${groupTitle}: ${totalCount} location${totalCount === 1 ? '' : 's'} across ${fileCount} file${plural}`;
+  }
+
+  let result = contextualTitle;
 
   for (const [filePath, fileLocations] of fileGroups) {
-    result += `${filePath} (${fileLocations.length} location${fileLocations.length === 1 ? '' : 's'})\n`;
+    result += `\n${filePath} (${fileLocations.length} location${fileLocations.length === 1 ? '' : 's'})\n`;
 
-    for (const { location, codeSnippet } of fileLocations) {
+    for (const { originalLocation, codeSnippet } of fileLocations) {
       const signaturePreview = codeSnippet
         ? createSignaturePreview(codeSnippet, 100)
         : null;
 
+      // Use original locations which are already 1-based for display
+      const line = originalLocation.range.start.line;
+      const char = originalLocation.range.start.character;
+
+      result += `  @${line}:${char}`;
+
       if (signaturePreview) {
-        // Inline format: position - code
-        result += `  @${location.range.start.line}:${location.range.start.character} - \`${signaturePreview}\`\n`;
-      } else {
-        // Just the position if no code available
-        result += `  @${location.range.start.line}:${location.range.start.character}\n`;
+        // Follow search tool format: position on line, code snippet indented on next line
+        result += `\n    \`${signaturePreview}\``;
       }
+      result += `\n`;
     }
   }
 

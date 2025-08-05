@@ -293,18 +293,17 @@ async function getFileContent(
   preloadedFiles: Map<string, PreloadedFile>,
   filePath: string
 ): Promise<string | null> {
-  // Check if file is preloaded
-  for (const [fileUri, fileData] of preloadedFiles.entries()) {
-    if (fileUri === uri) {
-      return fileData.content;
-    }
-  }
-
   try {
-    // Read from filesystem as fallback
+    // Always read fresh from filesystem for consistent behavior with transient strategy
     const fs = await import('fs');
     return await fs.promises.readFile(filePath, 'utf8');
   } catch {
+    // Fallback to preloaded content if file read fails
+    for (const [fileUri, fileData] of preloadedFiles.entries()) {
+      if (fileUri === uri) {
+        return fileData.content;
+      }
+    }
     return null;
   }
 }

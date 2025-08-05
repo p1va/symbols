@@ -110,7 +110,7 @@ export async function inspectSymbol(
     filePath,
     oneBasedPosition,
     preloadedFiles,
-    'respect_existing',
+    'transient',
     async (uri) => {
       return await tryResultAsync(
         async () => {
@@ -229,7 +229,7 @@ export async function findReferences(
     filePath,
     oneBasedPosition,
     preloadedFiles,
-    'respect_existing',
+    'transient',
     async (uri) => {
       return await tryResultAsync(
         async () => {
@@ -299,7 +299,7 @@ export async function completion(
     filePath,
     oneBasedPosition,
     preloadedFiles,
-    'respect_existing',
+    'transient',
     async (uri) => {
       return await tryResultAsync(
         async () => {
@@ -477,7 +477,7 @@ export async function readSymbols(
     client,
     filePath,
     preloadedFiles,
-    'respect_existing', // Don't close preloaded files, close temporary ones
+    'transient', // Always read fresh content from disk
     async (uri): Promise<Result<FlattenedSymbol[]>> => {
       return await tryResultAsync(
         async () => {
@@ -545,7 +545,7 @@ export async function rename(
     filePath,
     oneBasedPosition,
     preloadedFiles,
-    'respect_existing',
+    'transient',
     async (uri) => {
       return await tryResultAsync(
         async () => {

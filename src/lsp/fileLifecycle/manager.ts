@@ -31,7 +31,7 @@ import {
  * File lifecycle strategy - makes the intent explicit
  */
 export type FileLifecycleStrategy =
-  | 'temporary' // Open for operation, then close
+  | 'transient' // Open for operation, then close (always fresh content)
   | 'persistent' // Keep open (for preloaded files)
   | 'respect_existing'; // Don't close if already open
 
@@ -66,15 +66,29 @@ export async function openFileWithStrategy(
         return { wasAlreadyOpen: true, isPreloaded, uri, strategy };
       }
 
-      // Get file content
+      // Get file content - for transient strategy, always read fresh from disk
       let content: string;
       let version: number;
 
-      if (preloaded) {
+      if (strategy === 'transient') {
+        // Always read fresh from filesystem for transient operations
+        try {
+          content = await fs.promises.readFile(filePath, 'utf8');
+          version = preloaded ? preloaded.version + 1 : 1; // Increment version if preloaded
+        } catch (error) {
+          const lspError = createLspError(
+            ErrorCode.FileNotFound,
+            `Failed to read file ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+            error instanceof Error ? error : undefined
+          );
+          throw new Error(lspError.message);
+        }
+      } else if (preloaded) {
+        // Use cached content for non-transient strategies
         content = preloaded.content;
         version = preloaded.version;
       } else {
-        // Read from filesystem
+        // Read from filesystem for non-preloaded files
         try {
           content = await fs.promises.readFile(filePath, 'utf8');
           version = 1;
@@ -134,9 +148,10 @@ export async function closeFileWithStrategy(
   uri: string,
   preloadedFiles: PreloadedFiles,
   strategy: FileLifecycleStrategy,
-  wasAlreadyOpen: boolean
+  wasAlreadyOpen: boolean,
+  isPreloaded: boolean = false
 ): Promise<Result<void>> {
-  const shouldClose = decideShouldClose(strategy, wasAlreadyOpen);
+  const shouldClose = decideShouldClose(strategy, wasAlreadyOpen, isPreloaded);
 
   if (shouldClose) {
     return await closeFile(client, uri, preloadedFiles);
@@ -179,7 +194,7 @@ export async function executeWithCursorContext<T>(
     };
   }
 
-  const { wasAlreadyOpen, uri } = openResult.data;
+  const { wasAlreadyOpen, isPreloaded, uri } = openResult.data;
 
   const executionResult = await tryResultAsync(
     async () => {
@@ -205,7 +220,8 @@ export async function executeWithCursorContext<T>(
         uri,
         preloadedFiles,
         strategy,
-        wasAlreadyOpen
+        wasAlreadyOpen,
+        isPreloaded
       );
 
       // If operation succeeded but close failed, log but don't fail the operation
@@ -246,7 +262,8 @@ export async function executeWithCursorContext<T>(
       uri,
       preloadedFiles,
       strategy,
-      wasAlreadyOpen
+      wasAlreadyOpen,
+      isPreloaded
     );
   }
 
@@ -277,7 +294,7 @@ export async function executeWithExplicitLifecycle<T>(
     };
   }
 
-  const { wasAlreadyOpen, uri } = openResult.data;
+  const { wasAlreadyOpen, isPreloaded, uri } = openResult.data;
 
   const executionResult = await tryResultAsync(
     async () => {
@@ -293,7 +310,8 @@ export async function executeWithExplicitLifecycle<T>(
         uri,
         preloadedFiles,
         strategy,
-        wasAlreadyOpen
+        wasAlreadyOpen,
+        isPreloaded
       );
 
       // If operation succeeded but close failed, log but don't fail the operation
@@ -324,7 +342,8 @@ export async function executeWithExplicitLifecycle<T>(
       uri,
       preloadedFiles,
       strategy,
-      wasAlreadyOpen
+      wasAlreadyOpen,
+      isPreloaded
     );
   }
 

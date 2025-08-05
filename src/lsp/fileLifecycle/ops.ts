@@ -45,11 +45,17 @@ export function getLanguageId(filePath: string): string {
  */
 export function decideShouldClose(
   strategy: FileLifecycleStrategy,
-  wasAlreadyOpen: boolean
+  wasAlreadyOpen: boolean,
+  isPreloaded: boolean = false
 ): boolean {
   switch (strategy) {
-    case 'temporary':
-      // Always close temporary files, even if they were already open
+    case 'transient':
+      // Special case: if file is preloaded, don't close it after operation
+      // (we want fresh content but keep project alive)
+      if (isPreloaded) {
+        return false;
+      }
+      // Always close non-preloaded transient files
       return true;
     case 'persistent':
       // Never close persistent files
