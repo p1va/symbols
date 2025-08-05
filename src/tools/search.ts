@@ -28,7 +28,15 @@ export function registerSearchTool(
       const result = await LspOperations.searchSymbols(ctx, request);
       if (!result.ok) throw new Error(result.error.message);
 
-      return await formatSearchResults(result.data, request.query);
+      const formattedText = await formatSearchResults(result.data, request.query);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: formattedText,
+          },
+        ],
+      };
     }
   );
 }
@@ -36,16 +44,9 @@ export function registerSearchTool(
 async function formatSearchResults(
   symbols: SymbolSearchResult[],
   query: string
-) {
+): Promise<string> {
   if (symbols.length === 0) {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `Found no matches for query "${query}"`,
-        },
-      ],
-    };
+    return `Found no matches for query "${query}"`;
   }
 
   // Enrich symbols with code snippets for signature previews
@@ -70,14 +71,11 @@ async function formatSearchResults(
     groupedByFile.get(uri)!.push(symbol);
   }
 
-  const content = [];
+  const sections = [];
 
   // Add summary
   const fileCount = groupedByFile.size;
-  content.push({
-    type: 'text' as const,
-    text: `Found ${symbols.length} matches for query "${query}" across ${fileCount} files`,
-  });
+  sections.push(`Found ${symbols.length} matches for query "${query}" across ${fileCount} files`);
 
   // Add results grouped by file
   for (const [uri, fileSymbols] of groupedByFile) {
@@ -116,11 +114,8 @@ async function formatSearchResults(
       }
     }
 
-    content.push({
-      type: 'text' as const,
-      text: fileContent.trim(),
-    });
+    sections.push(fileContent.trim());
   }
 
-  return { content };
+  return sections.join('\n\n');
 }

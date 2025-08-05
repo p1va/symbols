@@ -36,12 +36,20 @@ export function registerReadTool(
       const result = await LspOperations.readSymbols(ctx, request);
       if (!result.ok) throw new Error(result.error.message);
 
-      return await formatReadResults(
+      const formattedText = await formatReadResults(
         { symbols: result.data },
         request.file,
         request.maxDepth || 99,
         request.previewMode || 'none'
       );
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: formattedText,
+          },
+        ],
+      };
     }
   );
 }
@@ -56,16 +64,9 @@ async function formatReadResults(
   filePath: string,
   maxDepth: number = 99,
   previewMode: 'none' | 'signature' | 'full' = 'none'
-) {
+): Promise<string> {
   if (!data.symbols || data.symbols.length === 0) {
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `No symbols found in ${formatFilePath(filePath)}`,
-        },
-      ],
-    };
+    return `No symbols found in ${formatFilePath(filePath)}`;
   }
 
   const symbols = data.symbols;
@@ -143,15 +144,12 @@ async function formatReadResults(
     )
     .join(', ');
 
-  const content = [];
+  const sections = [];
 
   // Add summary block with filtered count
   const depthInfo =
     maxDepth > 0 ? ` (max depth ${maxDepth})` : ' (root level only)';
-  content.push({
-    type: 'text' as const,
-    text: `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}${depthInfo}\nSymbol breakdown: ${typeBreakdown}`,
-  });
+  sections.push(`Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}${depthInfo}\nSymbol breakdown: ${typeBreakdown}`);
 
   // Group by root-level containers (depth 0 symbols)
   type EnrichedSymbolWithDepth = {
@@ -237,13 +235,10 @@ async function formatReadResults(
       }
     }
 
-    content.push({
-      type: 'text' as const,
-      text: containerContent.trim(),
-    });
+    sections.push(containerContent.trim());
   }
 
-  return { content };
+  return sections.join('\n\n');
 }
 
 function calculateSymbolDepths(symbols: FlattenedSymbol[]): SymbolWithDepth[] {
