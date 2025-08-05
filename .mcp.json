@@ -11,7 +11,7 @@
         "--lsp",
         "pyright",
         "--workspace",
-        "/home/truelayer/Repo/symbols/test/python/test-project"
+        "./test/python/test-project"
       ]
     }
   }
