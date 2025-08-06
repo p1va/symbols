@@ -4,7 +4,7 @@
 
 We are building an MCP (Model Context Protocol) server called "symbols" that provides a set of tools for a more productive and precise way to explore and work in a codebase.
 This server under the hood spawn, interact and orchestrating requests to a Language Server based on the LSP specs.
-Right now we are developing against the Typescript language server but the goal is to build a generic tool which we can use with most language servers.
+We are building a generic tool that should work with LSPs for Typescript, Python, C#, Go, Rust and Java.
 You are both working in the codebase where these tools source code is and using their last successful build via MCP.
 
 ## Decisions
@@ -19,7 +19,7 @@ The MCP server provides the following tools:
 
 - Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
 - When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `full` symbols in a given file with different level of details.
-- Use **`mcp__symbols__inspect`** when unsure about what a given symbol does, where it lives, which signature it needs. Then eventually keep exploring the suggested definition, implementation locations with `mcp__symbols__read`
+- Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__read`
 - **`mcp__symbols__completion`**: suggests a list of completions
 - Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
 - Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase

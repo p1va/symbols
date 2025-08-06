@@ -1,5 +1,5 @@
 /**
- * Completion Tool - Get code completion suggestions at a position
+ * Rename Tool - Renames a code symbol across the codebase
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -7,6 +7,7 @@ import { LspContext, createOneBasedPosition } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { renameSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursorContext.js';
+import { applyWorkspaceChanges, formatRenameResults } from './utils.js';
 
 export function registerRenameTool(
   server: McpServer,
@@ -36,21 +37,28 @@ export function registerRenameTool(
       // Format response with cursor context
       const { result: renameResult, cursorContext } = result.data;
 
-      // Calculate the number of files changed from the keys in RenameResult
-      const changeCount = Object.keys(renameResult).length;
+      // Apply workspace changes to files
+      const changeResults = await applyWorkspaceChanges(renameResult);
 
-      const responseText =
-        `Rename operation completed. Changed ${changeCount} file(s):\n\n` +
-        JSON.stringify(renameResult, null, 2);
+      // Extract symbol name from cursor context or use generic fallback
+      const symbolName = cursorContext?.symbolName || 'symbol';
+      const newName = request.newName;
+
+      // Format the results for Claude Code
+      const formattedResults = await formatRenameResults(changeResults, symbolName, newName);
 
       const content: Array<{ type: 'text'; text: string }> = [];
+      
+      // Add cursor context if available
       if (cursorContext) {
         content.push({
           type: 'text' as const,
           text: formatCursorContext(cursorContext),
         });
       }
-      content.push({ type: 'text' as const, text: responseText });
+
+      // Add the formatted rename results
+      content.push({ type: 'text' as const, text: formattedResults });
 
       return { content };
     }
