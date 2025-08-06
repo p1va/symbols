@@ -27,13 +27,16 @@ import {
 } from './types.js';
 import { ParsedLspConfig } from './config/lsp-config.js';
 import logger from './utils/logger.js';
+import { createWorkspaceLoader } from './workspace/registry.js';
+import { WorkspaceLoaderStore } from './types.js';
 
 export function createLspClient(
   workspaceConfig: LspConfig,
   lspConfig: ParsedLspConfig,
   diagnosticsStore: DiagnosticsStore,
   diagnosticProviderStore: DiagnosticProviderStore,
-  windowLogStore: WindowLogStore
+  windowLogStore: WindowLogStore,
+  workspaceLoaderStore: WorkspaceLoaderStore
 ): Result<LspClientResult> {
   try {
     logger.info('Creating LSP client', {
@@ -129,7 +132,7 @@ export function createLspClient(
 
     // Set up notification handlers before listening
     logger.debug('Setting up LSP notification handlers');
-    setupNotificationHandlers(connection, diagnosticsStore, diagnosticProviderStore, windowLogStore);
+    setupNotificationHandlers(connection, diagnosticsStore, diagnosticProviderStore, windowLogStore, workspaceLoaderStore);
 
     // Start listening
     logger.debug('Starting JSON-RPC connection listener');
@@ -175,7 +178,9 @@ export function createLspClient(
 export async function initializeLspClient(
   client: LspClient,
   config: LspConfig,
-  diagnosticProviderStore: DiagnosticProviderStore
+  diagnosticProviderStore: DiagnosticProviderStore,
+  workspaceLoaderStore: WorkspaceLoaderStore,
+  lspConfig: ParsedLspConfig
 ): Promise<Result<InitializeResult>> {
   try {
     // Initialize the server with proper workspace and capabilities
@@ -269,6 +274,9 @@ export async function initializeLspClient(
     client.isInitialized = true;
     client.serverCapabilities = initResult.capabilities;
 
+    // Initialize workspace loader based on LSP configuration
+    await initializeWorkspaceLoader(client, config, workspaceLoaderStore, lspConfig);
+
     // Extract diagnostic providers from server capabilities
     extractDiagnosticProvidersFromCapabilities(initResult.capabilities, diagnosticProviderStore);
 
@@ -282,6 +290,46 @@ export async function initializeLspClient(
         error instanceof Error ? error : undefined
       ),
     };
+  }
+}
+
+/**
+ * Initialize workspace loader based on LSP configuration - Pure Functional Approach
+ */
+async function initializeWorkspaceLoader(
+  client: LspClient,
+  config: LspConfig,
+  workspaceLoaderStore: WorkspaceLoaderStore,
+  lspConfig: ParsedLspConfig
+): Promise<void> {
+  try {
+    // Get workspace loader type from config, default to 'default'
+    const loaderType = lspConfig.workspace_loader || 'default';
+    
+    // Create workspace loader using factory
+    const loader = createWorkspaceLoader(loaderType);
+    workspaceLoaderStore.setLoader(loader);
+
+    // Initialize workspace using pure functions
+    const initialState = await loader.initialize(client, config);
+    workspaceLoaderStore.setState(initialState);
+
+    logger.info('Workspace loader initialized', {
+      loaderType,
+      workspaceType: initialState.type,
+      ready: initialState.ready
+    });
+  } catch (error) {
+    logger.error('Failed to initialize workspace loader', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
+    // On error, fall back to default loader in ready state
+    const defaultLoader = createWorkspaceLoader('default');
+    workspaceLoaderStore.setLoader(defaultLoader);
+    const fallbackState = await defaultLoader.initialize(client, config);
+    workspaceLoaderStore.setState(fallbackState);
   }
 }
 
@@ -341,7 +389,8 @@ function setupNotificationHandlers(
   connection: rpc.MessageConnection,
   diagnosticsStore: DiagnosticsStore,
   diagnosticProviderStore: DiagnosticProviderStore,
-  windowLogStore: WindowLogStore
+  windowLogStore: WindowLogStore,
+  workspaceLoaderStore?: WorkspaceLoaderStore
 ): void {
   // Handle diagnostics publication (critical for getDiagnostics tool)
   connection.onNotification(
@@ -409,6 +458,21 @@ function setupNotificationHandlers(
     }
     
     return {}; // Acknowledge
+  });
+
+  // Handle workspace notifications using functional workspace loaders
+  connection.onNotification('workspace/projectInitializationComplete', () => {
+    if (workspaceLoaderStore) {
+      workspaceLoaderStore.updateState('workspace/projectInitializationComplete');
+    }
+  });
+
+  // Handle C# Roslyn toast notifications (silent)
+  connection.onNotification('window/_roslyn_showToast', (params: unknown) => {
+    logger.debug('Received Roslyn toast notification', { params });
+    if (workspaceLoaderStore) {
+      workspaceLoaderStore.updateState('window/_roslyn_showToast');
+    }
   });
 
   // Handle other notifications silently

@@ -18,6 +18,7 @@ import {
 // Node from expecting the corresponding value exports during `pnpm dev`
 // where the code is executed directly via `tsx`.
 import type { OneBasedPosition, ZeroBasedPosition } from './types/position.js';
+import type { WorkspaceLoaderState, WorkspaceLoader } from './workspace/types.js';
 
 // Error codes for LSP operations
 export enum ErrorCode {
@@ -196,6 +197,17 @@ export interface WindowLogStore {
   addMessage(message: LogMessage): void;
   getMessages(): LogMessage[];
   clear(): void;
+}
+
+export interface WorkspaceLoaderStore {
+  state: WorkspaceLoaderState | null;
+  loader: WorkspaceLoader | null;
+  setState(state: WorkspaceLoaderState): void;
+  setLoader(loader: WorkspaceLoader): void;
+  getState(): WorkspaceLoaderState | null;
+  getLoader(): WorkspaceLoader | null;
+  updateState(method: string): void;
+  isReady(): boolean;
 }
 
 export type { OneBasedPosition, ZeroBasedPosition };

@@ -6,6 +6,7 @@ export interface CliArgs {
   workspace?: string;
   lsp?: string;
   loglevel?: string;
+  configPath?: string;
   help?: boolean;
 }
 
@@ -46,6 +47,15 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
         }
         break;
         
+      case '--config':
+        if (i + 1 < args.length) {
+          const value = args[++i];
+          if (value) {
+            parsed.configPath = value;
+          }
+        }
+        break;
+        
       case '--help':
       case '-h':
         parsed.help = true;
@@ -74,12 +84,14 @@ Options:
   --workspace <path>    Workspace directory path (default: current directory)
   --lsp <name>         LSP server to use (auto-detected if not specified)
   --loglevel <level>   Log level: debug, info, warn, error (default: info)
+  --config <path>      Path to configuration file (default: auto-detected)
   --help, -h           Show this help message
 
 Environment Variables:
-  SYMBOLS_WORKSPACE    Workspace directory path
-  SYMBOLS_LSP          LSP server name
-  LOGLEVEL             Log level
+  SYMBOLS_WORKSPACE     Workspace directory path
+  SYMBOLS_LSP           LSP server name
+  SYMBOLS_CONFIG_PATH   Configuration file path
+  LOGLEVEL              Log level
 
 LSP Auto-detection:
   - TypeScript: package.json, tsconfig.json
@@ -101,15 +113,21 @@ export function resolveConfig(cliArgs: CliArgs): {
   workspace: string;
   lsp?: string;
   loglevel: string;
+  configPath?: string;
 } {
   const lsp = cliArgs.lsp || process.env.SYMBOLS_LSP;
-  const result: { workspace: string; lsp?: string; loglevel: string } = {
+  const configPath = cliArgs.configPath || process.env.SYMBOLS_CONFIG_PATH;
+  const result: { workspace: string; lsp?: string; loglevel: string; configPath?: string } = {
     workspace: cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),
     loglevel: cliArgs.loglevel || process.env.LOGLEVEL || 'info'
   };
   
   if (lsp) {
     result.lsp = lsp;
+  }
+  
+  if (configPath) {
+    result.configPath = configPath;
   }
   
   return result;

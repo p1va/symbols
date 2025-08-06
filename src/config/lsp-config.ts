@@ -27,6 +27,7 @@ const LspConfigSchema = z.object({
   diagnostics: DiagnosticsConfigSchema.default({}),
   symbols: SymbolsConfigSchema.default({}),
   environment: z.record(z.string(), z.string()).optional(),
+  workspace_loader: z.string().optional(), // workspace loader type ('default', 'csharp', etc.)
 });
 
 const ConfigFileSchema = z.object({
@@ -90,6 +91,22 @@ const DEFAULT_CONFIG: ConfigFile = {
         max_depth: 0,
         kinds: [],
       },
+    },
+    csharp: {
+      command: 'csharp-ls',
+      extensions: {
+        '.cs': 'csharp',
+      },
+      workspace_files: ['*.sln', '*.csproj'],
+      diagnostics: {
+        strategy: 'pull',
+        wait_timeout_ms: 5000,
+      },
+      symbols: {
+        max_depth: null,
+        kinds: [],
+      },
+      workspace_loader: 'csharp',
     },
   },
 };

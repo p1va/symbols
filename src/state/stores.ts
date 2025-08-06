@@ -3,7 +3,8 @@
  */
 
 import { Diagnostic } from 'vscode-languageserver-protocol';
-import { DiagnosticsStore, DiagnosticProviderStore, DiagnosticProvider, WindowLogStore, LogMessage } from '../types.js';
+import { DiagnosticsStore, DiagnosticProviderStore, DiagnosticProvider, WindowLogStore, LogMessage, WorkspaceLoaderStore } from '../types.js';
+import { WorkspaceLoaderState, WorkspaceLoader } from '../workspace/types.js';
 
 export function createDiagnosticsStore(): DiagnosticsStore {
   const diagnostics = new Map<string, Diagnostic[]>();
@@ -85,6 +86,42 @@ export function createWindowLogStore(): WindowLogStore {
     },
     clear() {
       this.messages.length = 0;
+    },
+  };
+}
+
+export function createWorkspaceLoaderStore(): WorkspaceLoaderStore {
+  let state: WorkspaceLoaderState | null = null;
+  let loader: WorkspaceLoader | null = null;
+
+  return {
+    state,
+    loader,
+    setState(newState: WorkspaceLoaderState) {
+      state = newState;
+      this.state = newState;
+    },
+    setLoader(newLoader: WorkspaceLoader) {
+      loader = newLoader;
+      this.loader = newLoader;
+    },
+    getState(): WorkspaceLoaderState | null {
+      return state;
+    },
+    getLoader(): WorkspaceLoader | null {
+      return loader;
+    },
+    updateState(method: string) {
+      if (state && loader?.handleNotification) {
+        const newState = loader.handleNotification(state, method);
+        this.setState(newState);
+      }
+    },
+    isReady(): boolean {
+      if (!state || !loader) {
+        return false;
+      }
+      return loader.isReady(state);
     },
   };
 }

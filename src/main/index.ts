@@ -9,6 +9,7 @@ import {
   createDiagnosticsStore,
   createDiagnosticProviderStore,
   createWindowLogStore,
+  createWorkspaceLoaderStore,
 } from '../state/index.js';
 import {
   DiagnosticsStore,
@@ -19,6 +20,7 @@ import {
   PreloadedFiles,
   WindowLogStore,
   WorkspaceState,
+  WorkspaceLoaderStore,
 } from '../types.js';
 import { getLspConfig, autoDetectLsp } from '../config/lsp-config.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
@@ -36,6 +38,7 @@ const preloadedFiles: PreloadedFiles = new Map();
 const diagnosticsStore: DiagnosticsStore = createDiagnosticsStore();
 const diagnosticProviderStore: DiagnosticProviderStore = createDiagnosticProviderStore();
 const windowLogStore: WindowLogStore = createWindowLogStore();
+const workspaceLoaderStore: WorkspaceLoaderStore = createWorkspaceLoaderStore();
 const workspaceState: WorkspaceState = {
   isLoading: false,
   isReady: false,
@@ -72,7 +75,7 @@ async function initializeLsp(): Promise<void> {
     
     if (!lspName) {
       // Try auto-detection based on workspace files
-      const detectedLsp = autoDetectLsp(workspacePath);
+      const detectedLsp = autoDetectLsp(workspacePath, config.configPath);
       if (detectedLsp) {
         lspName = detectedLsp;
         logger.info('Auto-detected LSP server', { lspName, workspacePath });
@@ -93,7 +96,7 @@ async function initializeLsp(): Promise<void> {
     });
 
     // Load LSP configuration
-    const lspConfig = getLspConfig(lspName);
+    const lspConfig = getLspConfig(lspName, config.configPath);
     if (!lspConfig) {
       logger.error(`LSP configuration not found for: ${lspName}`);
       throw new Error(`LSP configuration not found for: ${lspName}`);
@@ -117,7 +120,8 @@ async function initializeLsp(): Promise<void> {
       lspConfig,
       diagnosticsStore,
       diagnosticProviderStore,
-      windowLogStore
+      windowLogStore,
+      workspaceLoaderStore
     );
 
     if (!clientResult.ok) {
@@ -127,7 +131,9 @@ async function initializeLsp(): Promise<void> {
     const initResult = await initializeLspClient(
       clientResult.data.client,
       workspaceConfig,
-      diagnosticProviderStore
+      diagnosticProviderStore,
+      workspaceLoaderStore,
+      lspConfig
     );
     if (!initResult.ok) {
       throw new Error(initResult.error.message);
