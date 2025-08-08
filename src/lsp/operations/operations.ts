@@ -54,12 +54,12 @@ import {
   validateSymbolPositionRequest,
   validateWorkspaceOperation,
 } from '../../validation.js';
-import { getLspConfig } from '../../config/lsp-config.js';
 import {
   executeWithCursorContext,
   executeWithExplicitLifecycle,
   OperationWithContextResult,
 } from '../fileLifecycle/index.js';
+import { CompletionTriggerKind } from 'vscode-languageserver-protocol';
 
 // Helper to convert ValidationError to LspOperationError
 function validationErrorToLspError(
@@ -318,7 +318,7 @@ export async function completion(
             textDocument: { uri },
             position: lspPosition,
             context: {
-              triggerKind: 2,
+              triggerKind: CompletionTriggerKind.Invoked,
             },
           };
 
@@ -525,11 +525,17 @@ export async function getDiagnostics(
     };
   }
 
-  const { client, preloadedFiles, diagnosticsStore, diagnosticProviderStore, lspName } = ctx;
+  const {
+    client,
+    preloadedFiles,
+    diagnosticsStore,
+    diagnosticProviderStore,
+    lspName,
+    lspConfig,
+  } = ctx;
   const filePath = validation.absolutePath!;
 
   // Determine diagnostic strategy from LSP configuration
-  const lspConfig = lspName ? getLspConfig(lspName) : null;
   const strategy = lspConfig?.diagnostics?.strategy || 'push';
 
   logger.debug('Using diagnostic strategy', { strategy, lspName, filePath });
@@ -545,7 +551,11 @@ export async function getDiagnostics(
         async () => {
           if (strategy === 'pull') {
             // Pull strategy: request diagnostics from LSP server
-            return await getPullDiagnostics(client, diagnosticProviderStore, uri);
+            return await getPullDiagnostics(
+              client,
+              diagnosticProviderStore,
+              uri
+            );
           } else {
             // Push strategy: wait for and retrieve diagnostics from store
             return await getPushDiagnostics(diagnosticsStore, uri);
@@ -592,22 +602,23 @@ async function getPullDiagnostics(
   uri: string
 ): Promise<DiagnosticEntry[]> {
   const allDiagnostics: DiagnosticEntry[] = [];
-  
+
   // Get all diagnostic providers that support this document
-  const providers: DiagnosticProvider[] = diagnosticProviderStore.getProvidersForDocument(uri);
-  
-  logger.debug('Found diagnostic providers for document', { 
-    uri, 
+  const providers: DiagnosticProvider[] =
+    diagnosticProviderStore.getProvidersForDocument(uri);
+
+  logger.debug('Found diagnostic providers for document', {
+    uri,
     providerCount: providers.length,
-    providerIds: providers.map(p => p.id)
+    providerIds: providers.map((p) => p.id),
   });
 
   // Request diagnostics from each provider
   for (const provider of providers) {
     try {
-      logger.debug('Requesting diagnostics from provider', { 
+      logger.debug('Requesting diagnostics from provider', {
         providerId: provider.id,
-        uri 
+        uri,
       });
 
       const params: DocumentDiagnosticParams = {
@@ -616,12 +627,15 @@ async function getPullDiagnostics(
         // previousResultId omitted for first request
       };
 
-      const diagnosticReport = await client.connection.sendRequest('textDocument/diagnostic', params);
+      const diagnosticReport = await client.connection.sendRequest(
+        'textDocument/diagnostic',
+        params
+      );
 
       // Handle different types of diagnostic reports
       if ((diagnosticReport as { kind?: string }).kind === 'full') {
         const fullReport = diagnosticReport as { items: unknown[] };
-        
+
         // Convert diagnostics to our format
         const diagnosticEntries: DiagnosticEntry[] = fullReport.items.map(
           (diagnostic: unknown) => {
@@ -633,9 +647,12 @@ async function getPullDiagnostics(
               source?: string;
             };
             return {
-              code: typeof d.code === 'object' && d.code && 'value' in d.code ? 
-                    String(d.code.value) : 
-                    (d.code ? String(d.code) : 'unknown'),
+              code:
+                typeof d.code === 'object' && d.code && 'value' in d.code
+                  ? String(d.code.value)
+                  : d.code
+                    ? String(d.code)
+                    : 'unknown',
               message: d.message,
               severity: d.severity || 1, // Error by default
               range: d.range,
@@ -645,20 +662,20 @@ async function getPullDiagnostics(
         );
 
         allDiagnostics.push(...diagnosticEntries);
-        
-        logger.debug('Retrieved diagnostics from provider', { 
+
+        logger.debug('Retrieved diagnostics from provider', {
           providerId: provider.id,
-          diagnosticCount: diagnosticEntries.length
+          diagnosticCount: diagnosticEntries.length,
         });
       } else {
-        logger.debug('Provider returned unchanged diagnostics', { 
-          providerId: provider.id 
+        logger.debug('Provider returned unchanged diagnostics', {
+          providerId: provider.id,
         });
       }
     } catch (error) {
       logger.warn('Failed to get diagnostics from provider', {
         providerId: provider.id,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       // Continue with other providers
     }
@@ -667,7 +684,7 @@ async function getPullDiagnostics(
   logger.info('Completed pull diagnostics request', {
     uri,
     totalDiagnostics: allDiagnostics.length,
-    providerCount: providers.length
+    providerCount: providers.length,
   });
 
   return allDiagnostics;

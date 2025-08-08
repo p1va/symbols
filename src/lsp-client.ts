@@ -4,6 +4,7 @@
  */
 
 import * as cp from 'child_process';
+import * as fs from 'fs';
 import * as rpc from 'vscode-jsonrpc';
 import {
   InitializeParams,
@@ -43,7 +44,9 @@ export function createLspClient(
       lspName: lspConfig.name,
       command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
       workspace: workspaceConfig.workspaceUri,
-      environment: lspConfig.environment ? Object.keys(lspConfig.environment) : 'none'
+      environment: lspConfig.environment
+        ? Object.keys(lspConfig.environment)
+        : 'none',
     });
 
     // Set up environment variables if specified
@@ -54,8 +57,68 @@ export function createLspClient(
     logger.debug('Spawning LSP server process', {
       commandName: lspConfig.commandName,
       commandArgs: lspConfig.commandArgs,
-      hasCustomEnv: !!lspConfig.environment
+      hasCustomEnv: !!lspConfig.environment,
     });
+
+    // Check if command exists before spawning (comprehensive validation)
+    logger.debug('Validating LSP server binary exists');
+
+    try {
+      if (lspConfig.commandName.includes('/')) {
+        // Absolute or relative path - check file existence directly
+        if (!fs.existsSync(lspConfig.commandName)) {
+          throw new Error(
+            `LSP server binary does not exist: ${lspConfig.commandName}`
+          );
+        }
+
+        // Check if it's executable
+        try {
+          fs.accessSync(lspConfig.commandName, fs.constants.X_OK);
+        } catch {
+          throw new Error(
+            `LSP server binary is not executable: ${lspConfig.commandName}`
+          );
+        }
+      } else {
+        // Command name only - check if it exists in PATH (cross-platform)
+        try {
+          const isWindows = process.platform === 'win32';
+          const whichCommand = isWindows ? 'where' : 'which';
+          const result = cp.execSync(
+            `${whichCommand} "${lspConfig.commandName}"`,
+            {
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'ignore'],
+            }
+          );
+          const commandPath = result.trim();
+
+          if (!commandPath) {
+            throw new Error(
+              `LSP server command not found in PATH: ${lspConfig.commandName}`
+            );
+          }
+
+          logger.debug('Found LSP server in PATH', {
+            commandName: lspConfig.commandName,
+            resolvedPath: commandPath,
+            platform: process.platform,
+          });
+        } catch {
+          throw new Error(
+            `LSP server command not found in PATH: ${lspConfig.commandName}. ` +
+              `Please ensure it's installed and available in your PATH.`
+          );
+        }
+      }
+    } catch (error) {
+      logger.error('LSP server binary validation failed', {
+        commandName: lspConfig.commandName,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
 
     // Spawn the configured Language Server
     const serverProcess = cp.spawn(
@@ -71,18 +134,26 @@ export function createLspClient(
 
     // Handle process errors and stderr
     serverProcess.on('error', (error) => {
-      logger.error('LSP server process error', { error: error.message, stack: error.stack });
+      logger.error('LSP server process error', {
+        error: error.message,
+        stack: error.stack,
+      });
     });
 
     serverProcess.on('exit', (code, signal) => {
-      logger.warn('LSP server process exited', { code, signal, pid: serverProcess.pid });
+      logger.warn('LSP server process exited', {
+        code,
+        signal,
+        pid: serverProcess.pid,
+      });
     });
 
     // Log stderr output from LSP server
     if (serverProcess.stderr) {
       serverProcess.stderr.setEncoding('utf8');
       serverProcess.stderr.on('data', (data: Buffer | string) => {
-        const message = typeof data === 'string' ? data.trim() : data.toString('utf8').trim();
+        const message =
+          typeof data === 'string' ? data.trim() : data.toString('utf8').trim();
         if (message) {
           logger.debug('LSP server stderr', { message });
         }
@@ -104,13 +175,13 @@ export function createLspClient(
 
     // Add comprehensive message logging before setting up handlers
     logger.debug('Setting up comprehensive LSP message logging');
-    
+
     // Log all incoming notifications (including unhandled ones)
     connection.onNotification((method: string, params: unknown) => {
       logger.debug('LSP notification received', { method, params });
     });
 
-    // Log all incoming requests (including unhandled ones) 
+    // Log all incoming requests (including unhandled ones)
     connection.onRequest((method: string, params: unknown) => {
       logger.debug('LSP request received', { method, params });
       // Return empty response for unhandled requests to prevent crashes
@@ -119,9 +190,9 @@ export function createLspClient(
 
     // Log connection errors
     connection.onError((error) => {
-      logger.error('LSP connection error', { 
+      logger.error('LSP connection error', {
         error: error instanceof Error ? error.message : JSON.stringify(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
     });
 
@@ -132,7 +203,13 @@ export function createLspClient(
 
     // Set up notification handlers before listening
     logger.debug('Setting up LSP notification handlers');
-    setupNotificationHandlers(connection, diagnosticsStore, diagnosticProviderStore, windowLogStore, workspaceLoaderStore);
+    setupNotificationHandlers(
+      connection,
+      diagnosticsStore,
+      diagnosticProviderStore,
+      windowLogStore,
+      workspaceLoaderStore
+    );
 
     // Start listening
     logger.debug('Starting JSON-RPC connection listener');
@@ -152,7 +229,7 @@ export function createLspClient(
     logger.info('LSP client created successfully', {
       lspName: lspConfig.name,
       pid: serverProcess.pid,
-      hasProcessId: client.processId !== undefined
+      hasProcessId: client.processId !== undefined,
     });
 
     return { ok: true, data: result };
@@ -161,7 +238,7 @@ export function createLspClient(
       lspName: lspConfig.name,
       command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
     return {
@@ -275,10 +352,18 @@ export async function initializeLspClient(
     client.serverCapabilities = initResult.capabilities;
 
     // Initialize workspace loader based on LSP configuration
-    await initializeWorkspaceLoader(client, config, workspaceLoaderStore, lspConfig);
+    await initializeWorkspaceLoader(
+      client,
+      config,
+      workspaceLoaderStore,
+      lspConfig
+    );
 
     // Extract diagnostic providers from server capabilities
-    extractDiagnosticProvidersFromCapabilities(initResult.capabilities, diagnosticProviderStore);
+    extractDiagnosticProvidersFromCapabilities(
+      initResult.capabilities,
+      diagnosticProviderStore
+    );
 
     return { ok: true, data: initResult };
   } catch (error) {
@@ -305,7 +390,7 @@ async function initializeWorkspaceLoader(
   try {
     // Get workspace loader type from config, default to 'default'
     const loaderType = lspConfig.workspace_loader || 'default';
-    
+
     // Create workspace loader using factory
     const loader = createWorkspaceLoader(loaderType);
     workspaceLoaderStore.setLoader(loader);
@@ -317,14 +402,14 @@ async function initializeWorkspaceLoader(
     logger.info('Workspace loader initialized', {
       loaderType,
       workspaceType: initialState.type,
-      ready: initialState.ready
+      ready: initialState.ready,
     });
   } catch (error) {
     logger.error('Failed to initialize workspace loader', {
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     // On error, fall back to default loader in ready state
     const defaultLoader = createWorkspaceLoader('default');
     workspaceLoaderStore.setLoader(defaultLoader);
@@ -349,11 +434,13 @@ function extractDiagnosticProvidersFromCapabilities(
   diagnosticProviderStore: DiagnosticProviderStore
 ): void {
   try {
-    // Check if server supports diagnostics through capabilities  
-    const diagnosticProvider = (capabilities as { diagnosticProvider?: unknown }).diagnosticProvider;
+    // Check if server supports diagnostics through capabilities
+    const diagnosticProvider = (
+      capabilities as { diagnosticProvider?: unknown }
+    ).diagnosticProvider;
     if (diagnosticProvider) {
-      logger.debug('Found diagnostic provider in server capabilities', { 
-        provider: diagnosticProvider 
+      logger.debug('Found diagnostic provider in server capabilities', {
+        provider: diagnosticProvider,
       });
 
       const typedProvider = diagnosticProvider as {
@@ -364,23 +451,29 @@ function extractDiagnosticProvidersFromCapabilities(
 
       const provider: DiagnosticProvider = {
         id: 'server-capabilities',
-        ...(typedProvider.documentSelector && { documentSelector: typedProvider.documentSelector }),
-        ...(typedProvider.interFileDependencies !== undefined && { interFileDependencies: typedProvider.interFileDependencies }),
-        ...(typedProvider.workspaceDiagnostics !== undefined && { workspaceDiagnostics: typedProvider.workspaceDiagnostics }),
+        ...(typedProvider.documentSelector && {
+          documentSelector: typedProvider.documentSelector,
+        }),
+        ...(typedProvider.interFileDependencies !== undefined && {
+          interFileDependencies: typedProvider.interFileDependencies,
+        }),
+        ...(typedProvider.workspaceDiagnostics !== undefined && {
+          workspaceDiagnostics: typedProvider.workspaceDiagnostics,
+        }),
       };
 
       diagnosticProviderStore.addProvider(provider);
-      logger.info('Added diagnostic provider from server capabilities', { 
+      logger.info('Added diagnostic provider from server capabilities', {
         providerId: provider.id,
         workspaceDiagnostics: provider.workspaceDiagnostics,
-        interFileDependencies: provider.interFileDependencies
+        interFileDependencies: provider.interFileDependencies,
       });
     } else {
       logger.debug('No diagnostic provider found in server capabilities');
     }
   } catch (error) {
     logger.error('Failed to extract diagnostic providers from capabilities', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -415,37 +508,50 @@ function setupNotificationHandlers(
     try {
       // Extract diagnostic providers from registration requests
       if (params && typeof params === 'object' && 'registrations' in params) {
-        const registrations = (params as { registrations: Array<{
-          id: string;
-          method: string;
-          registerOptions?: unknown;
-        }> }).registrations;
+        const registrations = (
+          params as {
+            registrations: Array<{
+              id: string;
+              method: string;
+              registerOptions?: unknown;
+            }>;
+          }
+        ).registrations;
 
         for (const registration of registrations) {
           if (registration.method === 'textDocument/diagnostic') {
-            logger.debug('Found diagnostic provider in registration request', { 
+            logger.debug('Found diagnostic provider in registration request', {
               registrationId: registration.id,
-              registerOptions: registration.registerOptions 
+              registerOptions: registration.registerOptions,
             });
 
-            const registerOptions = registration.registerOptions as {
-              documentSelector?: DiagnosticProvider['documentSelector'];
-              interFileDependencies?: boolean;
-              workspaceDiagnostics?: boolean;
-            } | undefined;
+            const registerOptions = registration.registerOptions as
+              | {
+                  documentSelector?: DiagnosticProvider['documentSelector'];
+                  interFileDependencies?: boolean;
+                  workspaceDiagnostics?: boolean;
+                  identifier?: string;
+                }
+              | undefined;
 
             const provider: DiagnosticProvider = {
-              id: registration.id,
-              ...(registerOptions?.documentSelector && { documentSelector: registerOptions.documentSelector }),
-              ...(registerOptions?.interFileDependencies !== undefined && { interFileDependencies: registerOptions.interFileDependencies }),
-              ...(registerOptions?.workspaceDiagnostics !== undefined && { workspaceDiagnostics: registerOptions.workspaceDiagnostics }),
+              id: registerOptions?.identifier || registration.id,
+              ...(registerOptions?.documentSelector && {
+                documentSelector: registerOptions.documentSelector,
+              }),
+              ...(registerOptions?.interFileDependencies !== undefined && {
+                interFileDependencies: registerOptions.interFileDependencies,
+              }),
+              ...(registerOptions?.workspaceDiagnostics !== undefined && {
+                workspaceDiagnostics: registerOptions.workspaceDiagnostics,
+              }),
             };
 
             diagnosticProviderStore.addProvider(provider);
-            logger.info('Added diagnostic provider from registration', { 
+            logger.info('Added diagnostic provider from registration', {
               providerId: provider.id,
               method: registration.method,
-              hasDocumentSelector: !!provider.documentSelector
+              hasDocumentSelector: !!provider.documentSelector,
             });
           }
         }
@@ -453,17 +559,19 @@ function setupNotificationHandlers(
     } catch (error) {
       logger.error('Error processing capability registration', {
         error: error instanceof Error ? error.message : String(error),
-        params: JSON.stringify(params)
+        params: JSON.stringify(params),
       });
     }
-    
+
     return {}; // Acknowledge
   });
 
   // Handle workspace notifications using functional workspace loaders
   connection.onNotification('workspace/projectInitializationComplete', () => {
     if (workspaceLoaderStore) {
-      workspaceLoaderStore.updateState('workspace/projectInitializationComplete');
+      workspaceLoaderStore.updateState(
+        'workspace/projectInitializationComplete'
+      );
     }
   });
 

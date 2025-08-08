@@ -250,6 +250,7 @@ export interface LspContext {
   readonly workspaceUri: string;
   readonly workspacePath: string;
   readonly lspName?: string;
+  readonly lspConfig?: import('./config/lsp-config.js').ParsedLspConfig | null;
 }
 
 // Additional error codes for validation (extending the main ErrorCode enum)

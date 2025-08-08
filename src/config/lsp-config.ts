@@ -15,9 +15,7 @@ const DiagnosticsConfigSchema = z.object({
 
 const SymbolsConfigSchema = z.object({
   max_depth: z.number().min(0).nullable().default(null),
-  kinds: z
-    .array(z.string())
-    .default(['Function', 'Class', 'Variable', 'Enum', 'Interface', 'Module']),
+  kinds: z.array(z.string()).default([]),
 });
 
 const LspConfigSchema = z.object({
@@ -77,37 +75,6 @@ const DEFAULT_CONFIG: ConfigFile = {
         kinds: [],
       },
     },
-    pyright: {
-      command: 'pyright-langserver --stdio',
-      extensions: {
-        '.py': 'python',
-      },
-      workspace_files: ['pyproject.toml', 'requirements.txt', 'setup.py'],
-      diagnostics: {
-        strategy: 'pull',
-        wait_timeout_ms: 2000,
-      },
-      symbols: {
-        max_depth: 0,
-        kinds: [],
-      },
-    },
-    csharp: {
-      command: 'csharp-ls',
-      extensions: {
-        '.cs': 'csharp',
-      },
-      workspace_files: ['*.sln', '*.csproj'],
-      diagnostics: {
-        strategy: 'pull',
-        wait_timeout_ms: 5000,
-      },
-      symbols: {
-        max_depth: null,
-        kinds: [],
-      },
-      workspace_loader: 'csharp',
-    },
   },
 };
 
@@ -120,6 +87,7 @@ export function loadLspConfig(configPath?: string): ConfigFile {
     configPath,
     'lsps.yaml',
     'lsps.yml',
+    // TODO: Fix, first should look into workspace rather than cwd
     path.join(process.cwd(), 'lsps.yaml'),
     path.join(process.cwd(), 'lsps.yml'),
     path.join(
@@ -237,13 +205,16 @@ export function listAvailableLsps(configPath?: string): string[] {
 /**
  * Auto-detect LSP server based on workspace files in a directory
  */
-export function autoDetectLsp(workspacePath: string, configPath?: string): string | null {
+export function autoDetectLsp(
+  workspacePath: string,
+  configPath?: string
+): string | null {
   const config = loadLspConfig(configPath);
-  
+
   try {
     // Get list of files in workspace directory
     const workspaceFiles = fs.readdirSync(workspacePath);
-    
+
     // Check each LSP configuration for matching workspace files
     for (const [lspName, lspConfig] of Object.entries(config.lsps)) {
       for (const workspaceFile of lspConfig.workspace_files) {
@@ -251,8 +222,8 @@ export function autoDetectLsp(workspacePath: string, configPath?: string): strin
         if (workspaceFile.includes('*')) {
           const pattern = workspaceFile.replace(/\*/g, '.*');
           const regex = new RegExp(`^${pattern}$`);
-          
-          if (workspaceFiles.some(file => regex.test(file))) {
+
+          if (workspaceFiles.some((file) => regex.test(file))) {
             return lspName;
           }
         } else {
@@ -263,7 +234,7 @@ export function autoDetectLsp(workspacePath: string, configPath?: string): strin
         }
       }
     }
-    
+
     return null;
   } catch {
     // If we can't read the directory, return null

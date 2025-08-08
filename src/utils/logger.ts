@@ -2,12 +2,24 @@ import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
 
-// Create logs directory
-fs.mkdirSync('logs', { recursive: true });
+// Create logs directory with error handling
+try {
+  fs.mkdirSync('logs', { recursive: true });
+} catch (error) {
+  console.error('Failed to create logs directory:', error);
+  process.exit(1);
+}
 
 // Generate timestamped filename for this session
-const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const sessionLogFile = path.join('logs', `session-${timestamp}.log`);
+let timestamp: string;
+let sessionLogFile: string;
+try {
+  timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  sessionLogFile = path.join('logs', `session-${timestamp}.log`);
+} catch (error) {
+  console.error('Failed to generate log filename:', error);
+  process.exit(1);
+}
 
 // Create custom format for better readability
 const customFormat = winston.format.combine(
@@ -36,12 +48,17 @@ const logger = winston.createLogger({
 
 // Console logging disabled - use log files only
 
-// Log session start
-logger.info('='.repeat(80));
-logger.info(`New session started - Log file: ${sessionLogFile}`);
-logger.info(`Log level: ${logger.level}`);
-logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-logger.info(`PID: ${process.pid}`);
-logger.info('='.repeat(80));
+// Log session start with error handling
+try {
+  logger.info('='.repeat(80));
+  logger.info(`New session started - Log file: ${sessionLogFile}`);
+  logger.info(`Log level: ${logger.level}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`PID: ${process.pid}`);
+  logger.info('='.repeat(80));
+} catch (error) {
+  console.error('Failed to write initial log entries:', error);
+  // Don't exit here - let the process continue but warn about logging issues
+}
 
 export default logger;

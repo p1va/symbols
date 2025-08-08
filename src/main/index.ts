@@ -22,7 +22,7 @@ import {
   WorkspaceState,
   WorkspaceLoaderStore,
 } from '../types.js';
-import { getLspConfig, autoDetectLsp } from '../config/lsp-config.js';
+import { getLspConfig, autoDetectLsp, listAvailableLsps, ParsedLspConfig } from '../config/lsp-config.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
 import logger from '../utils/logger.js';
 import { createServer } from './createServer.js';
@@ -32,6 +32,7 @@ import { setupShutdown } from './shutdown.js';
 let lspClient: LspClient | null = null;
 let lspProcess: ChildProcessWithoutNullStreams | null = null;
 let lspName: string = '';
+let lspConfig: ParsedLspConfig | null = null;
 let workspaceUri: string = '';
 let workspacePath: string = '';
 const preloadedFiles: PreloadedFiles = new Map();
@@ -49,8 +50,15 @@ const workspaceState: WorkspaceState = {
  */
 async function initializeLsp(): Promise<void> {
   try {
+    // Log raw command line arguments for debugging
+    logger.info('Raw command line arguments', { 
+      argv: process.argv,
+      cwd: process.cwd() 
+    });
+    
     // Parse CLI arguments and resolve configuration
     const cliArgs = parseCliArgs();
+    logger.info('Parsed CLI arguments', { cliArgs });
     
     // Handle help request
     if (cliArgs.help) {
@@ -59,6 +67,7 @@ async function initializeLsp(): Promise<void> {
     }
     
     const config = resolveConfig(cliArgs);
+    logger.info('Resolved configuration', { config });
     
     // Set up workspace paths
     workspacePath = config.workspace;
@@ -68,6 +77,7 @@ async function initializeLsp(): Promise<void> {
     // Set log level from config (this will affect winston logger)
     if (process.env.LOGLEVEL !== config.loglevel) {
       process.env.LOGLEVEL = config.loglevel;
+      logger.level = config.loglevel; // Update existing logger instance
     }
 
     // Get LSP server name - try CLI args/environment, then auto-detection, then default to typescript
@@ -80,8 +90,14 @@ async function initializeLsp(): Promise<void> {
         lspName = detectedLsp;
         logger.info('Auto-detected LSP server', { lspName, workspacePath });
       } else {
-        lspName = 'typescript';
-        logger.info('No LSP auto-detected, using default', { lspName });
+        logger.error('No LSP server could be auto-detected for this workspace', { 
+          workspacePath,
+          availableLsps: listAvailableLsps(config.configPath)
+        });
+        throw new Error(
+          'No LSP server specified and none could be auto-detected. ' +
+          'Please specify --lsp=<server> or ensure your workspace has recognizable project files.'
+        );
       }
     } else {
       const source = cliArgs.lsp ? 'CLI argument' : 'environment variable';
@@ -96,7 +112,7 @@ async function initializeLsp(): Promise<void> {
     });
 
     // Load LSP configuration
-    const lspConfig = getLspConfig(lspName, config.configPath);
+    lspConfig = getLspConfig(lspName, config.configPath);
     if (!lspConfig) {
       logger.error(`LSP configuration not found for: ${lspName}`);
       throw new Error(`LSP configuration not found for: ${lspName}`);
@@ -221,6 +237,7 @@ function createContext(): LspContext {
     workspaceUri,
     workspacePath,
     lspName,
+    lspConfig,
   };
 }
 

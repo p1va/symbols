@@ -1,0 +1,24 @@
+# TypeScript LSP Configuration Example
+# This file demonstrates how to configure the TypeScript LSP
+lsps:
+  typescript:
+    command: 'typescript-language-server --stdio'
+    extensions:
+      '.js': 'javascript'
+      '.mjs': 'javascript'
+      '.cjs': 'javascript'
+      '.jsx': 'javascriptreact'
+      '.ts': 'typescript'
+      '.mts': 'typescript'
+      '.cts': 'typescript'
+      '.tsx': 'typescriptreact'
+      '.json': 'json'
+    workspace_files:
+      - 'package.json'
+      - 'tsconfig.json'
+    diagnostics:
+      strategy: 'push'  # TypeScript LSP works well with push strategy
+      wait_timeout_ms: 3000
+    symbols:
+      max_depth: null  # Get all symbol levels
+      kinds: []        # All symbol kinds

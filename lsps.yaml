@@ -10,9 +10,7 @@ lsps:
       '.mts': 'typescript'
       '.cts': 'typescript'
       '.tsx': 'typescriptreact'
-
-      # Config files
-      '.json': 'json' # JSON configuration
+      '.json': 'json'
     workspace_files: ['package.json', 'tsconfig.json']
     diagnostics:
       strategy: 'push' # TypeScript sends diagnostics via notifications
@@ -40,13 +38,16 @@ lsps:
       GOCACHE: '/tmp/go-build'
       GOMODCACHE: '/tmp/go/pkg/mod'
 
-  csharp:
-    command: 'Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --stdio'
+  see-sharp:
+    command: "/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --extensionLogDirectory=/tmp/lsp-logs --stdio"
+    workspace_loader: 'csharp'
     extensions:
-      '.cs': 'csharp' # C# source files
-      '.csx': 'csharp' # C# script files
-      '.cake': 'csharp' # Cake build scripts
-      '.cshtml': 'razor' # Razor pages (ASP.NET)
-      '.razor': 'razor' # Blazor components
+      '.cs': 'csharp'
     workspace_files:
-      ['*.sln', '*.csproj', '*.fsproj', 'global.json', 'Directory.Build.props']
+      - '*.sln'
+      - '*.csproj'
+    diagnostics:
+      strategy: 'pull'
+    symbols:
+      max_depth: null
+      kinds: []

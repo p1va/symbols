@@ -7,6 +7,48 @@ import { LspContext } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { getLogLevelName } from '../utils/logLevel.js';
 
+/**
+ * Get symbol for log level severity (using subtle ASCII symbols like diagnostics)
+ */
+function getLogLevelSymbol(type: number): string {
+  switch (type) {
+    case 1: return '✘'; // Error
+    case 2: return '⚠'; // Warning  
+    case 3: return 'ℹ'; // Info
+    case 4: return '•'; // Log
+    default: return '?'; // Unknown
+  }
+}
+
+/**
+ * Format log messages into a compact, scannable format
+ */
+function formatLogMessages(messages: Array<{ type: number; message: string }>): string {
+  if (messages.length === 0) {
+    return 'No window log messages available';
+  }
+
+  // Group consecutive messages by context (e.g., same operation)
+  const formattedMessages = messages.map((msg) => {
+    const symbol = getLogLevelSymbol(msg.type);
+    const level = getLogLevelName(msg.type);
+    
+    // Extract context from message for better organization
+    const message = msg.message.trim();
+    const contextMatch = message.match(/^\[([^\]]+)\]/);
+    const context = contextMatch ? contextMatch[1] : '';
+    const content = contextMatch ? message.substring(contextMatch[0].length).trim() : message;
+    
+    if (context) {
+      return `${symbol} [${level}] [${context}] ${content}`;
+    } else {
+      return `${symbol} [${level}] ${content}`;
+    }
+  });
+
+  return formattedMessages.join('\n');
+}
+
 export function registerWindowLogsTool(
   server: McpServer,
   createContext: () => LspContext
@@ -25,24 +67,15 @@ export function registerWindowLogsTool(
       const result = LspOperations.logs(ctx);
       if (!result.ok) throw new Error(result.error.message);
 
-      // Format each log message as a separate content entry
-      const content = result.data.map((msg) => {
-        const logLevel = getLogLevelName(msg.type);
-        return {
-          type: 'text' as const,
-          text: `[${logLevel}] ${msg.message}`,
-        };
-      });
+      // Format all log messages into a single compact text block
+      const formattedLogs = formatLogMessages(result.data);
 
-      // If no messages, return a helpful message
-      if (content.length === 0) {
-        content.push({
+      return {
+        content: [{
           type: 'text' as const,
-          text: 'No window log messages available',
-        });
-      }
-
-      return { content };
+          text: formattedLogs,
+        }]
+      };
     }
   );
 }

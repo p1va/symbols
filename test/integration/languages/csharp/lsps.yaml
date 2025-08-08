@@ -1,0 +1,15 @@
+lsps:
+  csharp:
+    command: '/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --extensionLogDirectory=/tmp/lsp-logs --stdio'
+    workspace_loader: 'csharp'
+    extensions:
+      '.cs': 'csharp'
+    workspace_files:
+      - '*.sln'
+      - '*.csproj'
+    diagnostics:
+      strategy: 'pull'
+      wait_timeout_ms: 5000
+    symbols:
+      max_depth: null
+      kinds: []        # All symbol kinds

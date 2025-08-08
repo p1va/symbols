@@ -1,0 +1,17 @@
+# Python LSP Configuration Example
+# This file demonstrates how to configure the Python/Pyright LSP
+lsps:
+  pyright:
+    command: 'pyright-langserver --stdio'
+    extensions:
+      '.py': 'python'
+    workspace_files:
+      - 'pyproject.toml'
+      - 'requirements.txt' 
+      - 'setup.py'
+    diagnostics:
+      strategy: 'pull'  # Pyright works better with pull strategy
+      wait_timeout_ms: 2000
+    symbols:
+      max_depth: 0  # Get all symbol levels
+      kinds: []     # All symbol kinds

@@ -208,7 +208,7 @@ export function createCodePreview(
   }
 
   // Wrap in markdown code block
-  return `\`\`\`typescript\n${preview}\n\`\`\``;
+  return `\`\`\`\n${preview}\n\`\`\``;
 }
 
 /**

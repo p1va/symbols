@@ -3,8 +3,16 @@
  */
 
 import { Diagnostic } from 'vscode-languageserver-protocol';
-import { DiagnosticsStore, DiagnosticProviderStore, DiagnosticProvider, WindowLogStore, LogMessage, WorkspaceLoaderStore } from '../types.js';
+import {
+  DiagnosticsStore,
+  DiagnosticProviderStore,
+  DiagnosticProvider,
+  WindowLogStore,
+  LogMessage,
+  WorkspaceLoaderStore,
+} from '../types.js';
 import { WorkspaceLoaderState, WorkspaceLoader } from '../workspace/types.js';
+import logger from '../utils/logger.js';
 
 export function createDiagnosticsStore(): DiagnosticsStore {
   const diagnostics = new Map<string, Diagnostic[]>();
@@ -30,7 +38,9 @@ export function createDiagnosticProviderStore(): DiagnosticProviderStore {
     providers,
     addProvider(provider: DiagnosticProvider) {
       // Avoid duplicates based on id
-      const existingIndex = this.providers.findIndex(p => p.id === provider.id);
+      const existingIndex = this.providers.findIndex(
+        (p) => p.id === provider.id
+      );
       if (existingIndex >= 0) {
         this.providers[existingIndex] = provider;
       } else {
@@ -40,21 +50,28 @@ export function createDiagnosticProviderStore(): DiagnosticProviderStore {
     getProviders(): DiagnosticProvider[] {
       return [...this.providers];
     },
-    getProvidersForDocument(uri: string, languageId?: string): DiagnosticProvider[] {
-      return this.providers.filter(provider => {
+    getProvidersForDocument(
+      uri: string,
+      languageId?: string
+    ): DiagnosticProvider[] {
+      const filteredProviders = this.providers.filter((provider) => {
         if (!provider.documentSelector) return true;
-        
-        return provider.documentSelector.some(selector => {
+
+        return provider.documentSelector.some((selector) => {
           // Check language match
-          if (selector.language && languageId && selector.language !== languageId) {
+          if (
+            selector.language &&
+            languageId &&
+            selector.language !== languageId
+          ) {
             return false;
           }
-          
+
           // Check scheme match (assuming file:// scheme)
           if (selector.scheme && !uri.startsWith(`${selector.scheme}:`)) {
             return false;
           }
-          
+
           // Check pattern match (simplified glob matching)
           if (selector.pattern) {
             const regex = new RegExp(selector.pattern.replace(/\*/g, '.*'));
@@ -62,10 +79,18 @@ export function createDiagnosticProviderStore(): DiagnosticProviderStore {
               return false;
             }
           }
-          
+
           return true;
         });
       });
+
+      logger.info('Retrieving providers for document', {
+        uri,
+        languageId,
+        providers,
+      });
+
+      return filteredProviders;
     },
     clear() {
       this.providers.length = 0;
@@ -79,6 +104,7 @@ export function createWindowLogStore(): WindowLogStore {
   return {
     messages,
     addMessage(message: LogMessage) {
+      logger.info('LSP window log message', { message });
       this.messages.push(message);
     },
     getMessages(): LogMessage[] {

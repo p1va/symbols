@@ -72,7 +72,10 @@ export interface ChangeResult {
 }
 
 export interface AppliedChange {
-  range: { start: { line: number; character: number }; end: { line: number; character: number } };
+  range: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
   oldText: string;
   newText: string;
   line: number; // 1-based for display
@@ -80,9 +83,12 @@ export interface AppliedChange {
 }
 
 export interface FailedChange {
-  range: { start: { line: number; character: number }; end: { line: number; character: number } };
+  range: {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+  };
   newText: string;
-  line: number; // 1-based for display  
+  line: number; // 1-based for display
   character: number; // 1-based for display
   error: string;
 }
@@ -119,18 +125,23 @@ export async function applyFileChanges(
     for (const change of sortedChanges) {
       try {
         const startLine = change.range.start.line; // 0-based from LSP
-        const startChar = change.range.start.character; // 0-based from LSP  
+        const startChar = change.range.start.character; // 0-based from LSP
         const endLine = change.range.end.line; // 0-based from LSP
         const endChar = change.range.end.character; // 0-based from LSP
 
         // Validate bounds
-        if (startLine < 0 || startLine >= lines.length || endLine < 0 || endLine >= lines.length) {
+        if (
+          startLine < 0 ||
+          startLine >= lines.length ||
+          endLine < 0 ||
+          endLine >= lines.length
+        ) {
           result.failedChanges.push({
             range: change.range,
             newText: change.newText,
             line: startLine + 1, // Convert to 1-based
             character: startChar + 1, // Convert to 1-based
-            error: 'Position out of bounds'
+            error: 'Position out of bounds',
           });
           continue;
         }
@@ -146,26 +157,29 @@ export async function applyFileChanges(
               newText: change.newText,
               line: startLine + 1,
               character: startChar + 1,
-              error: 'Character position out of bounds'
+              error: 'Character position out of bounds',
             });
             continue;
           }
           oldText = line.substring(startChar, endChar);
-          
+
           // Apply the change
-          lines[startLine] = line.substring(0, startChar) + change.newText + line.substring(endChar);
+          lines[startLine] =
+            line.substring(0, startChar) +
+            change.newText +
+            line.substring(endChar);
         } else {
           // Multi-line change
           const firstLine = lines[startLine]!; // Safe after bounds check
           const lastLine = lines[endLine]!; // Safe after bounds check
-          
+
           if (startChar > firstLine.length || endChar > lastLine.length) {
             result.failedChanges.push({
               range: change.range,
               newText: change.newText,
               line: startLine + 1,
               character: startChar + 1,
-              error: 'Character position out of bounds'
+              error: 'Character position out of bounds',
             });
             continue;
           }
@@ -183,9 +197,12 @@ export async function applyFileChanges(
           oldText = oldParts.join('\n');
 
           // Apply the change by replacing multiple lines with potentially different content
-          const newContent = firstLine.substring(0, startChar) + change.newText + lastLine.substring(endChar);
+          const newContent =
+            firstLine.substring(0, startChar) +
+            change.newText +
+            lastLine.substring(endChar);
           const newLines = newContent.split('\n');
-          
+
           // Replace the affected lines
           lines.splice(startLine, endLine - startLine + 1, ...newLines);
         }
@@ -196,16 +213,15 @@ export async function applyFileChanges(
           oldText,
           newText: change.newText,
           line: startLine + 1, // Convert to 1-based for display
-          character: startChar + 1 // Convert to 1-based for display  
+          character: startChar + 1, // Convert to 1-based for display
         });
-
       } catch (error) {
         result.failedChanges.push({
           range: change.range,
           newText: change.newText,
           line: change.range.start.line + 1,
           character: change.range.start.character + 1,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -218,9 +234,11 @@ export async function applyFileChanges(
       // No changes to apply - this is also success
       result.success = true;
     }
-
   } catch (error) {
-    result.error = error instanceof Error ? error.message : 'Unknown error reading/writing file';
+    result.error =
+      error instanceof Error
+        ? error.message
+        : 'Unknown error reading/writing file';
   }
 
   return result;
@@ -228,12 +246,12 @@ export async function applyFileChanges(
 
 /**
  * Applies workspace changes across multiple files with best-effort approach
- */  
+ */
 export async function applyWorkspaceChanges(
   renameResult: Record<string, FileChange[]>
 ): Promise<ChangeResult[]> {
   const results: ChangeResult[] = [];
-  
+
   // Process each file independently (best-effort approach)
   for (const [fileUri, changes] of Object.entries(renameResult)) {
     const result = await applyFileChanges(fileUri, changes);
@@ -244,19 +262,25 @@ export async function applyWorkspaceChanges(
 }
 
 /**
- * Formats rename operation results for Claude Code with symbols like diagnostics
+ * Formats rename operation results with symbols like diagnostics
  */
 export async function formatRenameResults(
   results: ChangeResult[],
   symbolName: string,
   newName: string
 ): Promise<string> {
-  const totalChanges = results.reduce((sum, r) => sum + r.appliedChanges.length, 0);
-  const totalFailed = results.reduce((sum, r) => sum + r.failedChanges.length, 0);
+  const totalChanges = results.reduce(
+    (sum, r) => sum + r.appliedChanges.length,
+    0
+  );
+  const totalFailed = results.reduce(
+    (sum, r) => sum + r.failedChanges.length,
+    0
+  );
   const fileCount = results.length;
 
   let output = `Rename '${symbolName}' → '${newName}': ${totalChanges} changes across ${fileCount} file(s)`;
-  
+
   if (totalFailed > 0) {
     output += ` (${totalFailed} failed)`;
   }
@@ -264,10 +288,11 @@ export async function formatRenameResults(
   // Group results by file
   for (const result of results) {
     const filePath = formatFilePath(result.fileUri);
-    const changeCount = result.appliedChanges.length + result.failedChanges.length;
-    
+    const changeCount =
+      result.appliedChanges.length + result.failedChanges.length;
+
     output += `\n\n${filePath} (${changeCount} changes)`;
-    
+
     if (result.error) {
       output += `\n  ✘ File error: ${result.error}`;
       continue;
@@ -276,14 +301,14 @@ export async function formatRenameResults(
     // Show successful changes with code context
     for (const change of result.appliedChanges) {
       output += `\n  ✓ @${change.line}:${change.character} ${symbolName} → ${newName}`;
-      
+
       // Read the actual line from the file to show context (after change was applied)
       try {
         const filePath = formatFilePath(result.fileUri);
         const fileContent = await fs.promises.readFile(filePath, 'utf-8');
         const lines = fileContent.split('\n');
         const contextLine = lines[change.line - 1]; // Convert back to 0-based
-        
+
         if (contextLine) {
           // Trim and show the line with the new name
           const trimmedLine = contextLine.trim();
@@ -300,7 +325,7 @@ export async function formatRenameResults(
       }
     }
 
-    // Show failed changes  
+    // Show failed changes
     for (const failed of result.failedChanges) {
       output += `\n  ✘ @${failed.line}:${failed.character} ${symbolName} → ${newName} (${failed.error})`;
     }

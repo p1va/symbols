@@ -44,11 +44,15 @@ export function registerRenameTool(
       const symbolName = cursorContext?.symbolName || 'symbol';
       const newName = request.newName;
 
-      // Format the results for Claude Code
-      const formattedResults = await formatRenameResults(changeResults, symbolName, newName);
+      // Format the results
+      const formattedResults = await formatRenameResults(
+        changeResults,
+        symbolName,
+        newName
+      );
 
       const content: Array<{ type: 'text'; text: string }> = [];
-      
+
       // Add cursor context if available
       if (cursorContext) {
         content.push({

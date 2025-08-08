@@ -1,6 +1,12 @@
 /**
- * Command-line argument parsing utilities
+ * Command-line argument parsing utilities using yargs
  */
+
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import * as fs from 'fs';
+import * as path from 'path';
+import { listAvailableLsps } from '../config/lsp-config.js';
 
 export interface CliArgs {
   workspace?: string;
@@ -11,99 +17,148 @@ export interface CliArgs {
 }
 
 /**
- * Parse command-line arguments
+ * Parse command-line arguments using yargs
  */
 export function parseCliArgs(args: string[] = process.argv): CliArgs {
-  const parsed: CliArgs = {};
-  
-  for (let i = 2; i < args.length; i++) {
-    const arg = args[i];
-    
-    switch (arg) {
-      case '--workspace':
-        if (i + 1 < args.length) {
-          const value = args[++i];
-          if (value) {
-            parsed.workspace = value;
-          }
-        }
-        break;
-        
-      case '--lsp':
-        if (i + 1 < args.length) {
-          const value = args[++i];
-          if (value) {
-            parsed.lsp = value;
-          }
-        }
-        break;
-        
-      case '--loglevel':
-        if (i + 1 < args.length) {
-          const value = args[++i];
-          if (value) {
-            parsed.loglevel = value;
-          }
-        }
-        break;
-        
-      case '--config':
-        if (i + 1 < args.length) {
-          const value = args[++i];
-          if (value) {
-            parsed.configPath = value;
-          }
-        }
-        break;
-        
-      case '--help':
-      case '-h':
-        parsed.help = true;
-        break;
-        
-      default:
-        // Ignore unknown arguments
-        break;
+  // Log CLI arguments to the session log file (same as main logger)
+  // IMPORTANT: No console output here - MCP uses stdin/stdout for communication
+  try {
+    if (!fs.existsSync('logs')) {
+      fs.mkdirSync('logs', { recursive: true });
     }
+    
+    // Use the same timestamped session file pattern as the main logger
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const sessionLogFile = path.join('logs', `session-${timestamp}.log`);
+    
+    const debugInfo = {
+      timestamp: new Date().toISOString(),
+      rawArgs: args,
+      cwd: process.cwd(),
+      pid: process.pid
+    };
+    
+    const logEntry = `[${debugInfo.timestamp}] [CLI] Raw arguments received: ${JSON.stringify(debugInfo, null, 2)}\n`;
+    fs.appendFileSync(sessionLogFile, logEntry);
+  } catch {
+    // Ignore file logging errors - no console fallback to avoid disrupting MCP
   }
+
+  const argv = yargs(hideBin(args))
+    .scriptName('symbols')
+    .usage('$0 [options]')
+    .option('workspace', {
+      alias: 'w',
+      type: 'string',
+      describe: 'Workspace directory path',
+      requiresArg: true,
+      default: undefined, // Let resolveConfig handle the default
+    })
+    .option('lsp', {
+      alias: 'l',
+      type: 'string',
+      describe: 'LSP server to use (auto-detected if not specified)',
+      requiresArg: true
+    })
+    .option('loglevel', {
+      type: 'string',
+      describe: 'Log level',
+      choices: ['debug', 'info', 'warn', 'error'],
+      requiresArg: true,
+      default: undefined, // Let resolveConfig handle the default
+    })
+    .option('config', {
+      alias: 'c',
+      type: 'string',
+      describe: 'Path to configuration file',
+      requiresArg: true
+    })
+    .env('SYMBOLS') // Support SYMBOLS_WORKSPACE, SYMBOLS_LSP, etc.
+    .example('$0 --workspace /path/to/project', 'Use specific workspace')
+    .example('$0 --lsp pyright --workspace /path/to/python', 'Use Python LSP')
+    .example('$0 --loglevel debug', 'Enable debug logging')
+    .help()
+    .alias('help', 'h')
+    .strict()
+    .version(false) // Disable version since we don't have one
+    .check((argv) => {
+      // Validate workspace directory if provided
+      if (argv.workspace) {
+        const workspacePath = path.resolve(argv.workspace);
+        
+        if (!fs.existsSync(workspacePath)) {
+          throw new Error(`Workspace directory does not exist: ${argv.workspace}\nResolved path: ${workspacePath}`);
+        }
+        
+        const stats = fs.statSync(workspacePath);
+        if (!stats.isDirectory()) {
+          throw new Error(`Workspace path is not a directory: ${argv.workspace}\nResolved path: ${workspacePath}`);
+        }
+      }
+      
+      // Validate config file if provided
+      if (argv.config) {
+        const configPath = path.resolve(argv.config);
+        
+        if (!fs.existsSync(configPath)) {
+          throw new Error(`Config file does not exist: ${argv.config}\nResolved path: ${configPath}`);
+        }
+        
+        const stats = fs.statSync(configPath);
+        if (!stats.isFile()) {
+          throw new Error(`Config path is not a file: ${argv.config}\nResolved path: ${configPath}`);
+        }
+      }
+      
+      // Validate LSP server if provided
+      if (argv.lsp) {
+        try {
+          // Use the provided config path, or let listAvailableLsps find the default
+          const availableLsps = listAvailableLsps(argv.config);
+          
+          if (!availableLsps.includes(argv.lsp)) {
+            throw new Error(
+              `Unknown LSP server: ${argv.lsp}\n` +
+              `Available LSP servers: ${availableLsps.join(', ')}\n` +
+              `Check your configuration file or use --help for more information.`
+            );
+          }
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('Unknown LSP server')) {
+            throw error; // Re-throw our validation error
+          }
+          // If config loading failed, provide a helpful error
+          throw new Error(
+            `Failed to load LSP configuration to validate '${argv.lsp}': ${error instanceof Error ? error.message : String(error)}\n` +
+            `Make sure your configuration file exists and is valid.`
+          );
+        }
+      }
+      
+      return true;
+    })
+    .parseSync();
+
+  // Build result object, only including defined values
+  const result: CliArgs = {
+    help: Boolean(argv.help)
+  };
   
-  return parsed;
+  // yargs has already validated these exist if provided, so we can trust them
+  if (argv.workspace !== undefined) result.workspace = argv.workspace;
+  if (argv.lsp !== undefined) result.lsp = argv.lsp;  
+  if (argv.loglevel !== undefined) result.loglevel = argv.loglevel;
+  if (argv.config !== undefined) result.configPath = argv.config;
+  
+  return result;
 }
 
 /**
- * Show help information
+ * Show help information (now handled by yargs automatically)
  */
 export function showHelp(): void {
-  console.log(`
-MCP Symbols Server - Language Server Protocol integration for Claude Code
-
-Usage:
-  node dist/index.js [options]
-
-Options:
-  --workspace <path>    Workspace directory path (default: current directory)
-  --lsp <name>         LSP server to use (auto-detected if not specified)
-  --loglevel <level>   Log level: debug, info, warn, error (default: info)
-  --config <path>      Path to configuration file (default: auto-detected)
-  --help, -h           Show this help message
-
-Environment Variables:
-  SYMBOLS_WORKSPACE     Workspace directory path
-  SYMBOLS_LSP           LSP server name
-  SYMBOLS_CONFIG_PATH   Configuration file path
-  LOGLEVEL              Log level
-
-LSP Auto-detection:
-  - TypeScript: package.json, tsconfig.json
-  - Python: pyproject.toml, requirements.txt, setup.py
-  - Go: go.mod, go.work
-  - C#: *.sln, *.csproj, global.json
-
-Examples:
-  node dist/index.js --workspace /path/to/python/project
-  node dist/index.js --lsp pyright --workspace /path/to/project
-  node dist/index.js --loglevel debug
-`);
+  // yargs handles help automatically, but we keep this for compatibility
+  yargs(hideBin(process.argv)).showHelp();
 }
 
 /**
@@ -117,18 +172,24 @@ export function resolveConfig(cliArgs: CliArgs): {
 } {
   const lsp = cliArgs.lsp || process.env.SYMBOLS_LSP;
   const configPath = cliArgs.configPath || process.env.SYMBOLS_CONFIG_PATH;
-  const result: { workspace: string; lsp?: string; loglevel: string; configPath?: string } = {
-    workspace: cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),
-    loglevel: cliArgs.loglevel || process.env.LOGLEVEL || 'info'
+  const result: {
+    workspace: string;
+    lsp?: string;
+    loglevel: string;
+    configPath?: string;
+  } = {
+    workspace:
+      cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),
+    loglevel: cliArgs.loglevel || process.env.LOGLEVEL || 'info',
   };
-  
+
   if (lsp) {
     result.lsp = lsp;
   }
-  
+
   if (configPath) {
     result.configPath = configPath;
   }
-  
+
   return result;
 }

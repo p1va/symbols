@@ -4,6 +4,7 @@
  */
 
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { glob } from 'glob';
 import logger from './logger.js';
 
@@ -83,14 +84,16 @@ export function createCSharpWorkspaceNotification(workspaceInfo: CSharpWorkspace
     return {
       method: 'solution/open',
       params: {
-        solution: workspaceInfo.solutionPath
+        solution: pathToFileURL(workspaceInfo.solutionPath).toString()
       }
     };
   } else if (workspaceInfo.type === 'projects' && workspaceInfo.projectPaths) {
     return {
       method: 'project/open',
       params: {
-        projects: workspaceInfo.projectPaths
+        projects: workspaceInfo.projectPaths.map(projectPath => 
+          pathToFileURL(projectPath).toString()
+        )
       }
     };
   }
