@@ -7,17 +7,21 @@
     "pyright-symbols": {
       "command": "symbols",
       "args": [
-        "--lsp pyright",
-        "--workspace ./test/python/test-project"
+        "--workspace",
+        ".external/fastapi/",
+        "--loglevel",
+        "debug"
       ]
     },
     "csharp-symbols": {
       "command": "symbols",
       "args": [
-        "--lsp","csharp",
-        "--workspace",".external/lsp-use/",
-        "--config",".external/lsp-use/lsps.yaml",
-        "--loglevel","debug"
+        "--workspace",
+        ".external/lsp-use",
+        "--config",
+        ".external/lsp-use/lsps.yaml",
+        "--loglevel",
+        "debug"
       ]
     }
   }

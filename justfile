@@ -95,3 +95,6 @@ pull-mcp-sdk:
 pull-old-impl:
   just pull-repo p1va/lsp-use-dotnet lsp-use
 
+[group('test-env')]
+pull-fast-api:
+  just pull-repo fastapi/fastapi fastapi

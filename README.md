@@ -32,7 +32,7 @@ The MCP server provides the following tools:
 ## Installation
 
 ```bash
-npx -y @p1va/symbols
+npx -y github:p1va/symbols
 ```
 
 The tool spawn a Language Server process and then communicates over stdio with it according to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). In order for the tool to work the Language Server for the language of choice needs to also be installed.
@@ -50,7 +50,7 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
   "mcpServers": {
     "symbols": {
       "command": "npx",
-      "args": ["-y", "@p1va/symbols"]
+      "args": ["-y", "github:p1va/symbols"]
     }
   }
 }
@@ -69,7 +69,7 @@ Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo leve
 ```toml
 [mcp_servers.csharp]
 command = "npx"
-args = ["-y", "@p1va/symbols"]
+args = ["-y", "github:p1va/symbols"]
 ```
 
 Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
@@ -80,15 +80,18 @@ Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
 
 <summary><b>Copilot in VS Code</b></summary>
 
-Add or update your `.vscode/mcp.toml` to include this `csharp` server and provide your own solution file name
+Add or update your `.vscode/mcp.toml` to include the server and provide your own solution file name
 
 ```json
 {
   "servers": {
     "symbols": {
       "type": "stdio",
-      "command": "npx -y @p1va/symbols",
-      "args": []
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:p1va/symbols"
+      ]
     }
   }
 }
@@ -102,6 +105,6 @@ Add or update your `.vscode/mcp.toml` to include this `csharp` server and provid
 - `pnpm lint:fix` attempts to fix lint violations
 - `pnpm format` formats the codebase
 - `pnpm dev` starts in development mode
-- `pnpm start` starts in production mode
 - `pnpm build` runs the linter and build
+- `pnpm start` starts the built artifacts
 - `pnpm test` runs the tests

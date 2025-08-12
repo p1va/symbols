@@ -5,7 +5,7 @@ import prettierConfig from 'eslint-config-prettier';
 export default tseslint.config(
   // Add a global ignore for the dist directory, this config file, playground, and test JS files
   {
-    ignores: ['dist', 'eslint.config.js', 'playground', 'test/**/*.js'],
+    ignores: ['dist', 'eslint.config.js', 'playground', 'test/**/*.js', '.external'],
   },
 
   // Apply the recommended and type-checked rulesets
