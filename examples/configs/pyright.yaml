@@ -5,7 +5,8 @@ lsps:
       '.py': 'python'
     workspace_files:
       - 'pyproject.toml'
-      - 'requirements.txt' 
+      - 'requirements.txt'
       - 'setup.py'
+      - 'Pipfile'
     diagnostics:
       strategy: 'pull'

@@ -19,7 +19,7 @@
         "--workspace",
         ".external/lsp-use",
         "--config",
-        ".external/lsp-use/lsps.yaml",
+        "examples/configs/vscode-csharp.yaml",
         "--loglevel",
         "debug"
       ]

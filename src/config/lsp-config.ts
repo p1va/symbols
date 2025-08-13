@@ -82,25 +82,41 @@ const DEFAULT_CONFIG: ConfigFile = {
  * Load and parse LSP configuration from YAML file
  */
 export function loadLspConfig(configPath?: string): ConfigFile {
-  // Try different config locations
+  // Try different config locations - prefer symbols.yaml/yml, but support lsps.yaml/yml for backward compatibility
   const possiblePaths = [
     configPath,
-    'lsps.yaml',
-    'lsps.yml',
+    'symbols.yaml',
+    'symbols.yml', 
+    'lsps.yaml',    // Backward compatibility
+    'lsps.yml',     // Backward compatibility
     // TODO: Fix, first should look into workspace rather than cwd
-    path.join(process.cwd(), 'lsps.yaml'),
-    path.join(process.cwd(), 'lsps.yml'),
+    path.join(process.cwd(), 'symbols.yaml'),
+    path.join(process.cwd(), 'symbols.yml'),
+    path.join(process.cwd(), 'lsps.yaml'),    // Backward compatibility
+    path.join(process.cwd(), 'lsps.yml'),     // Backward compatibility
     path.join(
       process.env.HOME || process.cwd(),
       '.config',
       'symbols',
-      'lsps.yaml'
+      'symbols.yaml'
     ),
     path.join(
       process.env.HOME || process.cwd(),
       '.config',
       'symbols',
-      'lsps.yml'
+      'symbols.yml'
+    ),
+    path.join(
+      process.env.HOME || process.cwd(),
+      '.config',
+      'symbols',
+      'lsps.yaml'  // Backward compatibility
+    ),
+    path.join(
+      process.env.HOME || process.cwd(),
+      '.config',
+      'symbols',
+      'lsps.yml'   // Backward compatibility
     ),
   ].filter((p): p is string => p !== undefined);
 
@@ -110,16 +126,58 @@ export function loadLspConfig(configPath?: string): ConfigFile {
         const yamlContent = fs.readFileSync(configFile, 'utf8');
         const parsed = yaml.load(yamlContent);
 
+
         // Validate with Zod
         const config = ConfigFileSchema.parse(parsed);
-        return config;
+        
+        // Expand environment variables in the configuration
+        return expandEnvironmentVariables(config);
       }
     } catch {
       continue;
     }
   }
 
-  return DEFAULT_CONFIG;
+  return expandEnvironmentVariables(DEFAULT_CONFIG);
+}
+
+/**
+ * Expand environment variables in configuration values
+ * Supports $VAR and ${VAR} syntax
+ */
+function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
+  return {
+    ...config,
+    lsps: Object.fromEntries(
+      Object.entries(config.lsps).map(([name, lspConfig]) => [
+        name,
+        {
+          ...lspConfig,
+          command: expandString(lspConfig.command),
+          environment: lspConfig.environment
+            ? Object.fromEntries(
+                Object.entries(lspConfig.environment).map(([key, value]) => [
+                  key,
+                  expandString(value),
+                ])
+              )
+            : undefined,
+        },
+      ])
+    ),
+  };
+}
+
+/**
+ * Expand environment variables in a string
+ * Supports both $VAR and ${VAR} syntax
+ */
+function expandString(str: string): string {
+  return str.replace(/\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (match: string, braced: string, simple: string) => {
+    const varName = braced || simple;
+    const value = process.env[varName];
+    return value !== undefined ? value : match;
+  });
 }
 
 /**

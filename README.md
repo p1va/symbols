@@ -74,7 +74,7 @@ venv = ".venv"
 
 <details>
 
-<summary><b>Install Typescript</b></summary>
+<summary><b>Install TypeScript</b></summary>
 
 ### Installation 
 
@@ -85,8 +85,114 @@ npm install -g typescript typescript-language-server
 To double-check the outcome of the installation run the command below
 
 ```sh
-typescript-language-server --version
+typescript-language-server --stdio
 ```
+
+You should see the language server start and wait for LSP messages.
+
+</details>
+
+<details>
+
+<summary><b>Install Go (gopls)</b></summary>
+
+### Installation 
+
+```sh
+go install golang.org/x/tools/gopls@latest
+```
+
+To double-check the outcome of the installation run the command below
+
+```sh
+gopls version
+```
+
+### Troubleshooting
+
+Make sure your Go environment is properly configured:
+
+```sh
+go env GOPATH GOROOT
+```
+
+If you encounter module resolution issues, ensure your project has a `go.mod` file:
+
+```sh
+cd your-project
+go mod init your-module-name
+```
+
+> ⚠️ gopls works best when run from the module root (directory containing `go.mod`). The MCP server automatically detects Go projects by looking for `go.mod` or `go.work` files.
+
+</details>
+
+<details>
+
+<summary><b>Install Rust (rust-analyzer)</b></summary>
+
+### Installation 
+
+```sh
+rustup component add rust-analyzer
+```
+
+To double-check the outcome of the installation run the command below
+
+```sh
+rust-analyzer --version
+```
+
+### Troubleshooting
+
+If `rust-analyzer` is not in your PATH after installation, you may need to add the Rust toolchain to your PATH:
+
+```sh
+source ~/.cargo/env
+```
+
+Ensure your Rust project has a `Cargo.toml` file:
+
+```sh
+cd your-project
+cargo init  # or cargo new project-name
+```
+
+> ⚠️ rust-analyzer works best with projects that have proper `Cargo.toml` files. The MCP server automatically detects Rust projects by looking for `Cargo.toml` or `Cargo.lock` files.
+
+</details>
+
+<details>
+
+<summary><b>Install C# (Microsoft.CodeAnalysis.LanguageServer)</b></summary>
+
+### Installation 
+
+Download the latest release from the [Roslyn releases page](https://github.com/dotnet/roslyn/releases) and extract it to a directory like `/tmp/lsp/`.
+
+To double-check the outcome of the installation run the command below
+
+```sh
+/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --version
+```
+
+### Troubleshooting
+
+Make sure your C# project has proper solution or project files:
+
+```sh
+dotnet new console  # Create a new console project
+# or
+dotnet new sln      # Create a solution file
+```
+
+Ensure .NET SDK is installed:
+
+```sh
+dotnet --version
+```
+
+> ⚠️ The C# language server requires .NET projects with `.sln` or `.csproj` files. The MCP server automatically detects C# projects by looking for these files.
 
 </details>
 

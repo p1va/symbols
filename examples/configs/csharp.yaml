@@ -9,7 +9,3 @@ lsps:
       - '*.csproj'
     diagnostics:
       strategy: 'pull'
-      wait_timeout_ms: 5000
-    symbols:
-      max_depth: null
-      kinds: []        # All symbol kinds

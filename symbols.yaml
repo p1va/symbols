@@ -38,7 +38,7 @@ lsps:
       GOCACHE: '/tmp/go-build'
       GOMODCACHE: '/tmp/go/pkg/mod'
 
-  csharp:
+  see-sharp:
     command: "/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --extensionLogDirectory=/tmp/lsp-logs --stdio"
     workspace_loader: 'csharp'
     extensions:
@@ -48,3 +48,6 @@ lsps:
       - '*.csproj'
     diagnostics:
       strategy: 'pull'
+    symbols:
+      max_depth: null
+      kinds: []
