@@ -6,7 +6,8 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import * as fs from 'fs';
 import * as path from 'path';
-import { listAvailableLsps } from '../config/lsp-config.js';
+import * as yaml from 'js-yaml';
+import { listAvailableLsps, loadLspConfig } from '../config/lsp-config.js';
 
 export interface CliArgs {
   workspace?: string;
@@ -14,6 +15,7 @@ export interface CliArgs {
   loglevel?: string;
   configPath?: string;
   help?: boolean;
+  showConfig?: boolean;
 }
 
 /**
@@ -73,10 +75,16 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
       describe: 'Path to configuration file',
       requiresArg: true
     })
+    .option('show-config', {
+      type: 'boolean',
+      describe: 'Output the active configuration in YAML format and exit',
+    })
     .env('SYMBOLS') // Support SYMBOLS_WORKSPACE, SYMBOLS_LSP, etc.
     .example('$0 --workspace /path/to/project', 'Use specific workspace')
     .example('$0 --lsp pyright --workspace /path/to/python', 'Use Python LSP')
     .example('$0 --loglevel debug', 'Enable debug logging')
+    .example('$0 --show-config', 'Show active configuration')
+    .example('$0 --show-config --config custom.yaml', 'Show config from custom file')
     .help()
     .alias('help', 'h')
     .strict()
@@ -141,7 +149,8 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
 
   // Build result object, only including defined values
   const result: CliArgs = {
-    help: Boolean(argv.help)
+    help: Boolean(argv.help),
+    showConfig: Boolean(argv['show-config'])
   };
   
   // yargs has already validated these exist if provided, so we can trust them
@@ -159,6 +168,34 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
 export function showHelp(): void {
   // yargs handles help automatically, but we keep this for compatibility
   yargs(hideBin(process.argv)).showHelp();
+}
+
+/**
+ * Show active configuration in YAML format
+ */
+export function showConfig(configPath?: string): void {
+  try {
+    const config = loadLspConfig(configPath);
+    const yamlOutput = yaml.dump(config, {
+      indent: 2,
+      lineWidth: 120,
+      noRefs: true,
+      sortKeys: true
+    });
+    
+    console.log('# Active Configuration');
+    if (configPath) {
+      console.log(`# Config file: ${configPath}`);
+    } else {
+      console.log('# Using default configuration');
+    }
+    console.log('# Use --config <file> to specify a custom configuration file');
+    console.log();
+    console.log(yamlOutput);
+  } catch (error) {
+    console.error('Error loading configuration:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 }
 
 /**

@@ -2,7 +2,7 @@
 
 # symbols
 
-An MCP server for searching, reading, inspecting symbols in a codebase
+An MCP server for searching, reading, inspecting codebase symbols
 
 ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
@@ -14,30 +14,86 @@ An MCP server for searching, reading, inspecting symbols in a codebase
 
 ## Introduction
 
-By giving Coding Agents a way to deal in code symbols like we do in IDEs the codebase becomes more structured, easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent use of the model's context.
+Powered by a Language Server of choice, this MCP server offers tools to enable Coding Agents to efficently discover and navigate the codebase and its dependencies.
 
-## Available Tools
+The result is a shortened feedback loop, codebase-aware generation and efficent use of the model's context.
+
+## MCP Tools
 
 The MCP server provides the following tools:
 
 - **`search`**: searches symbols across the codebase
-- **`read`**: reads symbols in a given file with different level of details
-- **`inspect`**: inspects a given symbol and returns info about it, its definition and implementation
-- **`completion`**: suggests a list of completions
-- **`references`**: finds references of a given symbol across the codebase
-- **`rename`**: renames a symbol across the codebase
-- **`diagnostics`**: retrieves active diagnostics in a given document
-- **`logs`**: returns logs from the underlying LSP
+- **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `full`) and depth
+- **`inspect`**: inspects a code symbol and returns its documentation, its definition and implementation
+- **`completion`**: suggests a list of contextual completions at a given location
+- **`references`**: finds references for a code symbol across the codebase
+- **`rename`**: renames a code symbol across the codebase
+- **`diagnostics`**: retrieves active diagnostics in a file
+- **`logs`**: retrieves logs from the underlying Language Server
 
 ## Installation
+
+### MCP Server
 
 ```bash
 npx -y github:p1va/symbols
 ```
 
-The tool spawn a Language Server process and then communicates over stdio with it according to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). In order for the tool to work the Language Server for the language of choice needs to also be installed.
+### Language Servers
 
-## Coding Agents
+Depending on the configuration this server will spawn an [LSP](https://microsoft.github.io/language-server-protocol/)-compatible Language Server that also needs installing.
+
+<details>
+
+<summary><b>Install Pyright</b></summary>
+
+### Installation 
+
+```sh
+npm install -g pyright
+```
+
+To double-check the outcome of the installation run the command below
+
+```sh
+pyright-langserver --stdio
+```
+
+### Troubleshooting
+
+In case of virtual environment not being detected add the following to your `pyproject.toml` to correctly point to it.
+```toml
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+```
+
+> ⚠️ A sympthom of Pyright not being properly configured is the `diagnostics` tool only reporting module import errors even when none appear in the IDE.
+
+</details>
+
+<details>
+
+<summary><b>Install Typescript</b></summary>
+
+### Installation 
+
+```sh
+npm install -g typescript typescript-language-server
+```
+
+To double-check the outcome of the installation run the command below
+
+```sh
+typescript-language-server --version
+```
+
+</details>
+
+
+## Configuration
+
+Instructions on how to configure the server and using it with coding agents
 
 <details>
 

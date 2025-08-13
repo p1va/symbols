@@ -1,7 +1,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import * as path from 'path';
-import { parseCliArgs, showHelp, resolveConfig } from '../utils/cli.js';
+import { parseCliArgs, showHelp, showConfig, resolveConfig } from '../utils/cli.js';
 
 import { createLspClient, initializeLspClient } from '../lsp-client.js';
 import { openFileWithStrategy } from '../lsp/fileLifecycle/index.js';
@@ -63,6 +63,12 @@ async function initializeLsp(): Promise<void> {
     // Handle help request
     if (cliArgs.help) {
       showHelp();
+      process.exit(0);
+    }
+    
+    // Handle show config request
+    if (cliArgs.showConfig) {
+      showConfig(cliArgs.configPath);
       process.exit(0);
     }
     
