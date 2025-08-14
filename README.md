@@ -14,9 +14,7 @@ An MCP server for searching, reading, inspecting codebase symbols
 
 ## Introduction
 
-Powered by a Language Server of choice, this MCP server offers tools to enable Coding Agents to efficently discover and navigate the codebase and its dependencies.
-
-The result is a shortened feedback loop, codebase-aware generation and efficent use of the model's context.
+Powered by a Language Server of choice, this MCP server offers tools that enable Coding Agents to efficently discover and navigate the codebase and its dependencies in a way that is faster and an efficient use of the model's context.
 
 ## MCP Tools
 
