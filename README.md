@@ -45,7 +45,7 @@ Depending on the configuration this server will spawn an [LSP](https://microsoft
 
 <details>
 
-<summary><b>Install Pyright</b></summary>
+<summary><b>Python - Pyright</b></summary>
 
 ### Installation 
 
@@ -74,7 +74,7 @@ venv = ".venv"
 
 <details>
 
-<summary><b>Install TypeScript</b></summary>
+<summary><b>TypeScript - TS Language Server</b></summary>
 
 ### Installation 
 
@@ -94,7 +94,7 @@ You should see the language server start and wait for LSP messages.
 
 <details>
 
-<summary><b>Install Go (gopls)</b></summary>
+<summary><b>Go - Gopls</b></summary>
 
 ### Installation 
 
@@ -129,7 +129,7 @@ go mod init your-module-name
 
 <details>
 
-<summary><b>Install Rust (rust-analyzer)</b></summary>
+<summary><b>Rust - rust-analyzer</b></summary>
 
 ### Installation 
 
@@ -164,7 +164,7 @@ cargo init  # or cargo new project-name
 
 <details>
 
-<summary><b>Install C# (Microsoft.CodeAnalysis.LanguageServer)</b></summary>
+<summary><b>C# - Roslyn</b></summary>
 
 ### Installation
 
@@ -213,11 +213,11 @@ Pick the platform identifier matching your machine between these
 - `osx-arm64`
 - `neutral`
 
-Restore the language server to the `ServerPath`
+Then restore to download the language server to the `ServerPath`
 
 ```sh
 dotnet restore ServerDownload.csproj \
-  /p:Platform=linux-x64 \
+  /p:Platform=YOUR-PLATFORM-ID \
   /p:ServerPath=$HOME/.csharp-lsp/
 ```
 
