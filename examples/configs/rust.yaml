@@ -7,5 +7,5 @@ lsps:
       - 'Cargo.toml'
       - 'Cargo.lock'
     diagnostics:
-      strategy: 'push'
+      strategy: 'pull'
       wait_timeout_ms: 2000
