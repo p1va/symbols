@@ -3,26 +3,6 @@
     "symbols": {
       "command": "symbols",
       "args": []
-    },
-    "pyright-symbols": {
-      "command": "symbols",
-      "args": [
-        "--workspace",
-        ".external/fastapi/",
-        "--loglevel",
-        "debug"
-      ]
-    },
-    "csharp-symbols": {
-      "command": "symbols",
-      "args": [
-        "--workspace",
-        ".external/lsp-use",
-        "--config",
-        "examples/configs/vscode-csharp.yaml",
-        "--loglevel",
-        "debug"
-      ]
     }
   }
 }

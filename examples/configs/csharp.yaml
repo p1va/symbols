@@ -1,6 +1,10 @@
 lsps:
   csharp:
-    command: '/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --extensionLogDirectory=/tmp/lsp-logs --stdio'
+    command: >
+      $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer
+        --logLevel=Information
+        --extensionLogDirectory=/tmp/csharp-lsp-logs
+        --stdio
     workspace_loader: 'csharp'
     extensions:
       '.cs': 'csharp'

@@ -166,33 +166,66 @@ cargo init  # or cargo new project-name
 
 <summary><b>Install C# (Microsoft.CodeAnalysis.LanguageServer)</b></summary>
 
-### Installation 
+### Installation
 
-Download the latest release from the [Roslyn releases page](https://github.com/dotnet/roslyn/releases) and extract it to a directory like `/tmp/lsp/`.
+A self-contained executable of the Csharp Language Server is distributed over nuget.
 
-To double-check the outcome of the installation run the command below
+To download it, create a temporary project file named `ServerDownload.csproj` with the below content
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <PackageNameBase>Microsoft.CodeAnalysis.LanguageServer</PackageNameBase>
+        <PackageVersion>5.0.0-1.25353.13</PackageVersion>
+        <RestorePackagesPath  Condition=" '$(RestorePackagesPath)' == '' ">/tmp/lsp-download</RestorePackagesPath>
+        <ServerPath Condition=" '$(DownloadPath)' == '' ">./LspServer/</ServerPath>
+        <TargetFramework>net9.0</TargetFramework>
+        <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+        <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+        <RestoreSources>
+          https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json
+        </RestoreSources>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageDownload Include="$(PackageNameBase).$(Platform)" version="[$(PackageVersion)]" />
+    </ItemGroup>
+    <Target Name="SimplifyPath" AfterTargets="Restore">
+      <PropertyGroup>
+        <PackageIdFolderName>$(PackageNameBase.ToLower()).$(Platform.ToLower())</PackageIdFolderName>
+        <PackageContentPath>$(RestorePackagesPath)/$(PackageIdFolderName)/$(PackageVersion)/content/LanguageServer/$(Platform)/</PackageContentPath>
+      </PropertyGroup>
+        <ItemGroup>
+          <ServerFiles Include="$(PackageContentPath)**/*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ServerFiles)" DestinationFolder="$(ServerPath)%(RecursiveDir)" />
+        <RemoveDir Directories="$(RestorePackagesPath)" />
+    </Target>
+</Project>
+```
+Pick the platform identifier matching your machine between these 
+- `win-x64`
+- `win-arm64`
+- `linux-x64`
+- `linux-arm64`
+- `linux-musl-x64`
+- `linux-musl-arm64`
+- `osx-x64`
+- `osx-arm64`
+- `neutral`
+
+Restore the language server to the `ServerPath`
 
 ```sh
-/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --version
+dotnet restore ServerDownload.csproj \
+  /p:Platform=linux-x64 \
+  /p:ServerPath=$HOME/.csharp-lsp/
 ```
 
-### Troubleshooting
-
-Make sure your C# project has proper solution or project files:
+After that double check by running
 
 ```sh
-dotnet new console  # Create a new console project
-# or
-dotnet new sln      # Create a solution file
+$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 ```
-
-Ensure .NET SDK is installed:
-
-```sh
-dotnet --version
-```
-
-> ⚠️ The C# language server requires .NET projects with `.sln` or `.csproj` files. The MCP server automatically detects C# projects by looking for these files.
 
 </details>
 
