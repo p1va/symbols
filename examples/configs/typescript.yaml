@@ -1,6 +1,6 @@
 lsps:
   typescript:
-    command: 'typescript-language-server --stdio'
+    command: typescript-language-server --stdio
     extensions:
       '.js': 'javascript'
       '.mjs': 'javascript'

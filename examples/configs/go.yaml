@@ -1,24 +1,15 @@
-# Go Language Server Configuration (gopls)
-# Use this configuration for Go projects  
-# Requires: go install golang.org/x/tools/gopls@latest
-
 lsps:
   go:
-    command: 'gopls'
+    command: gopls
     extensions:
       '.go': 'go'
     workspace_files:
       - 'go.mod'
       - 'go.work'
     diagnostics:
-      strategy: 'pull'  # We request diagnostics from gopls
+      strategy: 'push'
       wait_timeout_ms: 2000
     environment:
-      # Using $HOME makes the configuration portable across different users
-      # Adjust these paths based on your Go installation
       GOPATH: '$HOME/go'
       GOCACHE: '$HOME/.cache/go-build'
       GOMODCACHE: '$HOME/go/pkg/mod'
-    symbols:
-      max_depth: null     # No limit on symbol depth
-      kinds: []           # Include all symbol kinds

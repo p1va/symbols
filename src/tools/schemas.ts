@@ -20,9 +20,25 @@ export const symbolPositionSchema = {
 // Schema that transforms to OneBasedPosition
 export const symbolPositionWithTransformSchema = z
   .object({
-    file: z.string(),
-    line: z.number().int().min(1),
-    character: z.number().int().min(1),
+    file: z
+      .string()
+      .describe(
+        'File path (either absolute or relative to the working directory)'
+      ),
+    line: z
+      .number()
+      .int()
+      .min(1)
+      .describe(
+        'Line number (1-based) at which the symbol of interest is located'
+      ),
+    character: z
+      .number()
+      .int()
+      .min(1)
+      .describe(
+        'Character number (1-based) at which the symbol of interest is located'
+      ),
   })
   .transform(({ file, line, character }) => ({
     file,
@@ -30,8 +46,20 @@ export const symbolPositionWithTransformSchema = z
   }));
 
 export const fileSchema = {
-  file: z.string(),
-  maxDepth: z.number().int().min(0).optional().default(99),
+  file: z
+    .string()
+    .describe(
+      'File path (either absolute or relative to the working directory)'
+    ),
+  maxDepth: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .default(99)
+    .describe(
+      'Filters output symbols based on their depth in the syntax tree. e.g. 0 = only top-level symbols, 1 = top-level and first-level children, etc.'
+    ),
   previewMode: z.enum(['none', 'signature', 'full']).optional().default('none'),
 } as const;
 

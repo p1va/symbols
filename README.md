@@ -61,14 +61,15 @@ pyright-langserver --stdio
 
 ### Troubleshooting
 
-In case of virtual environment not being detected add the following to your `pyproject.toml` to correctly point to it.
+A sympthom of Pyright not being properly configured is the `diagnostics` tool only reporting module import errors even when none appear in the IDE.
+
+You can update your `pyproject.toml` to correctly point it to the virtual environment location.
+
 ```toml
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
 ```
-
-> ⚠️ A sympthom of Pyright not being properly configured is the `diagnostics` tool only reporting module import errors even when none appear in the IDE.
 
 </details>
 
@@ -92,6 +93,75 @@ You should see the language server start and wait for LSP messages.
 
 </details>
 
+
+<details>
+
+<summary><b>C# - Roslyn</b></summary>
+
+### Installation
+
+The official Csharp Language Server is distributed over nuget as a self-contained executable.
+
+To download it via the `dotnet` command, create a temporary project file named `ServerDownload.csproj` with the following content:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageNameBase>Microsoft.CodeAnalysis.LanguageServer</PackageNameBase>
+    <PackageVersion>5.0.0-1.25353.13</PackageVersion>
+    <RestorePackagesPath  Condition=" '$(RestorePackagesPath)' == '' ">/tmp/lsp-download</RestorePackagesPath>
+    <ServerPath Condition=" '$(DownloadPath)' == '' ">./LspServer/</ServerPath>
+    <TargetFramework>net9.0</TargetFramework>
+    <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <RestoreSources>
+      https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json
+    </RestoreSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageDownload Include="$(PackageNameBase).$(Platform)" version="[$(PackageVersion)]" />
+  </ItemGroup>
+  <Target Name="SimplifyPath" AfterTargets="Restore">
+    <PropertyGroup>
+      <PackageIdFolderName>$(PackageNameBase.ToLower()).$(Platform.ToLower())</PackageIdFolderName>
+      <PackageContentPath>$(RestorePackagesPath)/$(PackageIdFolderName)/$(PackageVersion)/content/LanguageServer/$(Platform)/</PackageContentPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <ServerFiles Include="$(PackageContentPath)**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ServerFiles)" DestinationFolder="$(ServerPath)%(RecursiveDir)" />
+    <RemoveDir Directories="$(RestorePackagesPath)" />
+  </Target>
+</Project>
+```
+
+Then pick the platform identifier matching your machine
+- `win-x64`
+- `win-arm64`
+- `linux-x64`
+- `linux-arm64`
+- `linux-musl-x64`
+- `linux-musl-arm64`
+- `osx-x64`
+- `osx-arm64`
+- `neutral`
+
+Finally restore the temporary project to download the Language Server to the `ServerPath` location
+
+```sh
+dotnet restore ServerDownload.csproj \
+  /p:Platform=YOUR-PLATFORM-ID \
+  /p:ServerPath=$HOME/.csharp-lsp/
+```
+
+To double-check the outcome of the installation run the command below
+
+```sh
+$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
+```
+
+</details>
+
 <details>
 
 <summary><b>Go - Gopls</b></summary>
@@ -107,23 +177,6 @@ To double-check the outcome of the installation run the command below
 ```sh
 gopls version
 ```
-
-### Troubleshooting
-
-Make sure your Go environment is properly configured:
-
-```sh
-go env GOPATH GOROOT
-```
-
-If you encounter module resolution issues, ensure your project has a `go.mod` file:
-
-```sh
-cd your-project
-go mod init your-module-name
-```
-
-> ⚠️ gopls works best when run from the module root (directory containing `go.mod`). The MCP server automatically detects Go projects by looking for `go.mod` or `go.work` files.
 
 </details>
 
@@ -142,91 +195,6 @@ To double-check the outcome of the installation run the command below
 ```sh
 rust-analyzer --version
 ```
-
-### Troubleshooting
-
-If `rust-analyzer` is not in your PATH after installation, you may need to add the Rust toolchain to your PATH:
-
-```sh
-source ~/.cargo/env
-```
-
-Ensure your Rust project has a `Cargo.toml` file:
-
-```sh
-cd your-project
-cargo init  # or cargo new project-name
-```
-
-> ⚠️ rust-analyzer works best with projects that have proper `Cargo.toml` files. The MCP server automatically detects Rust projects by looking for `Cargo.toml` or `Cargo.lock` files.
-
-</details>
-
-<details>
-
-<summary><b>C# - Roslyn</b></summary>
-
-### Installation
-
-A self-contained executable of the Csharp Language Server is distributed over nuget.
-
-To download it, create a temporary project file named `ServerDownload.csproj` with the below content
-
-```xml
-<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <PackageNameBase>Microsoft.CodeAnalysis.LanguageServer</PackageNameBase>
-        <PackageVersion>5.0.0-1.25353.13</PackageVersion>
-        <RestorePackagesPath  Condition=" '$(RestorePackagesPath)' == '' ">/tmp/lsp-download</RestorePackagesPath>
-        <ServerPath Condition=" '$(DownloadPath)' == '' ">./LspServer/</ServerPath>
-        <TargetFramework>net9.0</TargetFramework>
-        <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
-        <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
-        <RestoreSources>
-          https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json
-        </RestoreSources>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageDownload Include="$(PackageNameBase).$(Platform)" version="[$(PackageVersion)]" />
-    </ItemGroup>
-    <Target Name="SimplifyPath" AfterTargets="Restore">
-      <PropertyGroup>
-        <PackageIdFolderName>$(PackageNameBase.ToLower()).$(Platform.ToLower())</PackageIdFolderName>
-        <PackageContentPath>$(RestorePackagesPath)/$(PackageIdFolderName)/$(PackageVersion)/content/LanguageServer/$(Platform)/</PackageContentPath>
-      </PropertyGroup>
-        <ItemGroup>
-          <ServerFiles Include="$(PackageContentPath)**/*" />
-        </ItemGroup>
-        <Copy SourceFiles="@(ServerFiles)" DestinationFolder="$(ServerPath)%(RecursiveDir)" />
-        <RemoveDir Directories="$(RestorePackagesPath)" />
-    </Target>
-</Project>
-```
-Pick the platform identifier matching your machine between these 
-- `win-x64`
-- `win-arm64`
-- `linux-x64`
-- `linux-arm64`
-- `linux-musl-x64`
-- `linux-musl-arm64`
-- `osx-x64`
-- `osx-arm64`
-- `neutral`
-
-Then restore to download the language server to the `ServerPath`
-
-```sh
-dotnet restore ServerDownload.csproj \
-  /p:Platform=YOUR-PLATFORM-ID \
-  /p:ServerPath=$HOME/.csharp-lsp/
-```
-
-After that double check by running
-
-```sh
-$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
-```
-
 </details>
 
 
