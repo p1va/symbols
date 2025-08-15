@@ -7,6 +7,7 @@ import { hideBin } from 'yargs/helpers';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import logger from './logger.js';
 import { listAvailableLsps, loadLspConfig } from '../config/lsp-config.js';
 
 export interface CliArgs {
@@ -22,29 +23,13 @@ export interface CliArgs {
  * Parse command-line arguments using yargs
  */
 export function parseCliArgs(args: string[] = process.argv): CliArgs {
-  // Log CLI arguments to the session log file (same as main logger)
+  // Log CLI arguments using unified logger
   // IMPORTANT: No console output here - MCP uses stdin/stdout for communication
-  try {
-    if (!fs.existsSync('logs')) {
-      fs.mkdirSync('logs', { recursive: true });
-    }
-    
-    // Use the same timestamped session file pattern as the main logger
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const sessionLogFile = path.join('logs', `session-${timestamp}.log`);
-    
-    const debugInfo = {
-      timestamp: new Date().toISOString(),
-      rawArgs: args,
-      cwd: process.cwd(),
-      pid: process.pid
-    };
-    
-    const logEntry = `[${debugInfo.timestamp}] [CLI] Raw arguments received: ${JSON.stringify(debugInfo, null, 2)}\n`;
-    fs.appendFileSync(sessionLogFile, logEntry);
-  } catch {
-    // Ignore file logging errors - no console fallback to avoid disrupting MCP
-  }
+  logger.info('[CLI] Raw arguments received', {
+    rawArgs: args,
+    cwd: process.cwd(),
+    pid: process.pid
+  });
 
   const argv = yargs(hideBin(args))
     .scriptName('symbols')

@@ -29,6 +29,7 @@
     "@modelcontextprotocol/sdk": "^1.17.0",
     "@types/js-yaml": "^4.0.9",
     "chalk": "^5.4.1",
+    "env-paths": "^3.0.0",
     "glob": "^11.0.3",
     "js-yaml": "^4.1.0",
     "typescript-eslint-language-service": "^5.0.5",

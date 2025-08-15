@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
+import envPaths from 'env-paths';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -82,9 +83,13 @@ const DEFAULT_CONFIG: ConfigFile = {
  * Load and parse LSP configuration from YAML file
  */
 export function loadLspConfig(configPath?: string): ConfigFile {
-  // Try different config locations - prefer symbols.yaml/yml, but support lsps.yaml/yml for backward compatibility
+  // Get OS-specific config directory using env-paths
+  const paths = envPaths('symbols');
+  
+  // Try different config locations with priority: CLI > repo > home
   const possiblePaths = [
-    configPath,
+    configPath,  // P1: CLI argument (highest priority)
+    // P2: Repo folder YAML files
     'symbols.yaml',
     'symbols.yml', 
     'lsps.yaml',    // Backward compatibility
@@ -94,30 +99,11 @@ export function loadLspConfig(configPath?: string): ConfigFile {
     path.join(process.cwd(), 'symbols.yml'),
     path.join(process.cwd(), 'lsps.yaml'),    // Backward compatibility
     path.join(process.cwd(), 'lsps.yml'),     // Backward compatibility
-    path.join(
-      process.env.HOME || process.cwd(),
-      '.config',
-      'symbols',
-      'symbols.yaml'
-    ),
-    path.join(
-      process.env.HOME || process.cwd(),
-      '.config',
-      'symbols',
-      'symbols.yml'
-    ),
-    path.join(
-      process.env.HOME || process.cwd(),
-      '.config',
-      'symbols',
-      'lsps.yaml'  // Backward compatibility
-    ),
-    path.join(
-      process.env.HOME || process.cwd(),
-      '.config',
-      'symbols',
-      'lsps.yml'   // Backward compatibility
-    ),
+    // P3: OS-specific config directory (lowest priority)
+    path.join(paths.config, 'symbols.yaml'),
+    path.join(paths.config, 'symbols.yml'),
+    path.join(paths.config, 'lsps.yaml'),  // Backward compatibility
+    path.join(paths.config, 'lsps.yml'),   // Backward compatibility
   ].filter((p): p is string => p !== undefined);
 
   for (const configFile of possiblePaths) {

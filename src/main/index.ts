@@ -24,7 +24,7 @@ import {
 } from '../types.js';
 import { getLspConfig, autoDetectLsp, listAvailableLsps, ParsedLspConfig } from '../config/lsp-config.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
-import logger from '../utils/logger.js';
+import logger, { upgradeToContextualLogger } from '../utils/logger.js';
 import { createServer } from './createServer.js';
 import { setupShutdown } from './shutdown.js';
 
@@ -109,6 +109,10 @@ async function initializeLsp(): Promise<void> {
       const source = cliArgs.lsp ? 'CLI argument' : 'environment variable';
       logger.info(`Using LSP from ${source}`, { lspName });
     }
+
+    // Switch to contextual logger now that we know workspace and LSP
+    logger.info('Upgrading to contextual logging with workspace + LSP context');
+    upgradeToContextualLogger(workspacePath, lspName);
 
     logger.info('Initializing LSP client', {
       lspName,
