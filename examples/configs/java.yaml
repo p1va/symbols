@@ -1,0 +1,18 @@
+lsps:
+  java:
+    command: >
+      $HOME/Downloads/jdtls/bin/jdtls
+        -configuration $HOME/.cache/jdtls/config
+        -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
+        --jvm-arg=-Dlog.protocol=true
+        --jvm-arg=-Dlog.level=ALL
+    extensions:
+      '.java': 'java'
+    workspace_files:
+      - 'build.gradle'
+      - 'gradlew'
+    diagnostics:
+      strategy: 'push'
+      wait_timeout_ms: 2000
+    environment:
+      JAVA_HOME: '$JAVA_HOME'

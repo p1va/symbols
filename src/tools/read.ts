@@ -149,7 +149,9 @@ async function formatReadResults(
   // Add summary block with filtered count
   const depthInfo =
     maxDepth > 0 ? ` (max depth ${maxDepth})` : ' (root level only)';
-  sections.push(`Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}${depthInfo}\nSymbol breakdown: ${typeBreakdown}`);
+  sections.push(
+    `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}${depthInfo}\nSymbol breakdown: ${typeBreakdown}`
+  );
 
   // Group by root-level containers (depth 0 symbols)
   type EnrichedSymbolWithDepth = {

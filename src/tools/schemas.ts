@@ -6,15 +6,29 @@ import { z } from 'zod';
 import { createOneBasedPosition } from '../types/position.js';
 import type { OneBasedPosition } from '../types/position.js';
 
-// TODO: Apply descrition everywhere
-
 // Note: OneBasedPosition transforms are defined inline in the schemas below
 // to avoid unused variable warnings while keeping the patterns clear
 
 export const symbolPositionSchema = {
-  file: z.string(),
-  line: z.number().int().min(1),
-  character: z.number().int().min(1),
+  file: z
+    .string()
+    .describe(
+      'File path (either absolute or relative to the working directory)'
+    ),
+  line: z
+    .number()
+    .int()
+    .min(1)
+    .describe(
+      'Line number (1-based) at which the symbol of interest is located'
+    ),
+  character: z
+    .number()
+    .int()
+    .min(1)
+    .describe(
+      'Character number (1-based) at which the symbol of interest is located'
+    ),
 } as const;
 
 // Schema that transforms to OneBasedPosition
@@ -60,27 +74,63 @@ export const fileSchema = {
     .describe(
       'Filters output symbols based on their depth in the syntax tree. e.g. 0 = only top-level symbols, 1 = top-level and first-level children, etc.'
     ),
-  previewMode: z.enum(['none', 'signature', 'full']).optional().default('none'),
+  previewMode: z
+    .enum(['none', 'signature', 'full'])
+    .optional()
+    .default('none')
+    .describe(
+      'Preview mode for symbols: none = names only, signature = names with types, full = complete implementations'
+    ),
 } as const;
 
 export const searchSchema = {
-  query: z.string(),
+  query: z.string().describe('Search query to find symbols by name or pattern'),
 } as const;
 
 export const renameSchema = {
-  file: z.string(),
-  line: z.number().int().min(1),
-  character: z.number().int().min(1),
-  newName: z.string(),
+  file: z
+    .string()
+    .describe(
+      'File path (either absolute or relative to the working directory)'
+    ),
+  line: z
+    .number()
+    .int()
+    .min(1)
+    .describe('Line number (1-based) at which the symbol to rename is located'),
+  character: z
+    .number()
+    .int()
+    .min(1)
+    .describe(
+      'Character number (1-based) at which the symbol to rename is located'
+    ),
+  newName: z.string().describe('New name for the symbol'),
 } as const;
 
 // Schema that transforms to OneBasedPosition for rename
 export const renameWithTransformSchema = z
   .object({
-    file: z.string(),
-    line: z.number().int().min(1),
-    character: z.number().int().min(1),
-    newName: z.string(),
+    file: z
+      .string()
+      .describe(
+        'File path (either absolute or relative to the working directory)'
+      ),
+    line: z
+      .number()
+      .int()
+      .min(1)
+      .describe(
+        'Line number (1-based) at which the symbol to rename is located'
+      ),
+    character: z
+      .number()
+      .int()
+      .min(1)
+      .describe(
+        'Character number (1-based) at which the symbol to rename is located'
+      ),
+    newName: z.string().describe('New name for the symbol'),
   })
   .transform(({ file, line, character, newName }) => ({
     file,

@@ -27,7 +27,7 @@ lsps:
   <lsp-name>:
     command: '<command-to-start-lsp-server>'
     extensions:
-      '<file-extension>': '<language-id>' 
+      '<file-extension>': '<language-id>'
     workspace_files:
       - '<project-files-that-indicate-this-language>'
     diagnostics:
@@ -35,10 +35,10 @@ lsps:
       wait_timeout_ms: <timeout-in-milliseconds> # only applies to push diagnostics
     symbols:
       max_depth: <number-or-null>
-      kinds: []  # Empty array means all symbol kinds
-    environment:  # Optional
-      <ENV_VAR>: '<value>'  # Supports $VAR and ${VAR} expansion
-    workspace_loader: '<custom-loader>'  # Optional
+      kinds: [] # Empty array means all symbol kinds
+    environment: # Optional
+      <ENV_VAR>: '<value>' # Supports $VAR and ${VAR} expansion
+    workspace_loader: '<custom-loader>' # Optional
 ```
 
 The list of allowed language id can be found [here](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#:~:text=use%20those%20ids.-,Language,-Identifier)
@@ -52,18 +52,20 @@ lsps:
   go:
     command: 'gopls'
     environment:
-      GOPATH: '$HOME/go'              # Expands to /home/username/go
-      GOCACHE: '${HOME}/.cache/go'    # Expands to /home/username/.cache/go
-      CUSTOM_PATH: '$HOME/custom/${USER}/path'  # Mixed expansion
+      GOPATH: '$HOME/go' # Expands to /home/username/go
+      GOCACHE: '${HOME}/.cache/go' # Expands to /home/username/.cache/go
+      CUSTOM_PATH: '$HOME/custom/${USER}/path' # Mixed expansion
 ```
 
 **Supported locations:**
+
 - `command` field - for executable paths that include environment variables
 - `environment` section - for setting environment variables passed to the LSP server
 
 **Examples:**
+
 - `$HOME` → `/home/username`
-- `${USER}` → `username` 
+- `${USER}` → `username`
 - `$HOME/.cache` → `/home/username/.cache`
 - If a variable doesn't exist, the original text is kept unchanged
 

@@ -14,7 +14,7 @@ class TypeScriptTestSuite extends LanguageTestSuite {
         // TypeScript-specific tests
         test('Should detect TypeScript type errors', async () => {
           const result = await client.getDiagnostics(this.getMainFilePath());
-          
+
           assertDiagnostics(result, {
             hasErrors: true,
             containsText: ['someUndefinedVariable'], // Our intentional error
@@ -27,7 +27,7 @@ class TypeScriptTestSuite extends LanguageTestSuite {
             line: 7, // export function main():
             character: 17, // on "main"
           });
-          
+
           assertSymbolInspection(result, {
             symbolName: 'main',
             symbolType: 'function',
@@ -41,7 +41,7 @@ class TypeScriptTestSuite extends LanguageTestSuite {
             line: 25, // export interface TestConfig
             character: 17, // on "TestConfig"
           });
-          
+
           assertSymbolInspection(result, {
             symbolName: 'TestConfig',
             symbolType: 'interface',
@@ -54,7 +54,7 @@ class TypeScriptTestSuite extends LanguageTestSuite {
             line: 36, // export class TestService
             character: 14, // on "TestService"
           });
-          
+
           assertSymbolInspection(result, {
             symbolName: 'TestService',
             symbolType: 'class',
@@ -63,21 +63,29 @@ class TypeScriptTestSuite extends LanguageTestSuite {
 
         test('Should find TypeScript symbols with different preview modes', async () => {
           // Test with signature mode
-          const sigResult = await client.readSymbols(this.getMainFilePath(), 99, 'signature');
+          const sigResult = await client.readSymbols(
+            this.getMainFilePath(),
+            99,
+            'signature'
+          );
           this.assertToolResult(sigResult);
           this.assertSymbolExists(sigResult, 'main');
           this.assertSymbolExists(sigResult, 'TestConfig');
           this.assertSymbolExists(sigResult, 'TestService');
 
-          // Test with full mode  
-          const fullResult = await client.readSymbols(this.getMainFilePath(), 99, 'full');
+          // Test with full mode
+          const fullResult = await client.readSymbols(
+            this.getMainFilePath(),
+            99,
+            'full'
+          );
           this.assertToolResult(fullResult);
           this.assertSymbolExists(fullResult, 'main');
         });
 
         test('Should search for TypeScript symbols', async () => {
           const result = await client.searchSymbols('TestService');
-          
+
           this.assertToolResult(result);
           this.assertSymbolExists(result, 'TestService');
         });

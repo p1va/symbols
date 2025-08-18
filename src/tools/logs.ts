@@ -12,18 +12,25 @@ import { getLogLevelName } from '../utils/logLevel.js';
  */
 function getLogLevelSymbol(type: number): string {
   switch (type) {
-    case 1: return '✘'; // Error
-    case 2: return '⚠'; // Warning  
-    case 3: return 'ℹ'; // Info
-    case 4: return '•'; // Log
-    default: return '?'; // Unknown
+    case 1:
+      return '✘'; // Error
+    case 2:
+      return '⚠'; // Warning
+    case 3:
+      return 'ℹ'; // Info
+    case 4:
+      return '•'; // Log
+    default:
+      return '?'; // Unknown
   }
 }
 
 /**
  * Format log messages into a compact, scannable format
  */
-function formatLogMessages(messages: Array<{ type: number; message: string }>): string {
+function formatLogMessages(
+  messages: Array<{ type: number; message: string }>
+): string {
   if (messages.length === 0) {
     return 'No window log messages available';
   }
@@ -32,13 +39,15 @@ function formatLogMessages(messages: Array<{ type: number; message: string }>): 
   const formattedMessages = messages.map((msg) => {
     const symbol = getLogLevelSymbol(msg.type);
     const level = getLogLevelName(msg.type);
-    
+
     // Extract context from message for better organization
     const message = msg.message.trim();
     const contextMatch = message.match(/^\[([^\]]+)\]/);
     const context = contextMatch ? contextMatch[1] : '';
-    const content = contextMatch ? message.substring(contextMatch[0].length).trim() : message;
-    
+    const content = contextMatch
+      ? message.substring(contextMatch[0].length).trim()
+      : message;
+
     if (context) {
       return `${symbol} [${level}] [${context}] ${content}`;
     } else {
@@ -71,10 +80,12 @@ export function registerWindowLogsTool(
       const formattedLogs = formatLogMessages(result.data);
 
       return {
-        content: [{
-          type: 'text' as const,
-          text: formattedLogs,
-        }]
+        content: [
+          {
+            type: 'text' as const,
+            text: formattedLogs,
+          },
+        ],
       };
     }
   );

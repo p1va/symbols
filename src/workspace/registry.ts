@@ -12,8 +12,8 @@ import { createCSharpLoader } from './loaders/csharp.js';
  * Each entry maps a loader name to a factory function
  */
 const WORKSPACE_LOADERS: WorkspaceLoaderRegistry = {
-  'default': createDefaultLoader,
-  'csharp': createCSharpLoader,
+  default: createDefaultLoader,
+  csharp: createCSharpLoader,
   // Future loaders can be added here:
   // 'java': createJavaLoader,
   // 'rust': createRustLoader,
@@ -31,11 +31,11 @@ export const createWorkspaceLoader = (type: string): WorkspaceLoader => {
 /**
  * Pure function: Get all available workspace loader types
  */
-export const getAvailableLoaderTypes = (): string[] => 
+export const getAvailableLoaderTypes = (): string[] =>
   Object.keys(WORKSPACE_LOADERS);
 
 /**
  * Pure function: Check if a loader type is available
  */
-export const isLoaderTypeAvailable = (type: string): boolean => 
+export const isLoaderTypeAvailable = (type: string): boolean =>
   type in WORKSPACE_LOADERS;

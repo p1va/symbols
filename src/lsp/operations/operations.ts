@@ -5,6 +5,7 @@
 
 import {
   createLspError,
+  DiagnosticEntry,
   ErrorCode,
   FileRequest,
   LspContext,
@@ -107,7 +108,7 @@ export async function inspectSymbol(
     };
   }
 
-  const { client, preloadedFiles } = ctx;
+  const { client, preloadedFiles, workspacePath } = ctx;
   const filePath = validation.absolutePath!;
   const oneBasedPosition = request.position;
 
@@ -209,7 +210,9 @@ export async function inspectSymbol(
             error instanceof Error ? error : undefined
           )
       );
-    }
+    },
+    undefined, // configPath - use default config loading
+    workspacePath
   );
 }
 
@@ -226,7 +229,7 @@ export async function findReferences(
     };
   }
 
-  const { client, preloadedFiles } = ctx;
+  const { client, preloadedFiles, workspacePath } = ctx;
   const filePath = validation.absolutePath!;
   const oneBasedPosition = request.position;
 
@@ -279,7 +282,9 @@ export async function findReferences(
             error instanceof Error ? error : undefined
           )
       );
-    }
+    },
+    undefined, // configPath - use default config loading
+    workspacePath
   );
 }
 
@@ -296,7 +301,7 @@ export async function completion(
     };
   }
 
-  const { client, preloadedFiles } = ctx;
+  const { client, preloadedFiles, workspacePath } = ctx;
   const filePath = validation.absolutePath!;
   const oneBasedPosition = request.position;
 
@@ -337,13 +342,8 @@ export async function completion(
             typeof completionResult === 'object' &&
             'items' in completionResult
           ) {
-            // CompletionList format
-            const items = completionResult.items;
-
-            // TODO: Is this check needed?
-            if (Array.isArray(items)) {
-              completions = items;
-            }
+            // CompletionList format - items is always CompletionItem[] per LSP spec
+            completions = completionResult.items;
           }
 
           // Transform LSP completion items to our format
@@ -383,7 +383,9 @@ export async function completion(
             error instanceof Error ? error : undefined
           )
       );
-    }
+    },
+    undefined, // configPath - use default config loading
+    workspacePath
   );
 }
 
@@ -438,7 +440,7 @@ export async function searchSymbols(
                 kind: symbol.kind,
                 location: {
                   uri: symbol.location.uri || '',
-                  //TODO: Review?
+                  // Default range when WorkspaceSymbol lacks precise location info
                   range: {
                     start: { line: 0, character: 0 },
                     end: { line: 0, character: 0 },
@@ -474,7 +476,7 @@ export async function readSymbols(
     };
   }
 
-  const { client, preloadedFiles } = ctx;
+  const { client, preloadedFiles, workspacePath } = ctx;
 
   // Use absolute path from validation
   const filePath = validation.absolutePath!;
@@ -499,17 +501,10 @@ export async function readSymbols(
             error instanceof Error ? error : undefined
           )
       );
-    }
+    },
+    undefined, // configPath - use default config loading
+    workspacePath
   );
-}
-
-// TODO: Move somewhere else
-export interface DiagnosticEntry {
-  code: string;
-  message: string;
-  severity: number;
-  range: Range;
-  source: string;
 }
 
 export async function getDiagnostics(
@@ -703,7 +698,7 @@ export async function rename(
     };
   }
 
-  const { client, preloadedFiles } = ctx;
+  const { client, preloadedFiles, workspacePath } = ctx;
   const filePath = validation.absolutePath!;
   const oneBasedPosition = request.position;
 
@@ -764,7 +759,9 @@ export async function rename(
             error instanceof Error ? error : undefined
           )
       );
-    }
+    },
+    undefined, // configPath - use default config loading
+    workspacePath
   );
 }
 

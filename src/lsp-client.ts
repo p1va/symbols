@@ -5,6 +5,7 @@
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
 import * as rpc from 'vscode-jsonrpc';
 import {
   InitializeParams,
@@ -51,8 +52,15 @@ export function createLspClient(
 
     // Set up environment variables if specified
     const env = lspConfig.environment
-      ? { ...process.env, ...lspConfig.environment }
-      : process.env;
+      ? {
+          ...process.env,
+          ...lspConfig.environment,
+          SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
+        }
+      : {
+          ...process.env,
+          SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
+        };
 
     logger.debug('Spawning LSP server process', {
       commandName: lspConfig.commandName,
@@ -60,24 +68,60 @@ export function createLspClient(
       hasCustomEnv: !!lspConfig.environment,
     });
 
+    // Centralized environment variable substitution and trimming
+    const expandEnvVarsWithCustomEnv = (
+      str: string,
+      environment: NodeJS.ProcessEnv
+    ): string => {
+      return str
+        .trim()
+        .replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, varName: string) => {
+          return environment[varName] || `$${varName}`;
+        });
+    };
+
+    // Trim and expand environment variables in command and args
+    const processedCommandName = expandEnvVarsWithCustomEnv(
+      lspConfig.commandName,
+      env
+    );
+    const processedCommandArgs = lspConfig.commandArgs.map((arg) =>
+      expandEnvVarsWithCustomEnv(arg, env)
+    );
+
+    logger.debug('Processed LSP command with environment variables', {
+      originalCommand: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
+      processedCommand: `${processedCommandName} ${processedCommandArgs.join(' ')}`,
+      workspaceName: workspaceConfig.workspaceName,
+      symbolsWorkspaceName: env.SYMBOLS_WORKSPACE_NAME,
+    });
+
     // Check if command exists before spawning (comprehensive validation)
     logger.debug('Validating LSP server binary exists');
 
     try {
-      if (lspConfig.commandName.includes('/')) {
-        // Absolute or relative path - check file existence directly
-        if (!fs.existsSync(lspConfig.commandName)) {
+      // Cross-platform path detection: absolute paths, relative paths, or paths with separators
+      const isPath =
+        path.isAbsolute(processedCommandName) ||
+        processedCommandName.includes(path.sep) ||
+        processedCommandName.includes('/');
+
+      if (isPath) {
+        // Absolute or relative path - already processed (trimmed and env expanded)
+        const expandedPath = processedCommandName;
+
+        if (!fs.existsSync(expandedPath)) {
           throw new Error(
-            `LSP server binary does not exist: ${lspConfig.commandName}`
+            `LSP server binary does not exist: ${expandedPath} (original: ${lspConfig.commandName})`
           );
         }
 
         // Check if it's executable
         try {
-          fs.accessSync(lspConfig.commandName, fs.constants.X_OK);
+          fs.accessSync(expandedPath, fs.constants.X_OK);
         } catch {
           throw new Error(
-            `LSP server binary is not executable: ${lspConfig.commandName}`
+            `LSP server binary is not executable: ${expandedPath} (original: ${lspConfig.commandName})`
           );
         }
       } else {
@@ -86,7 +130,7 @@ export function createLspClient(
           const isWindows = process.platform === 'win32';
           const whichCommand = isWindows ? 'where' : 'which';
           const result = cp.execSync(
-            `${whichCommand} "${lspConfig.commandName}"`,
+            `${whichCommand} "${processedCommandName}"`,
             {
               encoding: 'utf8',
               stdio: ['ignore', 'pipe', 'ignore'],
@@ -96,66 +140,92 @@ export function createLspClient(
 
           if (!commandPath) {
             throw new Error(
-              `LSP server command not found in PATH: ${lspConfig.commandName}`
+              `LSP server command not found in PATH: ${processedCommandName}`
             );
           }
 
           logger.debug('Found LSP server in PATH', {
-            commandName: lspConfig.commandName,
+            commandName: processedCommandName,
             resolvedPath: commandPath,
             platform: process.platform,
           });
         } catch {
           throw new Error(
-            `LSP server command not found in PATH: ${lspConfig.commandName}. ` +
+            `LSP server command not found in PATH: ${processedCommandName}. ` +
               `Please ensure it's installed and available in your PATH.`
           );
         }
       }
     } catch (error) {
       logger.error('LSP server binary validation failed', {
-        commandName: lspConfig.commandName,
+        commandName: processedCommandName,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
 
+    // Command and args are already processed (trimmed and env-expanded)
+
+    logger.info('Spawning LSP server', {
+      originalCommand: lspConfig.commandName,
+      processedCommand: processedCommandName,
+      originalArgs: lspConfig.commandArgs,
+      processedArgs: processedCommandArgs,
+      workingDirectory: process.cwd(),
+      hasCustomEnv: !!lspConfig.environment,
+    });
+
     // Spawn the configured Language Server
-    const serverProcess = cp.spawn(
-      lspConfig.commandName,
-      lspConfig.commandArgs,
-      {
-        env,
-        stdio: ['pipe', 'pipe', 'pipe'], // stdin, stdout, stderr as pipes
-      }
-    );
+    const serverProcess = cp.spawn(processedCommandName, processedCommandArgs, {
+      env,
+      // 1st stdin, 2nd stdout, 3rd stderr
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
 
     logger.info(`LSP server process spawned with PID: ${serverProcess.pid}`);
 
-    // Handle process errors and stderr
+    // Handle process errors and stderr with enhanced logging
     serverProcess.on('error', (error) => {
-      logger.error('LSP server process error', {
+      logger.error('[LSP-ERROR]', {
         error: error.message,
         stack: error.stack,
+        errno: (error as NodeJS.ErrnoException).errno,
+        code: (error as NodeJS.ErrnoException).code,
+        syscall: (error as NodeJS.ErrnoException).syscall,
+        path: (error as NodeJS.ErrnoException).path,
+        processedCommand: processedCommandName,
+        processedArgs: processedCommandArgs,
       });
     });
 
     serverProcess.on('exit', (code, signal) => {
-      logger.warn('LSP server process exited', {
+      logger.warn('[LSP-EXIT]', {
         code,
         signal,
         pid: serverProcess.pid,
+        processedCommand: processedCommandName,
+        processedArgs: processedCommandArgs,
+        exitReason: code !== null ? `exit code ${code}` : `signal ${signal}`,
       });
     });
 
+    // Check if process spawned successfully
+    if (!serverProcess.pid) {
+      throw new Error(
+        `Failed to spawn LSP server process. ` +
+          `Command: ${processedCommandName}, Args: [${processedCommandArgs.join(', ')}]. ` +
+          `Check if the binary exists and is executable.`
+      );
+    }
+
     // Log stderr output from LSP server
     if (serverProcess.stderr) {
-      serverProcess.stderr.setEncoding('utf8');
+      //serverProcess.stderr.setEncoding('utf8');
       serverProcess.stderr.on('data', (data: Buffer | string) => {
         const message =
           typeof data === 'string' ? data.trim() : data.toString('utf8').trim();
         if (message) {
-          logger.debug('LSP server stderr', { message });
+          logger.debug('[LSP-STDERR]', { message });
         }
       });
     }

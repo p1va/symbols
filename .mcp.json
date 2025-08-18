@@ -2,7 +2,7 @@
   "mcpServers": {
     "symbols": {
       "command": "symbols",
-      "args": []
+      "args": ["--config", "examples/configs/typescript.yaml"]
     }
   }
 }

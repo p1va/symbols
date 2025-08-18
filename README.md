@@ -45,7 +45,7 @@ Depending on the configuration this server will spawn an [LSP](https://microsoft
 
 <summary><b>Python - Pyright</b></summary>
 
-### Installation 
+### Installation
 
 ```sh
 npm install -g pyright
@@ -75,7 +75,7 @@ venv = ".venv"
 
 <summary><b>TypeScript - TS Language Server</b></summary>
 
-### Installation 
+### Installation
 
 ```sh
 npm install -g typescript typescript-language-server
@@ -90,7 +90,6 @@ typescript-language-server --stdio
 You should see the language server start and wait for LSP messages.
 
 </details>
-
 
 <details>
 
@@ -134,6 +133,7 @@ To download it via the `dotnet` command, create a temporary project file named `
 ```
 
 Then pick the platform identifier matching your machine
+
 - `win-x64`
 - `win-arm64`
 - `linux-x64`
@@ -164,7 +164,7 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 
 <summary><b>Go - Gopls</b></summary>
 
-### Installation 
+### Installation
 
 ```sh
 go install golang.org/x/tools/gopls@latest
@@ -182,7 +182,7 @@ gopls version
 
 <summary><b>Rust - rust-analyzer</b></summary>
 
-### Installation 
+### Installation
 
 ```sh
 rustup component add rust-analyzer
@@ -193,8 +193,8 @@ To double-check the outcome of the installation run the command below
 ```sh
 rust-analyzer --version
 ```
-</details>
 
+</details>
 
 ## Configuration
 
@@ -249,10 +249,7 @@ Add or update your `.vscode/mcp.toml` to include the server and provide your own
     "symbols": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "github:p1va/symbols"
-      ]
+      "args": ["-y", "github:p1va/symbols"]
     }
   }
 }

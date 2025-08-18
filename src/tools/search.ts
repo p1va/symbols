@@ -28,7 +28,10 @@ export function registerSearchTool(
       const result = await LspOperations.searchSymbols(ctx, request);
       if (!result.ok) throw new Error(result.error.message);
 
-      const formattedText = await formatSearchResults(result.data, request.query);
+      const formattedText = await formatSearchResults(
+        result.data,
+        request.query
+      );
       return {
         content: [
           {
@@ -75,7 +78,9 @@ async function formatSearchResults(
 
   // Add summary
   const fileCount = groupedByFile.size;
-  sections.push(`Found ${symbols.length} matches for query "${query}" across ${fileCount} files`);
+  sections.push(
+    `Found ${symbols.length} matches for query "${query}" across ${fileCount} files`
+  );
 
   // Add results grouped by file
   for (const [uri, fileSymbols] of groupedByFile) {

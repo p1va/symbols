@@ -39,7 +39,7 @@ lsps:
       GOMODCACHE: '/tmp/go/pkg/mod'
 
   csharp:
-    command: "/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --extensionLogDirectory=/tmp/lsp-logs --stdio"
+    command: '/tmp/lsp/Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --extensionLogDirectory=/tmp/lsp-logs --stdio'
     workspace_loader: 'csharp'
     extensions:
       '.cs': 'csharp'

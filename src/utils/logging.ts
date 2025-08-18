@@ -13,29 +13,32 @@ import envPaths from 'env-paths';
  */
 function sanitizeForFilename(str: string): string {
   return str
-    .replace(/[<>:"/\\|?*]/g, '-')  // Replace invalid chars with dash
-    .replace(/\s+/g, '-')           // Replace spaces with dash
-    .replace(/-+/g, '-')            // Collapse multiple dashes
-    .replace(/^-|-$/g, '')          // Remove leading/trailing dashes
-    .substring(0, 50);              // Limit length
+    .replace(/[<>:"/\\|?*]/g, '-') // Replace invalid chars with dash
+    .replace(/\s+/g, '-') // Replace spaces with dash
+    .replace(/-+/g, '-') // Collapse multiple dashes
+    .replace(/^-|-$/g, '') // Remove leading/trailing dashes
+    .substring(0, 50); // Limit length
 }
 
 /**
  * Generate log file name with workspace + LSP context
  */
-export function generateLogFileName(workspacePath: string, lspName?: string): string {
+export function generateLogFileName(
+  workspacePath: string,
+  lspName?: string
+): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  
+
   // Extract workspace name from path
   const workspaceName = sanitizeForFilename(path.basename(workspacePath));
-  
+
   // Build filename components
   const parts = [workspaceName];
   if (lspName) {
     parts.push(sanitizeForFilename(lspName));
   }
   parts.push(timestamp);
-  
+
   return `${parts.join('_')}.log`;
 }
 
@@ -50,11 +53,14 @@ export function getLogDirectory(): string {
 /**
  * Create and return a configured logger for a specific workspace + LSP combo
  */
-export function createContextualLogger(workspacePath: string, lspName?: string): winston.Logger {
+export function createContextualLogger(
+  workspacePath: string,
+  lspName?: string
+): winston.Logger {
   const logDir = getLogDirectory();
   const logFileName = generateLogFileName(workspacePath, lspName);
   const logFilePath = path.join(logDir, logFileName);
-  
+
   // Ensure log directory exists
   try {
     fs.mkdirSync(logDir, { recursive: true });
@@ -62,32 +68,33 @@ export function createContextualLogger(workspacePath: string, lspName?: string):
     console.error('Failed to create log directory:', error);
     process.exit(1);
   }
-  
+
   // Create custom format for better readability
   const customFormat = winston.format.combine(
     winston.format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss.SSS'
+      format: 'YYYY-MM-DD HH:mm:ss.SSS',
     }),
     winston.format.errors({ stack: true }),
     winston.format.printf(({ timestamp, level, message, stack, ...meta }) => {
-      const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
+      const metaStr =
+        Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
       const stackStr = stack && typeof stack === 'string' ? `\n${stack}` : '';
       return `${String(timestamp)} [${String(level).toUpperCase().padEnd(5)}] ${String(message)}${metaStr}${stackStr}`;
     })
   );
-  
+
   const logger = winston.createLogger({
     level: process.env.LOGLEVEL || 'info',
     format: customFormat,
     transports: [
-      new winston.transports.File({ 
+      new winston.transports.File({
         filename: logFilePath,
         handleExceptions: true,
-        handleRejections: true
+        handleRejections: true,
       }),
     ],
   });
-  
+
   // Log session start with context information
   try {
     logger.info('='.repeat(80));
@@ -102,7 +109,7 @@ export function createContextualLogger(workspacePath: string, lspName?: string):
     console.error('Failed to write initial log entries:', error);
     // Don't exit here - let the process continue but warn about logging issues
   }
-  
+
   return logger;
 }
 
@@ -117,36 +124,37 @@ export function createLegacyLogger(): winston.Logger {
     console.error('Failed to create logs directory:', error);
     process.exit(1);
   }
-  
+
   // Generate timestamped filename for this session
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const sessionLogFile = path.join('logs', `session-${timestamp}.log`);
-  
+
   // Create custom format for better readability
   const customFormat = winston.format.combine(
     winston.format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss.SSS'
+      format: 'YYYY-MM-DD HH:mm:ss.SSS',
     }),
     winston.format.errors({ stack: true }),
     winston.format.printf(({ timestamp, level, message, stack, ...meta }) => {
-      const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
+      const metaStr =
+        Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
       const stackStr = stack && typeof stack === 'string' ? `\n${stack}` : '';
       return `${String(timestamp)} [${String(level).toUpperCase().padEnd(5)}] ${String(message)}${metaStr}${stackStr}`;
     })
   );
-  
+
   const logger = winston.createLogger({
     level: process.env.LOGLEVEL || 'info',
     format: customFormat,
     transports: [
-      new winston.transports.File({ 
+      new winston.transports.File({
         filename: sessionLogFile,
         handleExceptions: true,
-        handleRejections: true
+        handleRejections: true,
       }),
     ],
   });
-  
+
   // Log session start with error handling
   try {
     logger.info('='.repeat(80));
@@ -159,6 +167,6 @@ export function createLegacyLogger(): winston.Logger {
     console.error('Failed to write initial log entries:', error);
     // Don't exit here - let the process continue but warn about logging issues
   }
-  
+
   return logger;
 }

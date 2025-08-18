@@ -7,15 +7,15 @@ import _ from 'lodash';
  */
 export function main(): void {
   console.log('Hello from TypeScript test project!');
-  
+
   // Test TypeScript diagnostics with intentional errors
   const undefinedVariable = (globalThis as any).someUndefinedVariable; // Type error
   const unusedVariable = 42; // Unused variable warning
-  
-  // Test some lodash usage for completion/references testing  
+
+  // Test some lodash usage for completion/references testing
   const numbers = [1, 2, 3, 4, 5];
   const doubled = (_ as any).map(numbers, (n: number) => n * 2);
-  
+
   console.log('Doubled:', doubled);
   console.log('Value:', undefinedVariable);
 }
@@ -37,18 +37,18 @@ export interface TestConfig {
  */
 export class TestService {
   private config: TestConfig;
-  
+
   constructor(config: TestConfig) {
     this.config = config;
   }
-  
+
   /**
    * Process the configuration
    */
   processConfig(): string {
     return `Processing ${this.config.name} with value ${this.config.value}`;
   }
-  
+
   /**
    * Get configuration value
    */

@@ -3,16 +3,14 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext } from '../types.js';
+import { DiagnosticEntry, LspContext } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { fileSchema } from './schemas.js';
 
 /**
  * Format diagnostics in VS Code style with severity symbols, sorted by severity then line number
  */
-function formatDiagnostics(
-  diagnostics: LspOperations.DiagnosticEntry[]
-): string {
+function formatDiagnostics(diagnostics: DiagnosticEntry[]): string {
   if (diagnostics.length === 0) {
     return 'No diagnostics found for this file.';
   }

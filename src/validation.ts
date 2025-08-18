@@ -53,7 +53,7 @@ export function validateAndNormalizeFilePath(
 ): ValidationResult & { absolutePath?: string } {
   try {
     // Convert to absolute path using workspace directory if provided
-    const absolutePath = workspaceDir 
+    const absolutePath = workspaceDir
       ? path.resolve(workspaceDir, filePath)
       : path.resolve(filePath);
 
@@ -168,7 +168,10 @@ export function validateFileRequest(
   }
 
   // Validate and normalize file path using workspace context
-  const pathCheck = validateAndNormalizeFilePath(request.file, ctx.workspacePath);
+  const pathCheck = validateAndNormalizeFilePath(
+    request.file,
+    ctx.workspacePath
+  );
   if (!pathCheck.valid) {
     return pathCheck;
   }
@@ -192,7 +195,10 @@ export async function validateSymbolPositionRequest(
   }
 
   // Validate and normalize file path using workspace context
-  const pathCheck = validateAndNormalizeFilePath(request.file, ctx.workspacePath);
+  const pathCheck = validateAndNormalizeFilePath(
+    request.file,
+    ctx.workspacePath
+  );
   if (!pathCheck.valid) {
     return pathCheck;
   }

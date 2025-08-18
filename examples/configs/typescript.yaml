@@ -14,6 +14,8 @@ lsps:
     workspace_files:
       - 'package.json'
       - 'tsconfig.json'
+    preload_files:
+      - './src/index.ts'
     diagnostics:
       strategy: 'push'
       wait_timeout_ms: 2000

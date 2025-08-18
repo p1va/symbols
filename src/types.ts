@@ -4,6 +4,7 @@ import {
   ClientCapabilities,
   Diagnostic,
   LogMessageParams,
+  Range,
   ServerCapabilities,
 } from 'vscode-languageserver-protocol';
 // Import and re-export position types
@@ -18,7 +19,10 @@ import {
 // Node from expecting the corresponding value exports during `pnpm dev`
 // where the code is executed directly via `tsx`.
 import type { OneBasedPosition, ZeroBasedPosition } from './types/position.js';
-import type { WorkspaceLoaderState, WorkspaceLoader } from './workspace/types.js';
+import type {
+  WorkspaceLoaderState,
+  WorkspaceLoader,
+} from './workspace/types.js';
 
 // Error codes for LSP operations
 export enum ErrorCode {
@@ -168,7 +172,11 @@ export type PreloadedFiles = Map<string, PreloadedFile>;
 // Diagnostic provider information
 export interface DiagnosticProvider {
   id: string;
-  documentSelector?: Array<{ language?: string; scheme?: string; pattern?: string }>;
+  documentSelector?: Array<{
+    language?: string;
+    scheme?: string;
+    pattern?: string;
+  }>;
   interFileDependencies?: boolean;
   workspaceDiagnostics?: boolean;
 }
@@ -185,7 +193,10 @@ export interface DiagnosticProviderStore {
   providers: DiagnosticProvider[];
   addProvider(provider: DiagnosticProvider): void;
   getProviders(): DiagnosticProvider[];
-  getProvidersForDocument(uri: string, languageId?: string): DiagnosticProvider[];
+  getProvidersForDocument(
+    uri: string,
+    languageId?: string
+  ): DiagnosticProvider[];
   clear(): void;
 }
 
@@ -313,3 +324,12 @@ export type ApplicationError =
 export type ValidationResult =
   | { valid: true }
   | { valid: false; error: ValidationError };
+
+// Diagnostic entry for LSP diagnostics operations
+export interface DiagnosticEntry {
+  code: string;
+  message: string;
+  severity: number;
+  range: Range;
+  source: string;
+}

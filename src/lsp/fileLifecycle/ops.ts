@@ -6,7 +6,6 @@ import {
   DidOpenTextDocumentParams,
   DidCloseTextDocumentParams,
 } from 'vscode-languageserver-protocol';
-import * as path from 'path';
 
 import {
   LspClient,
@@ -18,27 +17,6 @@ import {
 } from '../../types.js';
 
 import { FileLifecycleStrategy } from './manager.js';
-
-/**
- * Get language ID from file extension
- */
-export function getLanguageId(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
-  // TODO: extend
-  switch (ext) {
-    case '.ts':
-      return 'typescript';
-    case '.tsx':
-      return 'typescriptreact';
-    case '.js':
-    case '.jsx':
-      return 'javascript';
-    case '.json':
-      return 'json';
-    default:
-      return 'plaintext';
-  }
-}
 
 /**
  * Determine if a file should be closed based on strategy and current state

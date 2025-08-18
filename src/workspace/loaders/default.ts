@@ -11,10 +11,10 @@ import { WorkspaceLoader, WorkspaceLoaderState } from '../types.js';
 const initialize = async (): Promise<WorkspaceLoaderState> => {
   // Await a resolved promise to satisfy eslint require-await
   await Promise.resolve();
-  
+
   return {
     type: 'default' as const,
-    ready: true
+    ready: true,
   };
 };
 
@@ -28,6 +28,6 @@ const isReady = (): boolean => true;
  */
 export const createDefaultLoader = (): WorkspaceLoader => ({
   initialize,
-  isReady
+  isReady,
   // No handleNotification needed - default workspace doesn't handle notifications
 });

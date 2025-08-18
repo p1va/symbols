@@ -5,7 +5,11 @@
 
 import { WorkspaceLoader, WorkspaceLoaderState } from '../types.js';
 import { LspClient, LspConfig } from '../../types.js';
-import { detectCSharpWorkspace, createCSharpWorkspaceNotification, CSharpWorkspaceInfo } from '../../utils/csharp-workspace.js';
+import {
+  detectCSharpWorkspace,
+  createCSharpWorkspaceNotification,
+  CSharpWorkspaceInfo,
+} from '../../utils/csharp-workspace.js';
 import logger from '../../utils/logger.js';
 
 /**
@@ -23,7 +27,7 @@ const extractWorkspacePath = (config: LspConfig): string => {
   if (!workspaceUri) {
     throw new Error('No workspace URI provided');
   }
-  
+
   return workspaceUri.startsWith('file://')
     ? workspaceUri.replace('file://', '')
     : workspaceUri;
@@ -32,16 +36,19 @@ const extractWorkspacePath = (config: LspConfig): string => {
 /**
  * Pure function: Initialize C# workspace
  */
-const initialize = async (client: LspClient, config: LspConfig): Promise<WorkspaceLoaderState> => {
+const initialize = async (
+  client: LspClient,
+  config: LspConfig
+): Promise<WorkspaceLoaderState> => {
   try {
     const workspacePath = extractWorkspacePath(config);
     const csharpWorkspace = await detectCSharpWorkspace(workspacePath);
 
     if (!csharpWorkspace) {
       logger.debug('No C# workspace detected, defaulting to ready state');
-      return { 
-        type: 'csharp' as const, 
-        ready: true 
+      return {
+        type: 'csharp' as const,
+        ready: true,
       };
     }
 
@@ -49,27 +56,30 @@ const initialize = async (client: LspClient, config: LspConfig): Promise<Workspa
     const notification = createCSharpWorkspaceNotification(csharpWorkspace);
     logger.info('Sending C# workspace notification', {
       method: notification.method,
-      params: notification.params
+      params: notification.params,
     });
 
-    await client.connection.sendNotification(notification.method, notification.params);
+    await client.connection.sendNotification(
+      notification.method,
+      notification.params
+    );
 
     // Return state indicating initialization started but not ready
     return {
       type: 'csharp' as const,
       ready: false,
-      data: { workspaceInfo: csharpWorkspace } satisfies CSharpWorkspaceData
+      data: { workspaceInfo: csharpWorkspace } satisfies CSharpWorkspaceData,
     };
   } catch (error) {
     logger.error('Failed to initialize C# workspace', {
       error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     });
 
     // On error, default to ready state to not block operations
     return {
       type: 'csharp' as const,
-      ready: true
+      ready: true,
     };
   }
 };
@@ -90,7 +100,7 @@ const handleNotification = (
     logger.info('C# workspace initialization completed');
     return { ...state, ready: true };
   }
-  
+
   // Return unchanged state for other notifications
   return state;
 };
@@ -101,5 +111,5 @@ const handleNotification = (
 export const createCSharpLoader = (): WorkspaceLoader => ({
   initialize,
   isReady,
-  handleNotification
+  handleNotification,
 });

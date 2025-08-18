@@ -16,12 +16,12 @@ import {
   tryResultAsync,
 } from '../../types.js';
 import {
-  getLanguageId,
   decideShouldClose,
   forceCloseFile,
   openFile,
   closeFile,
 } from './ops.js';
+import { getLanguageId } from '../../config/lsp-config.js';
 import {
   generateCursorContext,
   CursorContext,
@@ -52,7 +52,9 @@ export async function openFileWithStrategy(
   client: LspClient,
   filePath: string,
   preloadedFiles: PreloadedFiles,
-  strategy: FileLifecycleStrategy
+  strategy: FileLifecycleStrategy,
+  configPath?: string,
+  workspacePath?: string
 ): Promise<Result<FileOpenResult>> {
   return await tryResultAsync(
     async () => {
@@ -111,7 +113,8 @@ export async function openFileWithStrategy(
       }
 
       // Open the file
-      const languageId = getLanguageId(filePath);
+      const languageId =
+        getLanguageId(filePath, configPath, workspacePath) || 'plaintext';
       const openResult = await openFile(
         client,
         uri,
@@ -178,14 +181,18 @@ export async function executeWithCursorContext<T>(
   position: OneBasedPosition,
   preloadedFiles: PreloadedFiles,
   strategy: FileLifecycleStrategy,
-  operation: (uri: string, cursorContext?: CursorContext) => Promise<Result<T>>
+  operation: (uri: string, cursorContext?: CursorContext) => Promise<Result<T>>,
+  configPath?: string,
+  workspacePath?: string
 ): Promise<Result<OperationWithContextResult<T>>> {
   // Open file with strategy
   const openResult = await openFileWithStrategy(
     client,
     filePath,
     preloadedFiles,
-    strategy
+    strategy,
+    configPath,
+    workspacePath
   );
   if (!openResult.ok) {
     return {
@@ -278,14 +285,18 @@ export async function executeWithExplicitLifecycle<T>(
   filePath: string,
   preloadedFiles: PreloadedFiles,
   strategy: FileLifecycleStrategy,
-  operation: (uri: string) => Promise<Result<T>>
+  operation: (uri: string) => Promise<Result<T>>,
+  configPath?: string,
+  workspacePath?: string
 ): Promise<Result<T>> {
   // Open file with strategy
   const openResult = await openFileWithStrategy(
     client,
     filePath,
     preloadedFiles,
-    strategy
+    strategy,
+    configPath,
+    workspacePath
   );
   if (!openResult.ok) {
     return {
