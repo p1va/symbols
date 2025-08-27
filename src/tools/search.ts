@@ -18,7 +18,8 @@ export function registerSearchTool(
     'search',
     {
       title: 'Search',
-      description: 'Search for symbols across the workspace',
+      description:
+        'Search for symbols across the workspace. Either exact matches or partilal are supported',
       inputSchema: searchSchema,
     },
     async (request) => {

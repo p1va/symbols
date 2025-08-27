@@ -9,50 +9,23 @@ import type { OneBasedPosition } from '../types/position.js';
 // Note: OneBasedPosition transforms are defined inline in the schemas below
 // to avoid unused variable warnings while keeping the patterns clear
 
+const fileDescription = 'File path (either absolute or relative to cwd)';
+const lineDescription = '1-based line number where the cursor will be placed';
+const charDescription =
+  '1-based character number where the cursor will be placed';
+
 export const symbolPositionSchema = {
-  file: z
-    .string()
-    .describe(
-      'File path (either absolute or relative to the working directory)'
-    ),
-  line: z
-    .number()
-    .int()
-    .min(1)
-    .describe(
-      'Line number (1-based) at which the symbol of interest is located'
-    ),
-  character: z
-    .number()
-    .int()
-    .min(1)
-    .describe(
-      'Character number (1-based) at which the symbol of interest is located'
-    ),
+  file: z.string().describe(fileDescription),
+  line: z.number().int().min(1).describe(lineDescription),
+  character: z.number().int().min(1).describe(charDescription),
 } as const;
 
 // Schema that transforms to OneBasedPosition
 export const symbolPositionWithTransformSchema = z
   .object({
-    file: z
-      .string()
-      .describe(
-        'File path (either absolute or relative to the working directory)'
-      ),
-    line: z
-      .number()
-      .int()
-      .min(1)
-      .describe(
-        'Line number (1-based) at which the symbol of interest is located'
-      ),
-    character: z
-      .number()
-      .int()
-      .min(1)
-      .describe(
-        'Character number (1-based) at which the symbol of interest is located'
-      ),
+    file: z.string().describe(fileDescription),
+    line: z.number().int().min(1).describe(lineDescription),
+    character: z.number().int().min(1).describe(charDescription),
   })
   .transform(({ file, line, character }) => ({
     file,
@@ -60,11 +33,7 @@ export const symbolPositionWithTransformSchema = z
   }));
 
 export const fileSchema = {
-  file: z
-    .string()
-    .describe(
-      'File path (either absolute or relative to the working directory)'
-    ),
+  file: z.string().describe(fileDescription),
   maxDepth: z
     .number()
     .int()
@@ -79,7 +48,7 @@ export const fileSchema = {
     .optional()
     .default('none')
     .describe(
-      'Preview mode for symbols: none = names only, signature = names with types, full = complete implementations'
+      'Preview mode for symbols: none = names only, signature = first few lines of a symbol (good to understand signatures and return types), full = complete implementations when supported'
     ),
 } as const;
 
@@ -88,48 +57,18 @@ export const searchSchema = {
 } as const;
 
 export const renameSchema = {
-  file: z
-    .string()
-    .describe(
-      'File path (either absolute or relative to the working directory)'
-    ),
-  line: z
-    .number()
-    .int()
-    .min(1)
-    .describe('Line number (1-based) at which the symbol to rename is located'),
-  character: z
-    .number()
-    .int()
-    .min(1)
-    .describe(
-      'Character number (1-based) at which the symbol to rename is located'
-    ),
+  file: z.string().describe(fileDescription),
+  line: z.number().int().min(1).describe(lineDescription),
+  character: z.number().int().min(1).describe(charDescription),
   newName: z.string().describe('New name for the symbol'),
 } as const;
 
 // Schema that transforms to OneBasedPosition for rename
 export const renameWithTransformSchema = z
   .object({
-    file: z
-      .string()
-      .describe(
-        'File path (either absolute or relative to the working directory)'
-      ),
-    line: z
-      .number()
-      .int()
-      .min(1)
-      .describe(
-        'Line number (1-based) at which the symbol to rename is located'
-      ),
-    character: z
-      .number()
-      .int()
-      .min(1)
-      .describe(
-        'Character number (1-based) at which the symbol to rename is located'
-      ),
+    file: z.string().describe(fileDescription),
+    line: z.number().int().min(1).describe(lineDescription),
+    character: z.number().int().min(1).describe(charDescription),
     newName: z.string().describe('New name for the symbol'),
   })
   .transform(({ file, line, character, newName }) => ({

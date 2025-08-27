@@ -90,7 +90,7 @@ export function registerDiagnosticsTool(
     {
       title: 'Diagnostics',
       description:
-        'Retrieves diagnostics (errors/warnings/hints) for a code file',
+        'Retrieves active diagnostics (errors/warnings/hints) for a code file',
       inputSchema: fileSchema,
     },
     async (request) => {

@@ -17,7 +17,8 @@ export function registerRenameTool(
     'rename',
     {
       title: 'Rename',
-      description: 'Renames a code symbol across the codebase',
+      description:
+        'Renames all references of a given symbol across the codebase',
       inputSchema: renameSchema,
     },
     async (request) => {

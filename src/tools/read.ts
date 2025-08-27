@@ -26,7 +26,8 @@ export function registerReadTool(
     'read',
     {
       title: 'Read',
-      description: 'Reads all symbols in a code file',
+      description:
+        'Reads a file using different levels of preview (none,signature,full) and returns a clean structured view of its symbols. IMPORTANT: Use this during exploring or when just interested in the outline (members, signatures, return types) rather than full implementation.',
       inputSchema: fileSchema,
     },
     async (request) => {

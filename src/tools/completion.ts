@@ -18,7 +18,8 @@ export function registerCompletionTool(
     'completion',
     {
       title: 'Completion',
-      description: 'Get code completion suggestions at a position',
+      description:
+        'Gets context-aware code completions at a given position. IMPORTANT: To get meaningful results provide precise line and character pointing right after trigger characters. e.g. "client.|some_method()" returns get(), some_method(), another_method() etc.',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {
