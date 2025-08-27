@@ -14,7 +14,7 @@ An MCP server for searching, reading, inspecting codebase symbols
 
 ## Introduction
 
-Powered by a Language Server of choice, this MCP server offers tools that enable Coding Agents to efficently discover and navigate the codebase and its dependencies in a way that is faster and an efficient use of the model's context.
+Powered by a Language Server of choice, the Symbols MCP server offers tools that enable Coding Agents to efficently discover and navigate the codebase and its dependencies in a way that is faster and a more efficient use of the model's context.
 
 ## MCP Tools
 
@@ -266,3 +266,31 @@ Add or update your `.vscode/mcp.toml` to include the server and provide your own
 - `pnpm build` runs the linter and build
 - `pnpm start` starts the built artifacts
 - `pnpm test` runs the tests
+
+## Configuration File Lookup
+
+The symbols server looks for YAML configuration files in the following order of priority:
+
+1. **CLI argument** - Path specified with `--config` flag (highest priority)
+2. **Workspace directory** (if provided with `--workspace`):
+   - `{workspace}/symbols.yaml`
+   - `{workspace}/symbols.yml`
+   - `{workspace}/lsps.yaml` (backward compatibility)
+   - `{workspace}/lsps.yml` (backward compatibility)
+3. **Repository folder** (relative to current working directory):
+   - `symbols.yaml`
+   - `symbols.yml`
+   - `lsps.yaml` (backward compatibility)
+   - `lsps.yml` (backward compatibility)
+4. **Current working directory** (explicit paths):
+   - `{cwd}/symbols.yaml`
+   - `{cwd}/symbols.yml`
+   - `{cwd}/lsps.yaml` (backward compatibility)
+   - `{cwd}/lsps.yml` (backward compatibility)
+5. **OS-specific config directory** (lowest priority):
+   - `{OS_CONFIG_DIR}/symbols.yaml`
+   - `{OS_CONFIG_DIR}/symbols.yml`
+   - `{OS_CONFIG_DIR}/lsps.yaml` (backward compatibility)
+   - `{OS_CONFIG_DIR}/lsps.yml` (backward compatibility)
+
+The OS-specific config directory follows platform conventions (e.g., `~/.config/symbols/` on Linux, `~/Library/Preferences/symbols/` on macOS).

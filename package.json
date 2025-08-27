@@ -3,13 +3,21 @@
   "name": "@p1va/symbols",
   "version": "1.0.0",
   "description": "MCP server to read, inspect and troubleshoot codebase symbols",
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "language-server"
+  ],
   "bin": {
     "symbols": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "examples"
+    "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/p1va/symbols.git"
+  },
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "rimraf ./dist && eslint . && tsc -p tsconfig.build.json && chmod +x ./dist/index.js",
@@ -22,7 +30,6 @@
     "test:watch": "vitest"
   },
   "type": "module",
-  "keywords": [],
   "license": "ISC",
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
