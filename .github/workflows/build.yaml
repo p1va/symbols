@@ -5,9 +5,6 @@ on:
   - pull_request
 
 jobs:
-  # ============================================================================
-  # UNIT TESTS - Fast feedback, runs on all events
-  # ============================================================================
   unit-tests:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
@@ -21,11 +18,11 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: 🎨 Format check
         run: pnpm format --check
@@ -63,11 +60,11 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: 🙊 Install TypeScript Language Server
         run: |
@@ -95,13 +92,13 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
 
       - name: 📥 Install dependencies
         run: pnpm install --frozen-lockfile
@@ -132,13 +129,13 @@ jobs:
       - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: 🟦 Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x'
+          dotnet-version: '9.x'
 
       - name: 📥 Install dependencies
         run: pnpm install --frozen-lockfile
