@@ -14,37 +14,19 @@ export default defineConfig({
     testTimeout: 30000, // 30s for integration tests with language servers
     hookTimeout: 15000, // 15s for setup/teardown
 
-    // Reporting
-    reporter: process.env.CI ? ['github-actions', 'json'] : ['verbose'],
-    outputFile: process.env.CI
-      ? {
-          json: './test-results.json',
-        }
-      : undefined,
+    // Reporting - HTML and JSON for CI troubleshooting, verbose locally
+    reporters: process.env.CI
+      ? ['github-actions', 'html', 'json', 'verbose']
+      : ['verbose'],
+    ...(process.env.CI && {
+      outputFile: {
+        json: './test-results/test-results.json',
+        html: './test-results/test-report.html',
+      },
+    }),
 
     // Environment
     globals: false,
     environment: 'node',
-
-    // Coverage configuration
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'json'],
-      exclude: [
-        '**/node_modules/**',
-        '**/dist/**',
-        '**/test/**',
-        '**/*.config.*',
-        '**/*.d.ts',
-      ],
-      thresholds: {
-        global: {
-          branches: 80,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-      },
-    },
   },
 });

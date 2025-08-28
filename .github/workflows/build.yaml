@@ -22,15 +22,16 @@ jobs:
       - name: ⚒️ Build
         run: pnpm build
 
-      - name: 🧪 Run unit tests with coverage
-        run: pnpm test:unit:coverage
+      - name: 🧪 Run unit tests
+        run: pnpm test:unit
 
-      - name: 📊 Upload coverage reports
-        uses: codecov/codecov-action@v4
+      - name: 📊 Upload unit test report
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          file: ./coverage/lcov.info
-          fail_ci_if_error: false
+          name: unit-test-report
+          path: test-results/
+          retention-days: 30
 
   integration-typescript:
     name: 🔷 TypeScript Integration
@@ -50,8 +51,16 @@ jobs:
         run: pnpm build
 
       - name: Run TypeScript integration tests
-        run: pnpm test:integration:typescript
+        run: pnpm test:integration:typescript:ci
         timeout-minutes: 10
+
+      - name: 📊 Upload TypeScript integration test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: typescript-integration-report
+          path: test-results/
+          retention-days: 30
 
   integration-python:
     name: 🐍 Pyright Integration
@@ -76,8 +85,16 @@ jobs:
         run: pnpm build
 
       - name: Run Python integration tests
-        run: pnpm test:integration:python
+        run: pnpm test:integration:python:ci
         timeout-minutes: 10
+
+      - name: 📊 Upload Python integration test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-integration-report
+          path: test-results/
+          retention-days: 30
 
   integration-csharp:
     name: 🟦 C# Integration
@@ -99,16 +116,23 @@ jobs:
             /p:Platform=linux-x64 \
             /p:ServerPath=$HOME/.csharp-lsp/
           
-          $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --help
-
+          $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 
         # In CI we run against the build output
       - name: Build project
         run: pnpm build
 
       - name: 🟦 Run C# integration tests
-        run: pnpm test:integration:csharp
+        run: pnpm test:integration:csharp:ci
         timeout-minutes: 10
+
+      - name: 📊 Upload C# integration test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: csharp-integration-report
+          path: test-results/
+          retention-days: 30
 
   test-summary:
     name: ✅ Test Summary

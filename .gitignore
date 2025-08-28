@@ -55,4 +55,5 @@ Thumbs.db
 bin
 obj
 
-test-results.json
+# Test output
+test-results/
