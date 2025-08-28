@@ -1,7 +1,7 @@
 lsps:
   csharp:
     command: >
-      $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer
+      dotnet $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll
         --logLevel=Information
         --extensionLogDirectory=$HOME/.csharp-lsp/logs
         --stdio
