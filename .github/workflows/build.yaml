@@ -98,6 +98,9 @@ jobs:
           dotnet restore scripts/ServerDownload.csproj \
             /p:Platform=linux-x64 \
             /p:ServerPath=$HOME/.csharp-lsp/
+          
+          $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --help
+
 
         # In CI we run against the build output
       - name: Build project
