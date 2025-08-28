@@ -17,8 +17,8 @@ export class McpTestClient {
   private transport: StdioClientTransport;
 
   constructor(
-    private command = 'pnpm',
-    private args = ['start'],
+    private command = 'node',
+    private args = ['dist/index.js'],
     private name = 'integration-test',
     private version = '1.0.0',
     private workingDirectory?: string,
