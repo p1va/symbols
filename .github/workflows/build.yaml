@@ -99,6 +99,10 @@ jobs:
             /p:Platform=linux-x64 \
             /p:ServerPath=$HOME/.csharp-lsp/
 
+        # In CI we run against the build output
+      - name: Build project
+        run: pnpm build
+
       - name: 🟦 Run C# integration tests
         run: pnpm test:integration:csharp
         timeout-minutes: 10
