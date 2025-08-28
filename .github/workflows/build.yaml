@@ -51,7 +51,7 @@ jobs:
         run: pnpm build
 
       - name: Run TypeScript integration tests
-        run: pnpm test:integration:typescript:ci
+        run: pnpm test:integration:typescript
         timeout-minutes: 10
 
       - name: 📊 Upload TypeScript integration test report
@@ -85,7 +85,7 @@ jobs:
         run: pnpm build
 
       - name: Run Python integration tests
-        run: pnpm test:integration:python:ci
+        run: pnpm test:integration:python
         timeout-minutes: 10
 
       - name: 📊 Upload Python integration test report
@@ -110,6 +110,9 @@ jobs:
         with:
           dotnet-version: '9.x'
 
+      - name: Print architecture
+        run: uname -m
+
       - name: Install C# Language Server (Roslyn)
         run: |
           dotnet restore scripts/ServerDownload.csproj \
@@ -123,7 +126,7 @@ jobs:
         run: pnpm build
 
       - name: 🟦 Run C# integration tests
-        run: pnpm test:integration:csharp:ci
+        run: pnpm test:integration:csharp
         timeout-minutes: 10
 
       - name: 📊 Upload C# integration test report
