@@ -11,6 +11,7 @@ export default tseslint.config(
       'playground',
       'test/**/*.js',
       '.external',
+      'test-results/**',
     ],
   },
 

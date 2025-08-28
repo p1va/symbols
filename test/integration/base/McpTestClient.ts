@@ -35,9 +35,13 @@ export class McpTestClient {
     }
 
     // Log the command being executed for debugging
-    console.log(`[McpTestClient] Starting MCP server: ${this.command} ${finalArgs.join(' ')}`);
+    console.log(
+      `[McpTestClient] Starting MCP server: ${this.command} ${finalArgs.join(' ')}`
+    );
     if (this.workingDirectory) {
-      console.log(`[McpTestClient] Working directory: ${this.workingDirectory}`);
+      console.log(
+        `[McpTestClient] Working directory: ${this.workingDirectory}`
+      );
     }
     if (this.configPath) {
       console.log(`[McpTestClient] Config path: ${this.configPath}`);
@@ -59,32 +63,45 @@ export class McpTestClient {
   }
 
   async connect(timeoutMs = 15000): Promise<void> {
-    console.log(`[McpTestClient] Attempting to connect with ${timeoutMs}ms timeout...`);
-    
+    console.log(
+      `[McpTestClient] Attempting to connect with ${timeoutMs}ms timeout...`
+    );
+
     return new Promise((resolve, reject) => {
       let isResolved = false;
       const stderrChunks: string[] = [];
-      
+
       // Set up stderr capture if possible
       try {
-        // @ts-ignore - accessing private property for debugging
-        const childProcess = this.transport._process;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+        const childProcess = (this.transport as any)._process;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (childProcess && childProcess.stderr) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
           childProcess.stderr.on('data', (data: Buffer) => {
             const chunk = data.toString();
             stderrChunks.push(chunk);
             console.log(`[McpTestClient] STDERR: ${chunk.trim()}`);
           });
-          
-          childProcess.on('exit', (code: number | null, signal: string | null) => {
-            if (!isResolved) {
-              console.log(`[McpTestClient] Process exited with code: ${code}, signal: ${signal}`);
-              if (stderrChunks.length > 0) {
-                console.log(`[McpTestClient] Captured stderr: ${stderrChunks.join('')}`);
+
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          childProcess.on(
+            'exit',
+            (code: number | null, signal: string | null) => {
+              if (!isResolved) {
+                console.log(
+                  `[McpTestClient] Process exited with code: ${code}, signal: ${signal}`
+                );
+                if (stderrChunks.length > 0) {
+                  console.log(
+                    `[McpTestClient] Captured stderr: ${stderrChunks.join('')}`
+                  );
+                }
               }
             }
-          });
-          
+          );
+
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
           childProcess.on('error', (error: Error) => {
             console.log(`[McpTestClient] Process error: ${error.message}`);
             if (!isResolved) {
@@ -95,19 +112,24 @@ export class McpTestClient {
           });
         }
       } catch (error) {
-        console.log(`[McpTestClient] Could not access child process for stderr capture: ${error}`);
+        console.log(
+          `[McpTestClient] Could not access child process for stderr capture: ${String(error)}`
+        );
       }
 
       const timeout = setTimeout(() => {
         if (!isResolved) {
           isResolved = true;
-          const stderrOutput = stderrChunks.length > 0 ? `\nStderr output: ${stderrChunks.join('')}` : '\nNo stderr output captured';
+          const stderrOutput =
+            stderrChunks.length > 0
+              ? `\nStderr output: ${stderrChunks.join('')}`
+              : '\nNo stderr output captured';
           reject(
             new Error(
               `Connection timeout after ${timeoutMs}ms\n` +
-              `Command: ${this.command} ${this.args.join(' ')}\n` +
-              `Working dir: ${this.workingDirectory || 'default'}\n` +
-              `Config: ${this.configPath || 'default'}${stderrOutput}`
+                `Command: ${this.command} ${this.args.join(' ')}\n` +
+                `Working dir: ${this.workingDirectory || 'default'}\n` +
+                `Config: ${this.configPath || 'default'}${stderrOutput}`
             )
           );
         }
@@ -123,18 +145,25 @@ export class McpTestClient {
             resolve();
           }
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           if (!isResolved) {
             isResolved = true;
             clearTimeout(timeout);
-            const stderrOutput = stderrChunks.length > 0 ? `\nStderr output: ${stderrChunks.join('')}` : '\nNo stderr output captured';
-            console.log(`[McpTestClient] Connection failed: ${error.message}`);
-            reject(new Error(
-              `MCP connection failed: ${error.message}\n` +
-              `Command: ${this.command} ${this.args.join(' ')}\n` +
-              `Working dir: ${this.workingDirectory || 'default'}\n` +
-              `Config: ${this.configPath || 'default'}${stderrOutput}`
-            ));
+            const stderrOutput =
+              stderrChunks.length > 0
+                ? `\nStderr output: ${stderrChunks.join('')}`
+                : '\nNo stderr output captured';
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            console.log(`[McpTestClient] Connection failed: ${errorMessage}`);
+            reject(
+              new Error(
+                `MCP connection failed: ${errorMessage}\n` +
+                  `Command: ${this.command} ${this.args.join(' ')}\n` +
+                  `Working dir: ${this.workingDirectory || 'default'}\n` +
+                  `Config: ${this.configPath || 'default'}${stderrOutput}`
+              )
+            );
           }
         });
     });
