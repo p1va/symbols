@@ -120,6 +120,14 @@ jobs:
             /p:ServerPath=$HOME/.csharp-lsp/
 
           $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
+        
+      - name: Test run of C# Language Server
+        run: |
+          $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer \
+            --logLevel=Information \
+            --extensionLogDirectory=$HOME/.csharp-lsp/logs \
+            --stdio
+        timeout-minutes: 1
 
         # In CI we run against the build output
       - name: Build project
