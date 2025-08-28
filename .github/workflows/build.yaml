@@ -9,21 +9,9 @@ jobs:
     name: 🧪 Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
-
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
+        
       - name: 🎨 Format check
         run: pnpm format --check
 
@@ -48,20 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-
-      - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
 
       - name: 🙊 Install TypeScript Language Server
         run: |
@@ -80,25 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-
-      - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: 🙊 Install Python Language Server (Pylsp)
         run: |
@@ -117,25 +81,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: 🔧 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
 
       - name: 🟦 Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.x'
-
-      - name: 📥 Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: 🙊 Install C# Language Server (OmniSharp)
         run: |
