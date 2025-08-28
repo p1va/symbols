@@ -34,6 +34,15 @@ export class McpTestClient {
       finalArgs = [...finalArgs, '--config', this.configPath];
     }
 
+    // Log the command being executed for debugging
+    console.log(`[McpTestClient] Starting MCP server: ${this.command} ${finalArgs.join(' ')}`);
+    if (this.workingDirectory) {
+      console.log(`[McpTestClient] Working directory: ${this.workingDirectory}`);
+    }
+    if (this.configPath) {
+      console.log(`[McpTestClient] Config path: ${this.configPath}`);
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const config: any = {
       command: this.command,
@@ -50,22 +59,84 @@ export class McpTestClient {
   }
 
   async connect(timeoutMs = 15000): Promise<void> {
+    console.log(`[McpTestClient] Attempting to connect with ${timeoutMs}ms timeout...`);
+    
     return new Promise((resolve, reject) => {
+      let isResolved = false;
+      const stderrChunks: string[] = [];
+      
+      // Set up stderr capture if possible
+      try {
+        // @ts-ignore - accessing private property for debugging
+        const childProcess = this.transport._process;
+        if (childProcess && childProcess.stderr) {
+          childProcess.stderr.on('data', (data: Buffer) => {
+            const chunk = data.toString();
+            stderrChunks.push(chunk);
+            console.log(`[McpTestClient] STDERR: ${chunk.trim()}`);
+          });
+          
+          childProcess.on('exit', (code: number | null, signal: string | null) => {
+            if (!isResolved) {
+              console.log(`[McpTestClient] Process exited with code: ${code}, signal: ${signal}`);
+              if (stderrChunks.length > 0) {
+                console.log(`[McpTestClient] Captured stderr: ${stderrChunks.join('')}`);
+              }
+            }
+          });
+          
+          childProcess.on('error', (error: Error) => {
+            console.log(`[McpTestClient] Process error: ${error.message}`);
+            if (!isResolved) {
+              isResolved = true;
+              clearTimeout(timeout);
+              reject(new Error(`Process error: ${error.message}`));
+            }
+          });
+        }
+      } catch (error) {
+        console.log(`[McpTestClient] Could not access child process for stderr capture: ${error}`);
+      }
+
       const timeout = setTimeout(() => {
-        reject(
-          new Error(
-            `Connection timeout after ${timeoutMs}ms (working dir: ${this.workingDirectory || 'default'})`
-          )
-        );
+        if (!isResolved) {
+          isResolved = true;
+          const stderrOutput = stderrChunks.length > 0 ? `\nStderr output: ${stderrChunks.join('')}` : '\nNo stderr output captured';
+          reject(
+            new Error(
+              `Connection timeout after ${timeoutMs}ms\n` +
+              `Command: ${this.command} ${this.args.join(' ')}\n` +
+              `Working dir: ${this.workingDirectory || 'default'}\n` +
+              `Config: ${this.configPath || 'default'}${stderrOutput}`
+            )
+          );
+        }
       }, timeoutMs);
 
       this.client
         .connect(this.transport)
         .then(() => {
-          clearTimeout(timeout);
-          resolve();
+          if (!isResolved) {
+            isResolved = true;
+            clearTimeout(timeout);
+            console.log(`[McpTestClient] Successfully connected to MCP server`);
+            resolve();
+          }
         })
-        .catch(reject);
+        .catch((error) => {
+          if (!isResolved) {
+            isResolved = true;
+            clearTimeout(timeout);
+            const stderrOutput = stderrChunks.length > 0 ? `\nStderr output: ${stderrChunks.join('')}` : '\nNo stderr output captured';
+            console.log(`[McpTestClient] Connection failed: ${error.message}`);
+            reject(new Error(
+              `MCP connection failed: ${error.message}\n` +
+              `Command: ${this.command} ${this.args.join(' ')}\n` +
+              `Working dir: ${this.workingDirectory || 'default'}\n` +
+              `Config: ${this.configPath || 'default'}${stderrOutput}`
+            ));
+          }
+        });
     });
   }
 
