@@ -57,3 +57,11 @@ obj
 
 # Test output
 test-results/
+
+# Language-specific build artifacts
+# Go
+test/integration/languages/go/test-project/go.sum
+
+# Rust
+test/integration/languages/rust/test-project/target/
+test/integration/languages/rust/test-project/Cargo.lock

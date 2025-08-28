@@ -125,7 +125,7 @@ jobs:
             /p:ServerPath=$HOME/.csharp-lsp/
 
           $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
-        
+
       - name: Test run of C# Language Server
         run: |
           $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer \
@@ -158,6 +158,89 @@ jobs:
           path: test-results/
           retention-days: 30
 
+  integration-go:
+    name: 🐹 Go Integration
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install Go Language Server (gopls)
+        run: go install golang.org/x/tools/gopls@latest
+
+      - name: Verify gopls installation
+        run: gopls version
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Install Go project dependencies
+        run: cd test/integration/languages/go/test-project && go mod tidy
+
+      - name: 🐹 Run Go integration tests
+        run: pnpm test:integration:go:ci
+        timeout-minutes: 10
+
+      - name: 📊 Upload Go integration test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-integration-report
+          path: test-results/
+          retention-days: 30
+
+  integration-rust:
+    name: 🦀 Rust Integration
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: rust-src
+
+      - name: Install Rust Language Server (rust-analyzer)
+        run: |
+          mkdir -p ~/.local/bin
+          curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
+          chmod +x ~/.local/bin/rust-analyzer
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify rust-analyzer installation
+        run: rust-analyzer --version
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Install Rust project dependencies
+        run: cd test/integration/languages/rust/test-project && cargo check
+
+      - name: 🦀 Run Rust integration tests
+        run: pnpm test:integration:rust:ci
+        timeout-minutes: 10
+
+      - name: 📊 Upload Rust integration test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rust-integration-report
+          path: test-results/
+          retention-days: 30
+
   test-summary:
     name: ✅ Test Summary
     runs-on: ubuntu-latest
@@ -167,6 +250,8 @@ jobs:
         integration-typescript,
         integration-python,
         integration-csharp,
+        integration-go,
+        integration-rust,
       ]
     if: always()
     steps:
