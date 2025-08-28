@@ -95,7 +95,7 @@ jobs:
 
       - name: Install C# Language Server (Roslyn)
         run: |
-          dotnet restore ServerDownload.csproj \
+          dotnet restore scripts/ServerDownload.csproj \
             /p:Platform=linux-x64 \
             /p:ServerPath=$HOME/.csharp-lsp/
 
