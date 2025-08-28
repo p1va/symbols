@@ -10,7 +10,11 @@ import {
   debugCompletion,
   debugDiagnostics,
 } from './assertions.js';
-import { getTestCommand, getTestTimeouts, getTestEnvironmentInfo } from './TestEnvironment.js';
+import {
+  getTestCommand,
+  getTestTimeouts,
+  getTestEnvironmentInfo,
+} from './TestEnvironment.js';
 import path from 'path';
 
 export interface LanguageConfig {
@@ -68,7 +72,7 @@ export abstract class LanguageTestSuite {
    */
   createTestSuite(): void {
     const timeouts = getTestTimeouts();
-    
+
     describe(`${this.config.name} MCP Integration Tests`, () => {
       beforeAll(async () => {
         await this.initializeClient();
@@ -116,7 +120,7 @@ export abstract class LanguageTestSuite {
 
     if (this.config.testPosition) {
       const testPos = this.config.testPosition; // Capture for type narrowing
-      
+
       test('Should inspect symbol', async () => {
         const position: SymbolPosition = {
           file: this.getMainFilePath(),
@@ -128,7 +132,13 @@ export abstract class LanguageTestSuite {
 
         // Debug output before assertion
         if (result.isError) {
-          debugInspect(position.file, position.line, position.character, result, `${this.config.name} - Common Inspect Test`);
+          debugInspect(
+            position.file,
+            position.line,
+            position.character,
+            result,
+            `${this.config.name} - Common Inspect Test`
+          );
         }
 
         expect(result.isError).toBe(false);
@@ -146,7 +156,13 @@ export abstract class LanguageTestSuite {
 
         // Debug output before assertion
         if (result.isError) {
-          debugReferences(position.file, position.line, position.character, result, `${this.config.name} - Common References Test`);
+          debugReferences(
+            position.file,
+            position.line,
+            position.character,
+            result,
+            `${this.config.name} - Common References Test`
+          );
         }
 
         expect(result.isError).toBe(false);
@@ -164,7 +180,13 @@ export abstract class LanguageTestSuite {
 
         // Debug output before assertion
         if (result.isError) {
-          debugCompletion(position.file, position.line, position.character, result, `${this.config.name} - Common Completion Test`);
+          debugCompletion(
+            position.file,
+            position.line,
+            position.character,
+            result,
+            `${this.config.name} - Common Completion Test`
+          );
         }
 
         expect(result.isError).toBe(false);
@@ -178,7 +200,11 @@ export abstract class LanguageTestSuite {
 
         // Debug output before assertion
         if (result.isError) {
-          debugDiagnostics(this.getMainFilePath(), result, `${this.config.name} - Common Diagnostics Test`);
+          debugDiagnostics(
+            this.getMainFilePath(),
+            result,
+            `${this.config.name} - Common Diagnostics Test`
+          );
         }
 
         expect(result.isError).toBe(false);

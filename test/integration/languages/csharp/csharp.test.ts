@@ -13,7 +13,9 @@ class CSharpTestSuite extends LanguageTestSuite {
       customTests: () => {
         // C#-specific tests
         test('Should detect C# compilation errors', async () => {
-          const result = await this.client.getDiagnostics(this.getMainFilePath());
+          const result = await this.client.getDiagnostics(
+            this.getMainFilePath()
+          );
 
           assertDiagnostics(result, {
             hasErrors: true,

@@ -13,7 +13,9 @@ class PythonTestSuite extends LanguageTestSuite {
       customTests: () => {
         // Python-specific tests
         test('Should detect Python syntax errors', async () => {
-          const result = await this.client.getDiagnostics(this.getMainFilePath());
+          const result = await this.client.getDiagnostics(
+            this.getMainFilePath()
+          );
 
           // Just verify we get some diagnostics (Python LSP may not be fully configured)
           this.assertToolResult(result);

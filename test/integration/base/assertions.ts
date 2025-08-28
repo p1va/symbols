@@ -16,7 +16,10 @@ function logDebugContext(
   console.log('📋 REQUEST:', JSON.stringify(request, null, 2));
   console.log('📤 RESPONSE:', JSON.stringify(result, null, 2));
   if (additionalContext) {
-    console.log('🔧 ADDITIONAL CONTEXT:', JSON.stringify(additionalContext, null, 2));
+    console.log(
+      '🔧 ADDITIONAL CONTEXT:',
+      JSON.stringify(additionalContext, null, 2)
+    );
   }
   console.log('='.repeat(80) + '\n');
 }
@@ -43,7 +46,11 @@ export interface SymbolAssertion {
 export function assertToolSuccess(
   result: ToolCallResult,
   message?: string,
-  debugContext?: { testName?: string; request?: unknown; additionalContext?: Record<string, unknown> }
+  debugContext?: {
+    testName?: string;
+    request?: unknown;
+    additionalContext?: Record<string, unknown>;
+  }
 ): void {
   if (result.isError) {
     if (debugContext) {
@@ -114,9 +121,9 @@ export function assertDiagnostics(
   const debugInfo = {
     testName: debugContext?.testName || 'Diagnostics Assertion',
     request: { file: debugContext?.file, assertion },
-    additionalContext: { assertion }
+    additionalContext: { assertion },
   };
-  
+
   assertToolSuccess(result, undefined, debugInfo);
   expect(Array.isArray(result.content)).toBe(true);
 
@@ -127,12 +134,14 @@ export function assertDiagnostics(
       const text = extractText(item);
       return text && (text.includes('error') || text.includes('Error'));
     });
-    
+
     if (hasErrors !== assertion.hasErrors) {
-      console.log(`🚨 Diagnostics assertion failed - Expected hasErrors: ${assertion.hasErrors}, got: ${hasErrors}`);
+      console.log(
+        `🚨 Diagnostics assertion failed - Expected hasErrors: ${assertion.hasErrors}, got: ${hasErrors}`
+      );
       console.log('📄 Diagnostic content:', content.map(extractText));
     }
-    
+
     expect(hasErrors).toBe(assertion.hasErrors);
   }
 
@@ -161,7 +170,12 @@ export function assertDiagnostics(
 export function assertSymbolInspection(
   result: ToolCallResult,
   assertion: SymbolAssertion,
-  debugContext?: { file?: string; line?: number; character?: number; testName?: string }
+  debugContext?: {
+    file?: string;
+    line?: number;
+    character?: number;
+    testName?: string;
+  }
 ): void {
   const debugInfo = {
     testName: debugContext?.testName || 'Symbol Inspection',
@@ -169,26 +183,28 @@ export function assertSymbolInspection(
       file: debugContext?.file,
       line: debugContext?.line,
       character: debugContext?.character,
-      expectedSymbol: assertion.symbolName
+      expectedSymbol: assertion.symbolName,
     },
-    additionalContext: { assertion }
+    additionalContext: { assertion },
   };
-  
+
   assertToolSuccess(result, undefined, debugInfo);
 
   const content = result.content as unknown[];
   const contentTexts = content.map(extractText);
-  
+
   const hasSymbolName = content.some((item) => {
     const text = extractText(item);
     return text && text.includes(assertion.symbolName);
   });
-  
+
   if (!hasSymbolName) {
-    console.log(`🚨 Symbol inspection failed - Looking for symbol: ${assertion.symbolName}`);
+    console.log(
+      `🚨 Symbol inspection failed - Looking for symbol: ${assertion.symbolName}`
+    );
     console.log('📄 Inspection content:', contentTexts);
   }
-  
+
   expect(hasSymbolName, `Should contain symbol: ${assertion.symbolName}`).toBe(
     true
   );
@@ -209,13 +225,14 @@ export function assertSymbolInspection(
   if (assertion.hasDocumentation !== undefined) {
     const hasDoc = content.some((item) => {
       const text = extractText(item);
-      return text && (
-        text.includes('Documentation') || 
-        text.includes('documentation') || 
-        text.includes('/**') ||
-        text.includes('Main entry point') || // Look for actual doc content
-        text.includes('Helper') ||
-        (text.includes('```typescript') && text.length > 100) // TSDoc formatted content
+      return (
+        text &&
+        (text.includes('Documentation') ||
+          text.includes('documentation') ||
+          text.includes('/**') ||
+          text.includes('Main entry point') || // Look for actual doc content
+          text.includes('Helper') ||
+          (text.includes('```typescript') && text.length > 100)) // TSDoc formatted content
       );
     });
     expect(hasDoc).toBe(assertion.hasDocumentation);
@@ -302,7 +319,7 @@ export function debugInspect(
 }
 
 /**
- * Debug helper for references tool calls - shows detailed context for failures  
+ * Debug helper for references tool calls - shows detailed context for failures
  */
 export function debugReferences(
   file: string,
@@ -345,9 +362,5 @@ export function debugDiagnostics(
   result: ToolCallResult,
   testName = 'Diagnostics Operation'
 ): void {
-  logDebugContext(
-    testName,
-    { tool: 'diagnostics', file },
-    result
-  );
+  logDebugContext(testName, { tool: 'diagnostics', file }, result);
 }

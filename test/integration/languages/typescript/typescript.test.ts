@@ -4,9 +4,7 @@ import {
   assertDiagnostics,
   assertSymbolInspection,
   debugInspect,
-  debugReferences,
-  debugCompletion,
-  debugDiagnostics
+  debugDiagnostics,
 } from '../../base/index.js';
 
 class TypeScriptTestSuite extends LanguageTestSuite {
@@ -20,18 +18,28 @@ class TypeScriptTestSuite extends LanguageTestSuite {
       customTests: () => {
         // TypeScript-specific tests
         test('Should detect TypeScript type errors', async () => {
-          const result = await this.client.getDiagnostics(this.getMainFilePath());
-          
-          // Debug output before assertion
-          debugDiagnostics(this.getMainFilePath(), result, 'TypeScript Type Error Detection');
+          const result = await this.client.getDiagnostics(
+            this.getMainFilePath()
+          );
 
-          assertDiagnostics(result, {
-            hasErrors: true,
-            containsText: ['lodash'], // Missing module error
-          }, {
-            file: this.getMainFilePath(),
-            testName: 'TypeScript Type Error Detection'
-          });
+          // Debug output before assertion
+          debugDiagnostics(
+            this.getMainFilePath(),
+            result,
+            'TypeScript Type Error Detection'
+          );
+
+          assertDiagnostics(
+            result,
+            {
+              hasErrors: true,
+              containsText: ['lodash'], // Missing module error
+            },
+            {
+              file: this.getMainFilePath(),
+              testName: 'TypeScript Type Error Detection',
+            }
+          );
         });
 
         test('Should inspect TypeScript function with JSDoc', async () => {
@@ -41,20 +49,30 @@ class TypeScriptTestSuite extends LanguageTestSuite {
             character: 17, // on "main"
           };
           const result = await this.client.inspect(position);
-          
-          // Debug output before assertion  
-          debugInspect(position.file, position.line, position.character, result, 'TypeScript Function with JSDoc');
 
-          assertSymbolInspection(result, {
-            symbolName: 'main',
-            symbolType: 'function',
-            hasDocumentation: true,
-          }, {
-            file: position.file,
-            line: position.line,
-            character: position.character,
-            testName: 'TypeScript Function with JSDoc'
-          });
+          // Debug output before assertion
+          debugInspect(
+            position.file,
+            position.line,
+            position.character,
+            result,
+            'TypeScript Function with JSDoc'
+          );
+
+          assertSymbolInspection(
+            result,
+            {
+              symbolName: 'main',
+              symbolType: 'function',
+              hasDocumentation: true,
+            },
+            {
+              file: position.file,
+              line: position.line,
+              character: position.character,
+              testName: 'TypeScript Function with JSDoc',
+            }
+          );
         });
 
         test('Should inspect TypeScript interface', async () => {
@@ -64,19 +82,29 @@ class TypeScriptTestSuite extends LanguageTestSuite {
             character: 19, // on "TestConfig"
           };
           const result = await this.client.inspect(position);
-          
-          // Debug output before assertion
-          debugInspect(position.file, position.line, position.character, result, 'TypeScript Interface');
 
-          assertSymbolInspection(result, {
-            symbolName: 'TestConfig',
-            symbolType: 'interface',
-          }, {
-            file: position.file,
-            line: position.line,
-            character: position.character,
-            testName: 'TypeScript Interface'
-          });
+          // Debug output before assertion
+          debugInspect(
+            position.file,
+            position.line,
+            position.character,
+            result,
+            'TypeScript Interface'
+          );
+
+          assertSymbolInspection(
+            result,
+            {
+              symbolName: 'TestConfig',
+              symbolType: 'interface',
+            },
+            {
+              file: position.file,
+              line: position.line,
+              character: position.character,
+              testName: 'TypeScript Interface',
+            }
+          );
         });
 
         test('Should inspect TypeScript class', async () => {
@@ -86,19 +114,29 @@ class TypeScriptTestSuite extends LanguageTestSuite {
             character: 14, // on "TestService"
           };
           const result = await this.client.inspect(position);
-          
-          // Debug output before assertion
-          debugInspect(position.file, position.line, position.character, result, 'TypeScript Class');
 
-          assertSymbolInspection(result, {
-            symbolName: 'TestService',
-            symbolType: 'class',
-          }, {
-            file: position.file,
-            line: position.line,
-            character: position.character,
-            testName: 'TypeScript Class'
-          });
+          // Debug output before assertion
+          debugInspect(
+            position.file,
+            position.line,
+            position.character,
+            result,
+            'TypeScript Class'
+          );
+
+          assertSymbolInspection(
+            result,
+            {
+              symbolName: 'TestService',
+              symbolType: 'class',
+            },
+            {
+              file: position.file,
+              line: position.line,
+              character: position.character,
+              testName: 'TypeScript Class',
+            }
+          );
         });
 
         test('Should find TypeScript symbols with different preview modes', async () => {
