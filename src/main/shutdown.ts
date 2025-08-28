@@ -51,7 +51,7 @@ export function setupShutdown(
       // 1. Send LSP shutdown sequence
       if (lspClient.isInitialized) {
         logger.debug('Sending LSP shutdown request');
-        await lspClient.connection.sendRequest('shutdown', null);
+        await lspClient.connection.sendRequest('shutdown');
 
         logger.debug('Sending LSP exit notification');
         await lspClient.connection.sendNotification('exit', null);

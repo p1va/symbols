@@ -491,7 +491,7 @@ async function initializeWorkspaceLoader(
 export async function shutdownLspClient(client: LspClient): Promise<void> {
   try {
     if (client.isInitialized) {
-      await client.connection.sendRequest('shutdown', null);
+      await client.connection.sendRequest('shutdown');
       await client.connection.sendNotification('exit', null);
     }
   } catch {
