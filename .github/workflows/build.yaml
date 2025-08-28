@@ -108,7 +108,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.x'
+          dotnet-version: '9.0.304'
 
       - name: Print architecture
         run: uname -m
