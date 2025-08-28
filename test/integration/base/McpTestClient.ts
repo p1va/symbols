@@ -34,6 +34,8 @@ export class McpTestClient {
       finalArgs = [...finalArgs, '--config', this.configPath];
     }
 
+    finalArgs = [...finalArgs, '--loglevel', 'debug'];
+
     // Log the command being executed for debugging
     console.log(
       `[McpTestClient] Starting MCP server: ${this.command} ${finalArgs.join(' ')}`
