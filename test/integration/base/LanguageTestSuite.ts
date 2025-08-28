@@ -4,6 +4,13 @@ import {
   SymbolPosition,
   ToolCallResult,
 } from './McpTestClient.js';
+import {
+  debugInspect,
+  debugReferences,
+  debugCompletion,
+  debugDiagnostics,
+} from './assertions.js';
+import { getTestCommand, getTestTimeouts, getTestEnvironmentInfo } from './TestEnvironment.js';
 import path from 'path';
 
 export interface LanguageConfig {
@@ -12,11 +19,12 @@ export interface LanguageConfig {
   mainFile: string;
   expectedToolCount?: number;
   // Position in main file that should be valid for inspect/references
-  testPosition?: SymbolPosition;
+  // Note: file will be overridden to use mainFile, so only line and character are needed
+  testPosition?: Omit<SymbolPosition, 'file'> & { file?: string };
   // Expected diagnostics (for files with intentional errors)
   expectDiagnostics?: boolean;
   // Custom test cases specific to this language
-  customTests?: (client: McpTestClient) => void;
+  customTests?: () => void;
 }
 
 export abstract class LanguageTestSuite {
@@ -25,16 +33,29 @@ export abstract class LanguageTestSuite {
 
   constructor(config: LanguageConfig) {
     this.config = config;
+    // Note: We'll handle async initialization in createTestSuite()
+  }
+
+  /**
+   * Initialize the test client with environment-appropriate command
+   * This needs to be async due to the environment detection logic
+   */
+  private async initializeClient(): Promise<void> {
     // Set working directory to the test project path for proper language detection
     const absoluteWorkspacePath = path.resolve(this.config.testProjectPath);
     const configPath = path.resolve(
       path.dirname(this.config.testProjectPath),
-      'lsps.yaml'
+      'symbols.yaml'
     );
 
+    // Get environment-appropriate command (tsx for local dev, node dist/ for CI)
+    const testCommand = await getTestCommand();
+    const envInfo = await getTestEnvironmentInfo();
+    console.log(`[${this.config.name}] ${envInfo}`);
+
     this.client = new McpTestClient(
-      'pnpm',
-      ['start'],
+      testCommand.command,
+      testCommand.args,
       'integration-test',
       '1.0.0',
       absoluteWorkspacePath,
@@ -46,10 +67,13 @@ export abstract class LanguageTestSuite {
    * Creates a complete test suite for a language
    */
   createTestSuite(): void {
+    const timeouts = getTestTimeouts();
+    
     describe(`${this.config.name} MCP Integration Tests`, () => {
       beforeAll(async () => {
-        await this.client.connect();
-      }, 15000);
+        await this.initializeClient();
+        await this.client.connect(timeouts.connection);
+      }, timeouts.setup);
 
       afterAll(async () => {
         await this.client.close();
@@ -58,7 +82,7 @@ export abstract class LanguageTestSuite {
       this.addCommonTests();
 
       if (this.config.customTests) {
-        this.config.customTests(this.client);
+        this.config.customTests.call(this);
       }
     });
   }
@@ -91,31 +115,57 @@ export abstract class LanguageTestSuite {
     });
 
     if (this.config.testPosition) {
+      const testPos = this.config.testPosition; // Capture for type narrowing
+      
       test('Should inspect symbol', async () => {
-        const position = { ...this.config.testPosition };
-        position.file = this.getMainFilePath();
+        const position: SymbolPosition = {
+          file: this.getMainFilePath(),
+          line: testPos.line,
+          character: testPos.character,
+        };
 
         const result = await this.client.inspect(position);
+
+        // Debug output before assertion
+        if (result.isError) {
+          debugInspect(position.file, position.line, position.character, result, `${this.config.name} - Common Inspect Test`);
+        }
 
         expect(result.isError).toBe(false);
         expect(result.content).toBeDefined();
       });
 
       test('Should get references', async () => {
-        const position = { ...this.config.testPosition };
-        position.file = this.getMainFilePath();
+        const position: SymbolPosition = {
+          file: this.getMainFilePath(),
+          line: testPos.line,
+          character: testPos.character,
+        };
 
         const result = await this.client.getReferences(position);
+
+        // Debug output before assertion
+        if (result.isError) {
+          debugReferences(position.file, position.line, position.character, result, `${this.config.name} - Common References Test`);
+        }
 
         expect(result.isError).toBe(false);
         expect(result.content).toBeDefined();
       });
 
       test('Should get completion suggestions', async () => {
-        const position = { ...this.config.testPosition };
-        position.file = this.getMainFilePath();
+        const position: SymbolPosition = {
+          file: this.getMainFilePath(),
+          line: testPos.line,
+          character: testPos.character,
+        };
 
         const result = await this.client.getCompletion(position);
+
+        // Debug output before assertion
+        if (result.isError) {
+          debugCompletion(position.file, position.line, position.character, result, `${this.config.name} - Common Completion Test`);
+        }
 
         expect(result.isError).toBe(false);
         expect(result.content).toBeDefined();
@@ -125,6 +175,11 @@ export abstract class LanguageTestSuite {
     if (this.config.expectDiagnostics) {
       test('Should get diagnostics', async () => {
         const result = await this.client.getDiagnostics(this.getMainFilePath());
+
+        // Debug output before assertion
+        if (result.isError) {
+          debugDiagnostics(this.getMainFilePath(), result, `${this.config.name} - Common Diagnostics Test`);
+        }
 
         expect(result.isError).toBe(false);
         expect(result.content).toBeDefined();

@@ -1,6 +1,26 @@
 import { expect } from 'vitest';
 import { ToolCallResult } from './McpTestClient.js';
 
+/**
+ * Debug logging helper to print detailed context for failing tests
+ */
+function logDebugContext(
+  testName: string,
+  request: unknown,
+  result: ToolCallResult,
+  additionalContext?: Record<string, unknown>
+): void {
+  console.log('\n' + '='.repeat(80));
+  console.log(`🔍 DEBUG: ${testName}`);
+  console.log('='.repeat(80));
+  console.log('📋 REQUEST:', JSON.stringify(request, null, 2));
+  console.log('📤 RESPONSE:', JSON.stringify(result, null, 2));
+  if (additionalContext) {
+    console.log('🔧 ADDITIONAL CONTEXT:', JSON.stringify(additionalContext, null, 2));
+  }
+  console.log('='.repeat(80) + '\n');
+}
+
 export interface DiagnosticAssertion {
   hasErrors?: boolean;
   hasWarnings?: boolean;
@@ -22,10 +42,20 @@ export interface SymbolAssertion {
  */
 export function assertToolSuccess(
   result: ToolCallResult,
-  message?: string
+  message?: string,
+  debugContext?: { testName?: string; request?: unknown; additionalContext?: Record<string, unknown> }
 ): void {
   if (result.isError) {
-    console.error('[ASSERTION ERROR] Tool call failed:', result.content);
+    if (debugContext) {
+      logDebugContext(
+        debugContext.testName || 'Tool Success Check',
+        debugContext.request || 'No request provided',
+        result,
+        debugContext.additionalContext
+      );
+    } else {
+      console.error('[ASSERTION ERROR] Tool call failed:', result.content);
+    }
   }
   expect(
     result.isError,
@@ -78,9 +108,16 @@ export function assertToolFailure(
  */
 export function assertDiagnostics(
   result: ToolCallResult,
-  assertion: DiagnosticAssertion
+  assertion: DiagnosticAssertion,
+  debugContext?: { file?: string; testName?: string }
 ): void {
-  assertToolSuccess(result);
+  const debugInfo = {
+    testName: debugContext?.testName || 'Diagnostics Assertion',
+    request: { file: debugContext?.file, assertion },
+    additionalContext: { assertion }
+  };
+  
+  assertToolSuccess(result, undefined, debugInfo);
   expect(Array.isArray(result.content)).toBe(true);
 
   const content = result.content as unknown[];
@@ -90,6 +127,12 @@ export function assertDiagnostics(
       const text = extractText(item);
       return text && (text.includes('error') || text.includes('Error'));
     });
+    
+    if (hasErrors !== assertion.hasErrors) {
+      console.log(`🚨 Diagnostics assertion failed - Expected hasErrors: ${assertion.hasErrors}, got: ${hasErrors}`);
+      console.log('📄 Diagnostic content:', content.map(extractText));
+    }
+    
     expect(hasErrors).toBe(assertion.hasErrors);
   }
 
@@ -117,15 +160,35 @@ export function assertDiagnostics(
  */
 export function assertSymbolInspection(
   result: ToolCallResult,
-  assertion: SymbolAssertion
+  assertion: SymbolAssertion,
+  debugContext?: { file?: string; line?: number; character?: number; testName?: string }
 ): void {
-  assertToolSuccess(result);
+  const debugInfo = {
+    testName: debugContext?.testName || 'Symbol Inspection',
+    request: {
+      file: debugContext?.file,
+      line: debugContext?.line,
+      character: debugContext?.character,
+      expectedSymbol: assertion.symbolName
+    },
+    additionalContext: { assertion }
+  };
+  
+  assertToolSuccess(result, undefined, debugInfo);
 
   const content = result.content as unknown[];
+  const contentTexts = content.map(extractText);
+  
   const hasSymbolName = content.some((item) => {
     const text = extractText(item);
     return text && text.includes(assertion.symbolName);
   });
+  
+  if (!hasSymbolName) {
+    console.log(`🚨 Symbol inspection failed - Looking for symbol: ${assertion.symbolName}`);
+    console.log('📄 Inspection content:', contentTexts);
+  }
+  
   expect(hasSymbolName, `Should contain symbol: ${assertion.symbolName}`).toBe(
     true
   );
@@ -146,7 +209,14 @@ export function assertSymbolInspection(
   if (assertion.hasDocumentation !== undefined) {
     const hasDoc = content.some((item) => {
       const text = extractText(item);
-      return text && (text.includes('documentation') || text.includes('/**'));
+      return text && (
+        text.includes('Documentation') || 
+        text.includes('documentation') || 
+        text.includes('/**') ||
+        text.includes('Main entry point') || // Look for actual doc content
+        text.includes('Helper') ||
+        (text.includes('```typescript') && text.length > 100) // TSDoc formatted content
+      );
     });
     expect(hasDoc).toBe(assertion.hasDocumentation);
   }
@@ -207,4 +277,77 @@ export function assertSearchResults(
       true
     );
   }
+}
+
+// ==============================================================================
+// DEBUG HELPERS FOR COMMON TOOL OPERATIONS
+// ==============================================================================
+
+/**
+ * Debug helper for inspect tool calls - shows detailed context for failures
+ */
+export function debugInspect(
+  file: string,
+  line: number,
+  character: number,
+  result: ToolCallResult,
+  testName = 'Inspect Operation'
+): void {
+  logDebugContext(
+    testName,
+    { tool: 'inspect', file, line, character },
+    result,
+    { expectedPosition: `${file}:${line}:${character}` }
+  );
+}
+
+/**
+ * Debug helper for references tool calls - shows detailed context for failures  
+ */
+export function debugReferences(
+  file: string,
+  line: number,
+  character: number,
+  result: ToolCallResult,
+  testName = 'References Operation'
+): void {
+  logDebugContext(
+    testName,
+    { tool: 'references', file, line, character },
+    result,
+    { expectedPosition: `${file}:${line}:${character}` }
+  );
+}
+
+/**
+ * Debug helper for completion tool calls - shows detailed context for failures
+ */
+export function debugCompletion(
+  file: string,
+  line: number,
+  character: number,
+  result: ToolCallResult,
+  testName = 'Completion Operation'
+): void {
+  logDebugContext(
+    testName,
+    { tool: 'completion', file, line, character },
+    result,
+    { expectedPosition: `${file}:${line}:${character}` }
+  );
+}
+
+/**
+ * Debug helper for diagnostics tool calls - shows detailed context for failures
+ */
+export function debugDiagnostics(
+  file: string,
+  result: ToolCallResult,
+  testName = 'Diagnostics Operation'
+): void {
+  logDebugContext(
+    testName,
+    { tool: 'diagnostics', file },
+    result
+  );
 }

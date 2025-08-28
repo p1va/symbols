@@ -33,7 +33,11 @@
     "test:integration": "vitest run test/integration/",
     "test:integration:typescript": "vitest run test/integration/languages/typescript/",
     "test:integration:python": "vitest run test/integration/languages/python/",
-    "test:integration:csharp": "vitest run test/integration/languages/csharp/"
+    "test:integration:csharp": "vitest run test/integration/languages/csharp/",
+    "test:integration:ci": "CI=true vitest run test/integration/",
+    "test:integration:typescript:ci": "CI=true vitest run test/integration/languages/typescript/",
+    "test:integration:python:ci": "CI=true vitest run test/integration/languages/python/",
+    "test:integration:csharp:ci": "CI=true vitest run test/integration/languages/csharp/"
   },
   "type": "module",
   "license": "ISC",

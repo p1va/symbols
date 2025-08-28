@@ -10,10 +10,10 @@ class CSharpTestSuite extends LanguageTestSuite {
       mainFile: 'Program.cs',
       testPosition: { file: '', line: 14, character: 21 }, // on 'Main' method
       expectDiagnostics: true,
-      customTests: (client) => {
+      customTests: () => {
         // C#-specific tests
         test('Should detect C# compilation errors', async () => {
-          const result = await client.getDiagnostics(this.getMainFilePath());
+          const result = await this.client.getDiagnostics(this.getMainFilePath());
 
           assertDiagnostics(result, {
             hasErrors: true,
@@ -22,7 +22,7 @@ class CSharpTestSuite extends LanguageTestSuite {
         });
 
         test('Should inspect C# Main method', async () => {
-          const result = await client.inspect({
+          const result = await this.client.inspect({
             file: this.getMainFilePath(),
             line: 14, // static void Main(string[] args)
             character: 21, // on "Main"
@@ -36,7 +36,7 @@ class CSharpTestSuite extends LanguageTestSuite {
         });
 
         test('Should inspect C# class', async () => {
-          const result = await client.inspect({
+          const result = await this.client.inspect({
             file: this.getMainFilePath(),
             line: 33, // public class TestService
             character: 18, // on "TestService"
@@ -50,7 +50,7 @@ class CSharpTestSuite extends LanguageTestSuite {
         });
 
         test('Should inspect C# property', async () => {
-          const result = await client.inspect({
+          const result = await this.client.inspect({
             file: this.getMainFilePath(),
             line: 40, // public string Name { get; set; }
             character: 23, // on "Name"
@@ -63,14 +63,14 @@ class CSharpTestSuite extends LanguageTestSuite {
         });
 
         test('Should find C# symbols', async () => {
-          const result = await client.searchSymbols('TestService');
+          const result = await this.client.searchSymbols('TestService');
 
           this.assertToolResult(result);
           this.assertSymbolExists(result, 'TestService');
         });
 
         test('Should read C# file symbols with XML documentation', async () => {
-          const result = await client.readSymbols(
+          const result = await this.client.readSymbols(
             this.getMainFilePath(),
             99,
             'signature'

@@ -20,15 +20,28 @@ test/
 
 ## 🚀 Available Test Scripts
 
+### Unit Tests (Fast - ~1-2 seconds)
+| Script | Description | Use Case |
+|--------|-------------|----------|
+| `pnpm test:unit` | Run unit tests only | Quick feedback during development |
+| `pnpm test:unit:coverage` | Unit tests with coverage report | Coverage analysis |
+
+### Integration Tests (Slower - ~30-60 seconds)
+| Script | Description | Command Used |
+|--------|-------------|--------------|
+| `pnpm test:integration` | All integration tests (source) | `pnpm exec tsx src/index.ts` |
+| `pnpm test:integration:ci` | All integration tests (built) | `node dist/index.js` |
+| `pnpm test:integration:typescript` | TypeScript integration (source) | `pnpm exec tsx src/index.ts` |
+| `pnpm test:integration:typescript:ci` | TypeScript integration (built) | `node dist/index.js` |
+| `pnpm test:integration:python` | Python integration (source) | `pnpm exec tsx src/index.ts` |
+| `pnpm test:integration:python:ci` | Python integration (built) | `node dist/index.js` |
+| `pnpm test:integration:csharp` | C# integration (source) | `pnpm exec tsx src/index.ts` |
+| `pnpm test:integration:csharp:ci` | C# integration (built) | `node dist/index.js` |
+
+### Combined
 | Script | Description | Use Case |
 |--------|-------------|----------|
 | `pnpm test` | Run all tests (unit + integration) | Local comprehensive testing |
-| `pnpm test:unit` | Run unit tests only | Quick feedback during development |
-| `pnpm test:unit:coverage` | Unit tests with coverage report | Coverage analysis |
-| `pnpm test:integration` | Run all integration tests | Integration verification |
-| `pnpm test:integration:typescript` | TypeScript integration only | Language-specific testing |
-| `pnpm test:integration:python` | Python integration only | Language-specific testing |
-| `pnpm test:integration:csharp` | C# integration only | Language-specific testing |
 
 ## 🔄 CI/CD Pipeline
 
@@ -75,6 +88,38 @@ Our GitHub Actions workflow is optimized for speed and parallelization:
 - Coverage thresholds enforced (80% branches/functions/lines/statements)
 - Coverage reports uploaded even on test failures
 
+## 🎯 Environment-Aware Testing
+
+Our integration tests automatically adapt based on the CI environment variable:
+
+### **Simple Command Selection**
+
+| Environment | Condition | Command Used | Purpose |
+|------------|-----------|--------------|---------|
+| **CI** | `CI=true` | `node dist/index.js` | Test built artifact (production) |
+| **Local** | `CI=false` or unset | `pnpm exec tsx src/index.ts` | Fast iteration (no build required) |
+
+### **Testing Built Version Locally**
+To replicate CI behavior and test the built version locally:
+
+```bash
+# Test built version (same as CI)
+pnpm test:integration:ci
+pnpm test:integration:typescript:ci
+
+# Or manually set CI flag
+CI=true pnpm test:integration:typescript
+```
+
+### **Development Testing**
+For normal development (default behavior):
+
+```bash
+# Test source code directly (fast)
+pnpm test:integration
+pnpm test:integration:typescript
+```
+
 ## 🛠️ Local Development Workflow
 
 ### For Active Development:
@@ -84,24 +129,33 @@ pnpm test:unit
 
 # Watch mode for continuous testing
 pnpm test:watch
+
+# Integration tests against source (fast, no build required)
+pnpm test:integration:typescript:dev
 ```
 
 ### Before Committing:
 ```bash
-# Full verification
+# Full verification against built version
+pnpm build
 pnpm test
 
-# Or run specific integration test for your changes
-pnpm test:integration:typescript
+# Quick source-only verification
+pnpm test:unit
+pnpm test:integration:dev
 ```
 
 ### Debugging Integration Issues:
 ```bash
-# Test specific language
+# Test specific language against source (faster debugging)
+pnpm test:integration:python:dev
+
+# Test against built version (production debugging)
+pnpm build
 pnpm test:integration:python
 
 # Run with verbose output
-pnpm vitest run test/integration/languages/python/ --reporter=verbose
+NODE_ENV=dev pnpm vitest run test/integration/languages/python/ --reporter=verbose
 ```
 
 ## ⚙️ Configuration

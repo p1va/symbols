@@ -12,6 +12,16 @@ export {
   assertSymbolReferences,
   assertCompletionSuggestions,
   assertSearchResults,
+  debugInspect,
+  debugReferences,
+  debugCompletion,
+  debugDiagnostics,
   type DiagnosticAssertion,
   type SymbolAssertion,
 } from './assertions.js';
+export {
+  getTestCommand,
+  getTestTimeouts,
+  getTestEnvironmentInfo,
+  type TestCommand,
+} from './TestEnvironment.js';
