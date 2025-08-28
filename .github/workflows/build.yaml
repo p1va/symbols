@@ -139,6 +139,7 @@ jobs:
 
       - name: Print logs
         run: tail $HOME/.local/state/symbols-nodejs/*.log
+        if: always()
 
       - name: 📊 Upload C# integration test report
         uses: actions/upload-artifact@v4
