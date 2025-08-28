@@ -3,7 +3,7 @@ lsps:
     command: >
       $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer
         --logLevel=Information
-        --extensionLogDirectory=/tmp/csharp-lsp-logs
+        --extensionLogDirectory=$HOME/.csharp-lsp/logs
         --stdio
     workspace_loader: 'csharp'
     extensions:
