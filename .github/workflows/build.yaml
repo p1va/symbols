@@ -115,6 +115,9 @@ jobs:
       - name: Print architecture
         run: uname -m
 
+      - name: Print runtimes
+        run: dotnet --list-runtimes
+
       - name: Install C# Language Server (Roslyn)
         run: |
           dotnet restore scripts/ServerDownload.csproj \
