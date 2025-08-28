@@ -1,15 +1,1 @@
-lsps:
-  csharp:
-    command: >
-      $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer
-        --logLevel=Information
-        --extensionLogDirectory=/tmp/csharp-lsp-logs
-        --stdio
-    workspace_loader: 'csharp'
-    extensions:
-      '.cs': 'csharp'
-    workspace_files:
-      - '*.sln'
-      - '*.csproj'
-    diagnostics:
-      strategy: 'pull'
+../../../../examples/configs/csharp.yaml
