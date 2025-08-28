@@ -1,1 +1,12 @@
-../../../../examples/configs/python-only.yaml
+lsps:
+  pyright:
+    command: pyright-langserver --stdio
+    extensions:
+      '.py': 'python'
+    workspace_files:
+      - 'pyproject.toml'
+      - 'requirements.txt'
+      - 'setup.py'
+      - 'Pipfile'
+    diagnostics:
+      strategy: 'pull'
