@@ -5,18 +5,30 @@
     containing the language server executables.
 -->
 <Project Sdk="Microsoft.NET.Sdk">
-
+  <PropertyGroup>
+    <PackageNameBase>Microsoft.CodeAnalysis.LanguageServer</PackageNameBase>
+    <PackageVersion>5.0.0-1.25353.13</PackageVersion>
+    <RestorePackagesPath  Condition=" '$(RestorePackagesPath)' == '' ">/tmp/lsp-download</RestorePackagesPath>
+    <ServerPath Condition=" '$(DownloadPath)' == '' ">./LspServer/</ServerPath>
+    <TargetFramework>net9.0</TargetFramework>
+    <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <RestoreSources>
+      https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json
+    </RestoreSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageDownload Include="$(PackageNameBase).$(Platform)" version="[$(PackageVersion)]" />
+  </ItemGroup>
+  <Target Name="SimplifyPath" AfterTargets="Restore">
     <PropertyGroup>
-        <!-- Changes the global packages folder-->
-        <RestorePackagesPath>$(DownloadPath)</RestorePackagesPath>
-        <TargetFramework>net9.0</TargetFramework>
-        <!-- If a package is resolved to a fallback folder, it may not be downloaded.-->
-        <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
-        <!-- We don't want to build this project, so we do not need the reference assemblies for the framework we chose.-->
-        <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+      <PackageIdFolderName>$(PackageNameBase.ToLower()).$(Platform.ToLower())</PackageIdFolderName>
+      <PackageContentPath>$(RestorePackagesPath)/$(PackageIdFolderName)/$(PackageVersion)/content/LanguageServer/$(Platform)/</PackageContentPath>
     </PropertyGroup>
-
     <ItemGroup>
-        <PackageDownload Include="$(PackageName)" version="[$(PackageVersion)]" />
+      <ServerFiles Include="$(PackageContentPath)**/*" />
     </ItemGroup>
+    <Copy SourceFiles="@(ServerFiles)" DestinationFolder="$(ServerPath)%(RecursiveDir)" />
+    <RemoveDir Directories="$(RestorePackagesPath)" />
+  </Target>
 </Project>
