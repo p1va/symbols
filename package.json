@@ -45,9 +45,6 @@
   "type": "module",
   "license": "ISC",
   "packageManager": "pnpm@10.15.0",
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "@types/js-yaml": "^4.0.9",
