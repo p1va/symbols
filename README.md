@@ -47,7 +47,7 @@ npx -y @p1va/symbols
 
 ### MCP Server Configuration
 
-The MCP server can be configured to use one or many Language Servers and can be declared in a YAML configuration file. In priority order these are the methods that can be used to provide the file.
+The MCP server can be configured to use one or more Language Servers that should be declared in a YAML configuration file. In priority order these are the methods that can be used to provide the file.
 
 1. Explicitly via `--config` argument e.g. `--config path/to/my-config.yaml` when running
 2. `{workspace}/symbols.y(a)ml` when `--workspace` is provided
@@ -57,11 +57,15 @@ The MCP server can be configured to use one or many Language Servers and can be 
 Examples configurations can be found under [this folder](examples/configs/) and include [csharp](examples/configs/csharp.yaml), [csharp through VSCode](examples/configs/vscode-csharp.yaml), [pyright](examples/configs/pyright.yaml), [typescript](examples/configs/typescript.yaml), [go](examples/configs/rust.yaml), [rust](examples/configs/go.yaml) and [java](examples/configs/java.yaml)
 
 They can be pulled to a repo via
-`curl -o symbols.yaml https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/csharp.yaml` 
+`curl -o symbols.yaml https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/csharp.yaml`
+
+It's possible to double check and validate the active configuration by running
+
+`symbols --show-config`
 
 ### Language Servers
 
-Depending on the command declared in the configuration this server will spawn an [LSP](https://microsoft.github.io/language-server-protocol/)-compatible Language Server that also needs installing.
+Depending on the configuration and the detected project, the MCP server will spawn a [LSP](https://microsoft.github.io/language-server-protocol/)-compatible Language Server that also needs installing.
 
 <details>
 
