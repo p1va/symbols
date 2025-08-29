@@ -1,7 +1,7 @@
 lsps:
   java:
     command: >
-      $HOME/Downloads/jdtls/bin/jdtls
+      $HOME/.java-lsp/jdtls/bin/jdtls
         -configuration $HOME/.cache/jdtls/config
         -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
         --jvm-arg=-Dlog.protocol=true

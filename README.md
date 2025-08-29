@@ -33,13 +33,35 @@ The MCP server provides the following tools:
 
 ### MCP Server
 
+The MCP server can be installed globaly as `symbols` with
+
 ```bash
-npx -y github:p1va/symbols
+npm install -g @p1va/symbols
 ```
+
+or executed with
+
+```bash
+npx -y @p1va/symbols
+```
+
+### MCP Server Configuration
+
+The MCP server can be configured to use one or many Language Servers and can be declared in a YAML configuration file. In priority order these are the methods that can be used to provide the file.
+
+1. Explicitly via `--config` argument e.g. `--config path/to/my-config.yaml` when running
+2. `{workspace}/symbols.y(a)ml` when `--workspace` is provided
+3. `symbols.y(a)ml` relative to current working directory
+4. `{OS_CONFIG_DIR}/symbols.y(a)ml`
+
+Examples configurations can be found under [this folder](examples/configs/) and include [csharp](examples/configs/csharp.yaml), [csharp through VSCode](examples/configs/vscode-csharp.yaml), [pyright](examples/configs/pyright.yaml), [typescript](examples/configs/typescript.yaml), [go](examples/configs/rust.yaml), [rust](examples/configs/go.yaml) and [java](examples/configs/java.yaml)
+
+They can be pulled to a repo via
+`curl -o symbols.yaml https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/csharp.yaml` 
 
 ### Language Servers
 
-Depending on the configuration this server will spawn an [LSP](https://microsoft.github.io/language-server-protocol/)-compatible Language Server that also needs installing.
+Depending on the command declared in the configuration this server will spawn an [LSP](https://microsoft.github.io/language-server-protocol/)-compatible Language Server that also needs installing.
 
 <details>
 
@@ -196,7 +218,7 @@ rust-analyzer --version
 
 </details>
 
-## Configuration
+### Configuration
 
 Instructions on how to configure the server and using it with coding agents
 
@@ -210,8 +232,8 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
 {
   "mcpServers": {
     "symbols": {
-      "command": "npx",
-      "args": ["-y", "github:p1va/symbols"]
+      "command": "symbols",
+      "args": []
     }
   }
 }
@@ -230,7 +252,7 @@ Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo leve
 ```toml
 [mcp_servers.csharp]
 command = "npx"
-args = ["-y", "github:p1va/symbols"]
+args = ["-y", "@p1va/symbols"]
 ```
 
 Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
@@ -249,7 +271,7 @@ Add or update your `.vscode/mcp.toml` to include the server and provide your own
     "symbols": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:p1va/symbols"]
+      "args": ["-y", "@p1va/symbols"]
     }
   }
 }
@@ -265,32 +287,5 @@ Add or update your `.vscode/mcp.toml` to include the server and provide your own
 - `pnpm dev` starts in development mode
 - `pnpm build` runs the linter and build
 - `pnpm start` starts the built artifacts
-- `pnpm test` runs the tests
-
-## Configuration File Lookup
-
-The symbols server looks for YAML configuration files in the following order of priority:
-
-1. **CLI argument** - Path specified with `--config` flag (highest priority)
-2. **Workspace directory** (if provided with `--workspace`):
-   - `{workspace}/symbols.yaml`
-   - `{workspace}/symbols.yml`
-   - `{workspace}/lsps.yaml` (backward compatibility)
-   - `{workspace}/lsps.yml` (backward compatibility)
-3. **Repository folder** (relative to current working directory):
-   - `symbols.yaml`
-   - `symbols.yml`
-   - `lsps.yaml` (backward compatibility)
-   - `lsps.yml` (backward compatibility)
-4. **Current working directory** (explicit paths):
-   - `{cwd}/symbols.yaml`
-   - `{cwd}/symbols.yml`
-   - `{cwd}/lsps.yaml` (backward compatibility)
-   - `{cwd}/lsps.yml` (backward compatibility)
-5. **OS-specific config directory** (lowest priority):
-   - `{OS_CONFIG_DIR}/symbols.yaml`
-   - `{OS_CONFIG_DIR}/symbols.yml`
-   - `{OS_CONFIG_DIR}/lsps.yaml` (backward compatibility)
-   - `{OS_CONFIG_DIR}/lsps.yml` (backward compatibility)
-
-The OS-specific config directory follows platform conventions (e.g., `~/.config/symbols/` on Linux, `~/Library/Preferences/symbols/` on macOS).
+- `pnpm test:unit` runs the unit tests
+- `pnpm test:integration:{language id}` runs the integration tests for a given language
