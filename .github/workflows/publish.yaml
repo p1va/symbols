@@ -1,0 +1,32 @@
+name: Create Release and Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  release-and-publish:
+    runs-on: ubuntu-latest
+
+    # These permissions are essential for the workflow to function correctly.
+    # 'contents: write' is now needed for the GitHub CLI to create the release.
+    # 'id-token: write' is REQUIRED for generating provenance with npm.
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+        - uses: actions/checkout@v4
+        - name: Setup and Install
+          uses: ./.github/actions/setup-and-install
+
+        - name: Create GitHub Release
+          run: gh release create "${{ github.ref_name }}" --generate-notes
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Publish to npm
+          run: pnpm publish --provenance
+          env:
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

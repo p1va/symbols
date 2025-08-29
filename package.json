@@ -1,7 +1,7 @@
 {
   "author": "p1va",
   "name": "@p1va/symbols",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "MCP server to read, inspect and troubleshoot codebase symbols",
   "keywords": [
     "mcp",
@@ -45,6 +45,9 @@
   "type": "module",
   "license": "ISC",
   "packageManager": "pnpm@10.15.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "@types/js-yaml": "^4.0.9",
