@@ -12,10 +12,7 @@ import {
   createCodePreview,
   createSignaturePreview,
 } from './enrichment.js';
-import {
-  filterSymbolsByConfig,
-  TypeScriptConfig,
-} from '../config/typescript.js';
+// Removed deprecated typescript.js imports - configuration is now handled via YAML files
 import { FlattenedSymbol } from '../types/lsp.js';
 
 export function registerReadTool(
@@ -71,8 +68,8 @@ async function formatReadResults(
   }
 
   const symbols = data.symbols;
-  const filteredByKind = filterSymbolsByConfig(symbols);
-  const symbolsWithDepth = calculateSymbolDepths(filteredByKind);
+  // Symbol filtering is now handled via YAML configurations rather than hardcoded filters
+  const symbolsWithDepth = calculateSymbolDepths(symbols);
 
   // Filter symbols by maxDepth
   const filteredSymbols = symbolsWithDepth.filter((s) => s.depth <= maxDepth);
@@ -203,21 +200,8 @@ async function formatReadResults(
       const kind = getSymbolKindName(symbol.kind);
       const indent = '  '.repeat(depth);
 
-      // Add debug info for container name and kind (only if enabled in config)
-      let containerDebug = '';
-      if (TypeScriptConfig.showDebugInfo && symbol.containerName) {
-        // Find the container symbol to get its kind
-        const containerSymbol = enrichedSymbols.find(
-          (es) => es.symbol.name === symbol.containerName
-        );
-        const containerKind = containerSymbol
-          ? getSymbolKindName(containerSymbol.symbol.kind)
-          : 'Unknown';
-        containerDebug = ` [${symbol.containerName}, ${containerKind}]`;
-      }
-
-      // Base symbol line
-      const symbolLine = `${indent}@${line}:${char} ${kind} - ${symbol.name}${containerDebug}`;
+      // Base symbol line (debug info for container name and kind removed)
+      const symbolLine = `${indent}@${line}:${char} ${kind} - ${symbol.name}`;
       containerContent += symbolLine + '\n';
 
       // Add signature preview on new line with backticks if available

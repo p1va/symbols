@@ -50,35 +50,10 @@ export interface ParsedLspConfig extends LspConfig {
 }
 
 /**
- * Default configuration fallback
+ * Empty default configuration - users must provide configurations via YAML files
  */
 const DEFAULT_CONFIG: ConfigFile = {
-  lsps: {
-    typescript: {
-      command: 'typescript-language-server --stdio',
-      extensions: {
-        '.js': 'javascript',
-        '.mjs': 'javascript',
-        '.cjs': 'javascript',
-        '.jsx': 'javascriptreact',
-        '.ts': 'typescript',
-        '.mts': 'typescript',
-        '.cts': 'typescript',
-        '.tsx': 'typescriptreact',
-        '.json': 'json',
-      },
-      workspace_files: ['package.json', 'tsconfig.json'],
-      preload_files: [],
-      diagnostics: {
-        strategy: 'push',
-        wait_timeout_ms: 3000,
-      },
-      symbols: {
-        max_depth: null,
-        kinds: [],
-      },
-    },
-  },
+  lsps: {},
 };
 
 /**

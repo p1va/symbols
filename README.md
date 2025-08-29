@@ -14,7 +14,7 @@ An MCP server for searching, reading, inspecting codebase symbols
 
 ## Introduction
 
-Powered by a Language Server of choice, the Symbols MCP server offers tools that enable Coding Agents to efficently discover and navigate the codebase and its dependencies in a way that is faster and a more efficient use of the model's context.
+Powered by a Language Server of choice, the Symbols MCP server offers over stdio tools that enable Coding Agents to efficently discover and navigate the codebase and its dependencies in a way that is faster and a more efficient use of the model's context.
 
 ## MCP Tools
 
@@ -22,10 +22,10 @@ The MCP server provides the following tools:
 
 - **`search`**: searches symbols across the codebase
 - **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `full`) and depth
-- **`inspect`**: inspects a code symbol and returns its documentation, its definition and implementation
+- **`inspect`**: inspects a symbol and returns its documentation, its definition and implementation for both local and external symbols
 - **`completion`**: suggests a list of contextual completions at a given location
-- **`references`**: finds references for a code symbol across the codebase
-- **`rename`**: renames a code symbol across the codebase
+- **`references`**: finds references for a symbol across the codebase
+- **`rename`**: renames a symbol across the codebase
 - **`diagnostics`**: retrieves active diagnostics in a file
 - **`logs`**: retrieves logs from the underlying Language Server
 
@@ -33,13 +33,13 @@ The MCP server provides the following tools:
 
 ### MCP Server
 
-The MCP server can be installed globaly as `symbols` with
+The MCP server can be installed globally as `symbols` with
 
 ```bash
 npm install -g @p1va/symbols
 ```
 
-or executed with
+or executed directly with
 
 ```bash
 npx -y @p1va/symbols
@@ -47,9 +47,9 @@ npx -y @p1va/symbols
 
 ### MCP Server Configuration
 
-The MCP server can be configured to use one or more Language Servers that should be declared in a YAML configuration file. In priority order these are the methods that can be used to provide the file.
+Using a YAML file the MCP server can be configured to support one or more Language Servers. In priority order these are the configuration methods available.
 
-1. Explicitly via `--config` argument e.g. `--config path/to/my-config.yaml` when running
+1. Explicitly provide a file via `--config` argument e.g. `--config path/to/my-config.yaml`
 2. `{workspace}/symbols.y(a)ml` when `--workspace` is provided
 3. `symbols.y(a)ml` relative to current working directory
 4. `{OS_CONFIG_DIR}/symbols.y(a)ml`
@@ -222,66 +222,68 @@ rust-analyzer --version
 
 </details>
 
-### Configuration
+### Configuration in Coding Agents
 
-Instructions on how to configure the server and using it with coding agents
+Pseudo-instructions on how to add the MCP server to coding agents via the various configuration files like `.mcp.json`
 
-<details>
+To list all possible options you can use the help command
 
-<summary><b>Claude Code</b></summary>
-
-Update your `.mcp.json` file with a `csharp` where the path and sln files match the ones of your repo
-
-```json
-{
-  "mcpServers": {
-    "symbols": {
-      "command": "symbols",
-      "args": []
-    }
-  }
-}
+```sh
+symbols --help
 ```
 
-Update your `CLAUDE.md` with instructions on tool use recommending to prefer LSP-based discovery over traditional file read.
+When running via npx start with
 
-</details>
-
-<details>
-
-<summary><b>OpenAI Codex</b></summary>
-
-Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo level yet.
-
-```toml
-[mcp_servers.csharp]
-command = "npx"
-args = ["-y", "@p1va/symbols"]
+```
+command: "npx"
+args: ["-y", "@p1va/symbols", "other args here"]
 ```
 
-Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
+When instead installing globally start with
 
-</details>
-
-<details>
-
-<summary><b>Copilot in VS Code</b></summary>
-
-Add or update your `.vscode/mcp.toml` to include the server and provide your own solution file name
-
-```json
-{
-  "servers": {
-    "symbols": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@p1va/symbols"]
-    }
-  }
-}
+```
+command: "symbols"
+args: ["other args here"]
 ```
 
-</details>
+To rely on default config locations and autodetection run with
+
+```
+command: "symbols"
+args: []
+```
+
+For a more precise configuration use
+
+```
+command: "symbols"
+args: [
+  "--config",
+  "typescript.yaml",
+  "--loglevel",
+  "debug",
+  "--workspace",
+  "path/to/workspace",
+  "--lsp"
+  "csharp"
+]
+```
+
+Update your `CLAUDE.md` or `AGENTS.md` with instructions on tool use recommending to prefer LSP-based discovery over traditional file read.
+
+```md
+## Tool Usage Policy Addendum
+
+The MCP server provides the following tools:
+
+- Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
+- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `full` symbols in a given file with different level of details.
+- Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__read`
+- **`mcp__symbols__completion`**: suggests a list of completions
+- Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
+- Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase
+- Use **`mcp__symbols__diagnostics`** to retrieve active diagnostics for a given document
+```
 
 ## Development
 
