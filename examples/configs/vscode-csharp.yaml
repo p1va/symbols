@@ -14,6 +14,7 @@ lsps:
         --extensionLogDirectory $HOME/.config/Code/logs/2025/window1/exthost/ms-dotnettools.csharp
         --stdio
     workspace_loader: 'csharp'
+    # This setup should also support razor although mapping needs adding
     extensions:
       '.cs': 'csharp'
     workspace_files:

@@ -2,7 +2,7 @@
 
 # symbols
 
-An MCP server for searching, reading, inspecting codebase symbols
+An MCP server for reading, inspecting and searching codebase symbols
 
 ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
@@ -14,7 +14,7 @@ An MCP server for searching, reading, inspecting codebase symbols
 
 ## Introduction
 
-Powered by a Language Server of choice, the Symbols MCP server offers over stdio tools that enable Coding Agents to efficently discover and navigate the codebase and its dependencies in a way that is faster and a more efficient use of the model's context.
+Powered by a Language Server of choice, the Symbols MCP server offers over stdio a set of tools that enable Coding Agents to discover and navigate the codebase and its dependencies in a way that is faster and a more efficient use of the model's context.
 
 ## MCP Tools
 
@@ -31,28 +31,26 @@ The MCP server provides the following tools:
 
 ## Installation
 
-### MCP Server
+### 1. Install MCP Server
 
-The MCP server can be installed globally as `symbols` with
+`npx -y @p1va/symbols`
+`npx -y @p1va/symbols --help`
+`npx -y @p1va/symbols --show-config`
+`npx -y @p1va/symbols --config path/to/config.yaml --show-config`
+`npx -y @p1va/symbols --config path/to/config.yaml --lsp typescript`
 
-```bash
-npm install -g @p1va/symbols
-```
 
-or executed directly with
+### 2. Configure MCP Server
 
-```bash
-npx -y @p1va/symbols
-```
+The MCP server can be configured through a YAML file (examples [here](examples/configs/)). In priority order
 
-### MCP Server Configuration
-
-Using a YAML file the MCP server can be configured to support one or more Language Servers. In priority order these are the configuration methods available.
-
-1. Explicitly provide a file via `--config` argument e.g. `--config path/to/my-config.yaml`
-2. `{workspace}/symbols.y(a)ml` when `--workspace` is provided
-3. `symbols.y(a)ml` relative to current working directory
-4. `{OS_CONFIG_DIR}/symbols.y(a)ml`
+- `--config` argument e.g. `symbols --config path/to/my-config.yaml`
+- By convention `{workspace}/symbols.y(a)ml` when `--workspace` is provided
+- `symbols.y(a)ml` relative to current working directory
+- OS-specific config directory:
+  - **Windows**: `%APPDATA%\symbols-nodejs\Config\symbols.yaml` (e.g., `C:\Users\USERNAME\AppData\Roaming\symbols-nodejs\Config\symbols.yaml`)
+  - **macOS**: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
+  - **Linux**: `~/.config/symbols-nodejs/symbols.yaml` (or `$XDG_CONFIG_HOME/symbols-nodejs/symbols.yaml`)
 
 Examples configurations can be found under [this folder](examples/configs/) and include [csharp](examples/configs/csharp.yaml), [csharp through VSCode](examples/configs/vscode-csharp.yaml), [pyright](examples/configs/pyright.yaml), [typescript](examples/configs/typescript.yaml), [go](examples/configs/rust.yaml), [rust](examples/configs/go.yaml) and [java](examples/configs/java.yaml)
 
@@ -63,7 +61,7 @@ It's possible to double check and validate the active configuration by running
 
 `symbols --show-config`
 
-### Language Servers
+### Install Language Server(s)
 
 Depending on the configuration and the detected project, the MCP server will spawn a [LSP](https://microsoft.github.io/language-server-protocol/)-compatible Language Server that also needs installing.
 

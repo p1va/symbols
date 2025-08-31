@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "symbols": {
-      "command": "symbols",
-      "args": ["--config", "examples/configs/typescript.yaml"]
+      "command": "npx",
+      "args": [
+        "-y", 
+        "@p1va/symbols"
+      ]
     }
   }
 }
