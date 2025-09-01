@@ -21,7 +21,7 @@ When paired with a Language Server of choice, the Symbols MCP server offers a se
 The MCP server provides the following tools:
 
 - **`search`**: searches symbols across the codebase [see here](examples/01-search.md)
-- **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `full`) and depth [see here](examples/02-read-signature-mode.md)
+- **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `full`) [see here](examples/02-read-signature-mode.md)
 - **`inspect`**: inspects a symbol and returns its documentation, its definition and implementation for both local and external symbols [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
 - **`completion`**: suggests a list of contextual completions at a given location [see here](examples/06-completion.md)
 - **`references`**: finds references for a symbol across the codebase [see here](examples/05-references.md)
