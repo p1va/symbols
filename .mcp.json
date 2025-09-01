@@ -2,10 +2,7 @@
   "mcpServers": {
     "symbols": {
       "command": "npx",
-      "args": [
-        "-y", 
-        "@p1va/symbols@latest"
-      ]
+      "args": ["-y", "@p1va/symbols@latest"]
     }
   }
 }

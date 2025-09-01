@@ -7,15 +7,17 @@ The `references` tool finds all usages of a symbol across your entire codebase, 
 **Target:** The `createServer` function in our codebase
 
 **Command:**
+
 ```
-mcp__symbols__references({ 
-  file: "src/main/createServer.ts", 
-  line: 8, 
-  character: 18 
+mcp__symbols__references({
+  file: "src/main/createServer.ts",
+  line: 8,
+  character: 18
 })
 ```
 
 **Output:**
+
 ```
 References on src/main/createServer.ts:8:18
     Cursor: `...function c|reateServe...`
@@ -46,7 +48,7 @@ src/main/index.ts (2 references)
 ## Reference Types Shown
 
 1. **Declaration**: The original definition (`@8:17` in createServer.ts)
-2. **Import**: Where the symbol is imported (`@38:10` in index.ts) 
+2. **Import**: Where the symbol is imported (`@38:10` in index.ts)
 3. **Usage**: Where the symbol is actually called (`@292:18` in index.ts)
 
 ## Use Cases

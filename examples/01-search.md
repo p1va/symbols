@@ -7,11 +7,13 @@ The `search` tool allows you to quickly find symbols across your entire codebase
 **Query:** `createServer`
 
 **Command:**
+
 ```
 mcp__symbols__search({ query: "createServer" })
 ```
 
 **Output:**
+
 ```
 Found 1 matches for query "createServer" across 1 files
 

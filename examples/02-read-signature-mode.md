@@ -5,14 +5,16 @@ The `read` tool with `signature` mode provides an optimal balance between overvi
 ## Example: Reading LSP Operations File
 
 **Command:**
+
 ```
-mcp__symbols__read({ 
-  file: "src/lsp/operations/operations.ts", 
-  previewMode: "signature" 
+mcp__symbols__read({
+  file: "src/lsp/operations/operations.ts",
+  previewMode: "signature"
 })
 ```
 
 **Output Sample:**
+
 ```
 Found 239 symbols in file: src/lsp/operations/operations.ts (max depth 99)
 Symbol breakdown: 117 propertys, 78 constants, 41 functions, 3 variables
@@ -45,7 +47,7 @@ Symbol breakdown: 117 propertys, 78 constants, 41 functions, 3 variables
 ## Key Benefits of Signature Mode
 
 - **API Understanding**: See function signatures, parameters, and return types without implementation noise
-- **Quick Assessment**: Understand what functions do and how to call them at a glance  
+- **Quick Assessment**: Understand what functions do and how to call them at a glance
 - **Type Information**: Get crucial TypeScript type details for proper usage
 - **Hierarchical Structure**: Nested properties and constants show with their signatures
 - **Perfect for Exploration**: Ideal when you need to understand "what's available" rather than "how it works"

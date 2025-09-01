@@ -44,7 +44,13 @@ export interface ConfigWithSource {
   config: ConfigFile;
   source: {
     path: string;
-    type: 'cli-arg' | 'workspace' | 'repo-cwd' | 'explicit-cwd' | 'shared-config' | 'default';
+    type:
+      | 'cli-arg'
+      | 'workspace'
+      | 'repo-cwd'
+      | 'explicit-cwd'
+      | 'shared-config'
+      | 'default';
     description: string;
   };
 }
@@ -86,34 +92,100 @@ export function loadLspConfig(
     : [];
 
   // Define config paths with their categories
-  const configSourceCandidates: Array<{ path?: string; type: ConfigWithSource['source']['type']; description: string }> = [
+  const configSourceCandidates: Array<{
+    path?: string;
+    type: ConfigWithSource['source']['type'];
+    description: string;
+  }> = [
     // P1: CLI argument (highest priority)
-    ...(configPath ? [{ path: configPath, type: 'cli-arg' as const, description: 'Provided via --config argument' }] : []),
+    ...(configPath
+      ? [
+          {
+            path: configPath,
+            type: 'cli-arg' as const,
+            description: 'Provided via --config argument',
+          },
+        ]
+      : []),
     // P2: Workspace directory (if provided)
-    ...workspaceConfigPaths.map(p => ({ 
-      path: p, 
-      type: 'workspace' as const, 
-      description: `Found in workspace directory (${workspacePath})` 
+    ...workspaceConfigPaths.map((p) => ({
+      path: p,
+      type: 'workspace' as const,
+      description: `Found in workspace directory (${workspacePath})`,
     })),
     // P3: Repo folder YAML files (relative to cwd)
-    { path: 'symbols.yaml', type: 'repo-cwd', description: 'Found in current directory' },
-    { path: 'symbols.yml', type: 'repo-cwd', description: 'Found in current directory' },
-    { path: 'lsps.yaml', type: 'repo-cwd', description: 'Found in current directory (legacy)' },
-    { path: 'lsps.yml', type: 'repo-cwd', description: 'Found in current directory (legacy)' },
+    {
+      path: 'symbols.yaml',
+      type: 'repo-cwd',
+      description: 'Found in current directory',
+    },
+    {
+      path: 'symbols.yml',
+      type: 'repo-cwd',
+      description: 'Found in current directory',
+    },
+    {
+      path: 'lsps.yaml',
+      type: 'repo-cwd',
+      description: 'Found in current directory (legacy)',
+    },
+    {
+      path: 'lsps.yml',
+      type: 'repo-cwd',
+      description: 'Found in current directory (legacy)',
+    },
     // P4: Current working directory (explicit paths)
-    { path: path.join(process.cwd(), 'symbols.yaml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()})` },
-    { path: path.join(process.cwd(), 'symbols.yml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()})` },
-    { path: path.join(process.cwd(), 'lsps.yaml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()}) (legacy)` },
-    { path: path.join(process.cwd(), 'lsps.yml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()}) (legacy)` },
+    {
+      path: path.join(process.cwd(), 'symbols.yaml'),
+      type: 'explicit-cwd',
+      description: `Found in current working directory (${process.cwd()})`,
+    },
+    {
+      path: path.join(process.cwd(), 'symbols.yml'),
+      type: 'explicit-cwd',
+      description: `Found in current working directory (${process.cwd()})`,
+    },
+    {
+      path: path.join(process.cwd(), 'lsps.yaml'),
+      type: 'explicit-cwd',
+      description: `Found in current working directory (${process.cwd()}) (legacy)`,
+    },
+    {
+      path: path.join(process.cwd(), 'lsps.yml'),
+      type: 'explicit-cwd',
+      description: `Found in current working directory (${process.cwd()}) (legacy)`,
+    },
     // P5: OS-specific config directory (lowest priority)
-    { path: path.join(paths.config, 'symbols.yaml'), type: 'shared-config', description: `Found in shared config directory (${paths.config})` },
-    { path: path.join(paths.config, 'symbols.yml'), type: 'shared-config', description: `Found in shared config directory (${paths.config})` },
-    { path: path.join(paths.config, 'lsps.yaml'), type: 'shared-config', description: `Found in shared config directory (${paths.config}) (legacy)` },
-    { path: path.join(paths.config, 'lsps.yml'), type: 'shared-config', description: `Found in shared config directory (${paths.config}) (legacy)` },
+    {
+      path: path.join(paths.config, 'symbols.yaml'),
+      type: 'shared-config',
+      description: `Found in shared config directory (${paths.config})`,
+    },
+    {
+      path: path.join(paths.config, 'symbols.yml'),
+      type: 'shared-config',
+      description: `Found in shared config directory (${paths.config})`,
+    },
+    {
+      path: path.join(paths.config, 'lsps.yaml'),
+      type: 'shared-config',
+      description: `Found in shared config directory (${paths.config}) (legacy)`,
+    },
+    {
+      path: path.join(paths.config, 'lsps.yml'),
+      type: 'shared-config',
+      description: `Found in shared config directory (${paths.config}) (legacy)`,
+    },
   ];
-  
-  const configSources = configSourceCandidates.filter((source): source is { path: string; type: ConfigWithSource['source']['type']; description: string } => 
-    source.path !== undefined && typeof source.path === 'string'
+
+  const configSources = configSourceCandidates.filter(
+    (
+      source
+    ): source is {
+      path: string;
+      type: ConfigWithSource['source']['type'];
+      description: string;
+    } => source.path !== undefined && typeof source.path === 'string'
   );
 
   for (const source of configSources) {
@@ -127,14 +199,14 @@ export function loadLspConfig(
 
         // Expand environment variables in the configuration
         const expandedConfig = expandEnvironmentVariables(config);
-        
+
         return {
           config: expandedConfig,
           source: {
             path: path.resolve(source.path),
             type: source.type,
-            description: source.description
-          }
+            description: source.description,
+          },
         };
       }
     } catch {
@@ -148,8 +220,8 @@ export function loadLspConfig(
     source: {
       path: 'default',
       type: 'default',
-      description: 'Using default configuration (no config file found)'
-    }
+      description: 'Using default configuration (no config file found)',
+    },
   };
 }
 

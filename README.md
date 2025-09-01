@@ -52,7 +52,6 @@ These examples demonstrate how the symbols MCP server provides more efficient an
 `npx -y @p1va/symbols --config path/to/config.yaml --show-config`
 `npx -y @p1va/symbols --config path/to/config.yaml --lsp typescript`
 
-
 ### 2. Configure MCP Server
 
 The MCP server can be configured through a YAML file (examples [here](examples/configs/)). In priority order

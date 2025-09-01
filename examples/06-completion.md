@@ -9,15 +9,17 @@ The `completion` tool provides intelligent code completion suggestions at any cu
 ### Completing on the Client Object
 
 **Command:**
+
 ```
-mcp__symbols__completion({ 
-  file: "src/lsp/operations/operations.ts", 
-  line: 141, 
-  character: 20 
+mcp__symbols__completion({
+  file: "src/lsp/operations/operations.ts",
+  line: 141,
+  character: 20
 })
 ```
 
 **Output:**
+
 ```
 Completion on src/lsp/operations/operations.ts:141:20
     Cursor: `...   client.|connection...`
@@ -37,15 +39,17 @@ Classs (5)
 ### Completing on the Connection Object
 
 **Command:**
+
 ```
-mcp__symbols__completion({ 
-  file: "src/lsp/operations/operations.ts", 
-  line: 141, 
-  character: 31 
+mcp__symbols__completion({
+  file: "src/lsp/operations/operations.ts",
+  line: 141,
+  character: 31
 })
 ```
 
 **Output:**
+
 ```
 Completion on src/lsp/operations/operations.ts:141:31
     Cursor: `...onnection.|sendReques...`
@@ -80,7 +84,7 @@ Classs (5)
 
 - **Instant API Discovery**: See all available methods and properties on any object
 - **Type-Aware Suggestions**: Get completions based on actual TypeScript types
-- **Context-Sensitive**: Suggestions change based on the specific object type at cursor position  
+- **Context-Sensitive**: Suggestions change based on the specific object type at cursor position
 - **Categorized Results**: Methods grouped by type (Modules, Classes, etc.) for easy scanning
 - **Real-Time Intelligence**: Same completions your IDE would show, but programmatically accessible
 
