@@ -29,6 +29,19 @@ The MCP server provides the following tools:
 - **`diagnostics`**: retrieves active diagnostics in a file
 - **`logs`**: retrieves logs from the underlying Language Server
 
+## Examples
+
+To see the MCP tools in action and understand their benefits, check out our comprehensive examples in the [`examples/`](examples/) directory:
+
+- **[Search Tool](examples/01-search.md)** - Discover symbols across your entire codebase instantly
+- **[Read Tool (Signature Mode)](examples/02-read-signature-mode.md)** - Explore large files with optimal information density
+- **[Inspect Tool (Codebase)](examples/03-inspect-codebase-symbol.md)** - Get comprehensive symbol information with navigation
+- **[Inspect Tool (Third-Party)](examples/04-inspect-third-party-library.md)** - Understand external library APIs without documentation
+- **[References Tool](examples/05-references.md)** - Find all symbol usages across your codebase
+- **[Completion Tool](examples/06-completion.md)** - Get intelligent code completion suggestions
+
+These examples demonstrate how the symbols MCP server provides more efficient and precise codebase exploration compared to traditional file-based approaches, making it invaluable for AI-assisted development.
+
 ## Installation
 
 ### 1. Install MCP Server

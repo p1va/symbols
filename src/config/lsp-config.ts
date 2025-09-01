@@ -40,6 +40,15 @@ export type SymbolsConfig = z.infer<typeof SymbolsConfigSchema>;
 export type LspConfig = z.infer<typeof LspConfigSchema>;
 export type ConfigFile = z.infer<typeof ConfigFileSchema>;
 
+export interface ConfigWithSource {
+  config: ConfigFile;
+  source: {
+    path: string;
+    type: 'cli-arg' | 'workspace' | 'repo-cwd' | 'explicit-cwd' | 'shared-config' | 'default';
+    description: string;
+  };
+}
+
 /**
  * Extended LSP configuration with parsed command and args
  */
@@ -62,7 +71,7 @@ const DEFAULT_CONFIG: ConfigFile = {
 export function loadLspConfig(
   configPath?: string,
   workspacePath?: string
-): ConfigFile {
+): ConfigWithSource {
   // Get OS-specific config directory using env-paths
   const paths = envPaths('symbols');
 
@@ -76,45 +85,72 @@ export function loadLspConfig(
       ]
     : [];
 
-  const possiblePaths = [
-    configPath, // P1: CLI argument (highest priority)
+  // Define config paths with their categories
+  const configSourceCandidates: Array<{ path?: string; type: ConfigWithSource['source']['type']; description: string }> = [
+    // P1: CLI argument (highest priority)
+    ...(configPath ? [{ path: configPath, type: 'cli-arg' as const, description: 'Provided via --config argument' }] : []),
     // P2: Workspace directory (if provided)
-    ...workspaceConfigPaths,
+    ...workspaceConfigPaths.map(p => ({ 
+      path: p, 
+      type: 'workspace' as const, 
+      description: `Found in workspace directory (${workspacePath})` 
+    })),
     // P3: Repo folder YAML files (relative to cwd)
-    'symbols.yaml',
-    'symbols.yml',
-    'lsps.yaml', // Backward compatibility
-    'lsps.yml', // Backward compatibility
+    { path: 'symbols.yaml', type: 'repo-cwd', description: 'Found in current directory' },
+    { path: 'symbols.yml', type: 'repo-cwd', description: 'Found in current directory' },
+    { path: 'lsps.yaml', type: 'repo-cwd', description: 'Found in current directory (legacy)' },
+    { path: 'lsps.yml', type: 'repo-cwd', description: 'Found in current directory (legacy)' },
     // P4: Current working directory (explicit paths)
-    path.join(process.cwd(), 'symbols.yaml'),
-    path.join(process.cwd(), 'symbols.yml'),
-    path.join(process.cwd(), 'lsps.yaml'), // Backward compatibility
-    path.join(process.cwd(), 'lsps.yml'), // Backward compatibility
+    { path: path.join(process.cwd(), 'symbols.yaml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()})` },
+    { path: path.join(process.cwd(), 'symbols.yml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()})` },
+    { path: path.join(process.cwd(), 'lsps.yaml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()}) (legacy)` },
+    { path: path.join(process.cwd(), 'lsps.yml'), type: 'explicit-cwd', description: `Found in current working directory (${process.cwd()}) (legacy)` },
     // P5: OS-specific config directory (lowest priority)
-    path.join(paths.config, 'symbols.yaml'),
-    path.join(paths.config, 'symbols.yml'),
-    path.join(paths.config, 'lsps.yaml'), // Backward compatibility
-    path.join(paths.config, 'lsps.yml'), // Backward compatibility
-  ].filter((p): p is string => p !== undefined);
+    { path: path.join(paths.config, 'symbols.yaml'), type: 'shared-config', description: `Found in shared config directory (${paths.config})` },
+    { path: path.join(paths.config, 'symbols.yml'), type: 'shared-config', description: `Found in shared config directory (${paths.config})` },
+    { path: path.join(paths.config, 'lsps.yaml'), type: 'shared-config', description: `Found in shared config directory (${paths.config}) (legacy)` },
+    { path: path.join(paths.config, 'lsps.yml'), type: 'shared-config', description: `Found in shared config directory (${paths.config}) (legacy)` },
+  ];
+  
+  const configSources = configSourceCandidates.filter((source): source is { path: string; type: ConfigWithSource['source']['type']; description: string } => 
+    source.path !== undefined && typeof source.path === 'string'
+  );
 
-  for (const configFile of possiblePaths) {
+  for (const source of configSources) {
     try {
-      if (fs.existsSync(configFile)) {
-        const yamlContent = fs.readFileSync(configFile, 'utf8');
+      if (fs.existsSync(source.path)) {
+        const yamlContent = fs.readFileSync(source.path, 'utf8');
         const parsed = yaml.load(yamlContent);
 
         // Validate with Zod
         const config = ConfigFileSchema.parse(parsed);
 
         // Expand environment variables in the configuration
-        return expandEnvironmentVariables(config);
+        const expandedConfig = expandEnvironmentVariables(config);
+        
+        return {
+          config: expandedConfig,
+          source: {
+            path: path.resolve(source.path),
+            type: source.type,
+            description: source.description
+          }
+        };
       }
     } catch {
       continue;
     }
   }
 
-  return expandEnvironmentVariables(DEFAULT_CONFIG);
+  // If no config file is found, return default configuration
+  return {
+    config: expandEnvironmentVariables(DEFAULT_CONFIG),
+    source: {
+      path: 'default',
+      type: 'default',
+      description: 'Using default configuration (no config file found)'
+    }
+  };
 }
 
 /**
@@ -167,7 +203,7 @@ export function getLspConfig(
   configPath?: string,
   workspacePath?: string
 ): ParsedLspConfig | null {
-  const config = loadLspConfig(configPath, workspacePath);
+  const { config } = loadLspConfig(configPath, workspacePath);
   const lspConfig = config.lsps[lspName];
 
   if (!lspConfig) {
@@ -200,7 +236,7 @@ export function getLspConfigForFile(
   workspacePath?: string
 ): ParsedLspConfig | null {
   const extension = path.extname(filePath);
-  const config = loadLspConfig(configPath, workspacePath);
+  const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find LSP that handles this file extension
   for (const [lspName, lspConfig] of Object.entries(config.lsps)) {
@@ -221,7 +257,7 @@ export function getLanguageId(
   workspacePath?: string
 ): string | null {
   const extension = path.extname(filePath);
-  const config = loadLspConfig(configPath, workspacePath);
+  const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find language ID from LSP configuration
   for (const lspConfig of Object.values(config.lsps)) {
@@ -241,7 +277,7 @@ export function listAvailableLsps(
   configPath?: string,
   workspacePath?: string
 ): string[] {
-  const config = loadLspConfig(configPath, workspacePath);
+  const { config } = loadLspConfig(configPath, workspacePath);
   return Object.keys(config.lsps);
 }
 
@@ -252,7 +288,7 @@ export function autoDetectLsp(
   workspacePath: string,
   configPath?: string
 ): string | null {
-  const config = loadLspConfig(configPath, workspacePath);
+  const { config } = loadLspConfig(configPath, workspacePath);
 
   try {
     // Get list of files in workspace directory

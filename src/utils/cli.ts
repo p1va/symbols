@@ -175,8 +175,8 @@ export function showHelp(): void {
  */
 export function showConfig(configPath?: string): void {
   try {
-    const config = loadLspConfig(configPath);
-    const yamlOutput = yaml.dump(config, {
+    const configWithSource = loadLspConfig(configPath);
+    const yamlOutput = yaml.dump(configWithSource.config, {
       indent: 2,
       lineWidth: 120,
       noRefs: true,
@@ -184,10 +184,9 @@ export function showConfig(configPath?: string): void {
     });
 
     console.log('# Active Configuration');
-    if (configPath) {
-      console.log(`# Config file: ${configPath}`);
-    } else {
-      console.log('# Using default configuration');
+    console.log(`# Source: ${configWithSource.source.description}`);
+    if (configWithSource.source.path !== 'default') {
+      console.log(`# Config file: ${configWithSource.source.path}`);
     }
     console.log('# Use --config <file> to specify a custom configuration file');
     console.log();

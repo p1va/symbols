@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y", 
-        "@p1va/symbols"
+        "@p1va/symbols@latest"
       ]
     }
   }
