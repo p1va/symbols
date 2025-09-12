@@ -13,7 +13,7 @@
       "registry_type": "npm",
       "registry_base_url": "https://registry.npmjs.org",
       "identifier": "@p1va/symbols",
-      "version": "1.0.0",
+      "version": "0.0.10",
       "transport": {
         "type": "stdio"
       },
