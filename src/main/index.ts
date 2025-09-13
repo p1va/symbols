@@ -35,6 +35,7 @@ import {
 } from '../config/lsp-config.js';
 import { getDefaultPreloadFiles } from '../utils/logLevel.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
+import { handleFirstRun } from '../utils/first-run.js';
 import { createServer } from './createServer.js';
 import { setupShutdown } from './shutdown.js';
 
@@ -279,6 +280,9 @@ function createContext(): LspContext {
  */
 export async function main(): Promise<void> {
   logger.info('MCP server starting up');
+
+  // Handle first-run setup (create default config if needed)
+  await handleFirstRun();
 
   // Initialize LSP connection
   await initializeLsp();
