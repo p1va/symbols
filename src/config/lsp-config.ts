@@ -7,6 +7,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import envPaths from 'env-paths';
+import { resolveBinCommand } from '../utils/bin-resolver.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -257,10 +258,32 @@ function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
  * Supports both $VAR and ${VAR} syntax
  */
 function expandString(str: string): string {
+  // Handle LOCAL_NODE_MODULE expansion with syntax ${LOCAL_NODE_MODULE}/package-name
+  str = str.replace(
+    /\$\{LOCAL_NODE_MODULE\}\/([^}\s]+)/g,
+    (match: string, packageSpec: string) => {
+      const [pkg, executable] = packageSpec.includes(':')
+        ? packageSpec.split(':', 2)
+        : [packageSpec, undefined];
+
+      try {
+        const { commandName, commandArgs } = resolveBinCommand(pkg, executable);
+        return [commandName, ...commandArgs].join(' ');
+      } catch (error) {
+        throw new Error(
+          `Failed to resolve local node module ${packageSpec}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+  );
+
+  // Handle regular environment variable expansion
   return str.replace(
     /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
     (match: string, braced: string, simple: string) => {
       const varName = braced || simple;
+
+      // Handle regular environment variables
       const value = process.env[varName];
       return value !== undefined ? value : match;
     }

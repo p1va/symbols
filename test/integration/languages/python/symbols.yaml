@@ -1,6 +1,6 @@
 lsps:
   pyright:
-    command: pyright-langserver --stdio
+    command: ${LOCAL_NODE_MODULE}/pyright:pyright-langserver --stdio
     extensions:
       '.py': 'python'
     workspace_files:

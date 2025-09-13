@@ -1,7 +1,7 @@
 lsps:
   # Python using Pyright
   pyright:
-    command: pyright-langserver --stdio
+    command: ${LOCAL_NODE_MODULE}/pyright:pyright-langserver --stdio
     extensions:
       '.py': 'python'
     workspace_files:
@@ -14,7 +14,7 @@ lsps:
 
   # TypeScript/JavaScript
   typescript:
-    command: typescript-language-server --stdio
+    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
     extensions:
       '.js': 'javascript'
       '.mjs': 'javascript'

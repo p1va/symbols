@@ -190,7 +190,6 @@ rust-analyzer --version
 
 </details>
 
-
 ### 2. Configuration
 
 Configuration can be provided and overwritten at different levels. For the sake of simplicty here we will be adding it system-wide. More options can be seen as described in the `--help` command
@@ -222,6 +221,7 @@ mkdir -p ~/Library/Preferences/symbols-nodejs && curl -o ~/Library/Preferences/s
 ```sh
 mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Config\symbols.yaml" https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/all-lsps.yaml
 ```
+
 </details>
 
 ### 3. Add MCP to Coding Agents
@@ -238,10 +238,7 @@ Add this to `.mcp.json`
   "mcpServers": {
     "symbols": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@p1va/symbols@latest"
-      ]
+      "args": ["-y", "@p1va/symbols@latest"]
     }
   }
 }
@@ -266,6 +263,7 @@ Add this to `$HOME/.codex/config.toml`
 command = "npx"
 args = ["-y", "@p1va/symbols@latest"]
 ```
+
 </details>
 
 <details>
@@ -276,18 +274,15 @@ Add this to `.vscode/mcp.json`
 
 ```json
 {
-   "servers": {
-     "symbols": {
-       "type": "stdio",
-       "command": "npx",
-       "args": [
-         "-y",
-         "@p1va/symbols@latest",
-       ]
-     }
-   }
- }
- ```
+  "servers": {
+    "symbols": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@p1va/symbols@latest"]
+    }
+  }
+}
+```
 
 </details>
 
