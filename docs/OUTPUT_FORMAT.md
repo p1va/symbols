@@ -96,13 +96,13 @@ src/types/position.ts (2 results)
 
 ### Read ✅ IMPLEMENTED (Four-Tier Preview System with Leaf Symbol Detection)
 
-The read tool provides a sophisticated four-tier preview system with intelligent filtering and hierarchical organization. Features smart leaf symbol detection to prevent code duplication in full mode.
+The read tool provides a sophisticated three-tier preview system with intelligent filtering and hierarchical organization. Features smart leaf symbol detection to prevent code duplication in expanded mode.
 
 **Four-Tier Preview System:**
 
 1. **None Mode** (`previewMode: 'none'`): Symbol names with hierarchical organization only
 2. **Signature Mode** (`previewMode: 'signature'`): Symbol names + condensed type signatures in backticks
-3. **Full Mode** (`previewMode: 'full'`): Complete code blocks for leaf symbols only (prevents duplication)
+3. **Expanded Mode** (`previewMode: 'expanded'`): Longer per-symbol snippets for leaf symbols only (prevents duplication)
 4. **Raw File Reading**: Complete file context including imports, comments, and exact formatting
 
 **Implementation Details:**

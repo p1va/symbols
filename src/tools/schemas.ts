@@ -44,11 +44,11 @@ export const fileSchema = {
       'Filters output symbols based on their depth in the syntax tree. e.g. 0 = only top-level symbols, 1 = top-level and first-level children, etc.'
     ),
   previewMode: z
-    .enum(['none', 'signature', 'full'])
+    .enum(['none', 'signature', 'expanded'])
     .optional()
     .default('none')
     .describe(
-      'Preview mode for symbols: none = names only, signature = first few lines of a symbol (good to understand signatures and return types), full = complete implementations when supported'
+      'Preview mode for symbols: none = names only, signature = first few lines (good for intent), expanded = longer per-symbol snippets.'
     ),
 } as const;
 

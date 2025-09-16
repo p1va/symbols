@@ -18,7 +18,7 @@ You are both working in the codebase where these tools source code is and using 
 The MCP server provides the following tools:
 
 - Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
-- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `full` symbols in a given file with different level of details.
+- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `expanded` symbols in a given file with different level of details.
 - Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__read`
 - **`mcp__symbols__completion`**: suggests a list of completions
 - Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
@@ -51,7 +51,7 @@ The MCP server provides the following tools:
 
 ## The 8 MCP Tools (✅ Implemented)
 
-1. **`read`** - Get document symbols with 4-tier preview system (none/signature/full/raw)
+1. **`read`** - Get document symbols with 3-tier preview system (none/signature/expanded)
 2. **`inspect`** - Comprehensive symbol info (hover + all navigation)
 3. **`references`** - Find all uses of a symbol across the codebase
 4. **`completion`** - Code completion suggestions at cursor position
@@ -86,7 +86,7 @@ The MCP server provides the following tools:
 
 - ✅ **Complete MCP Server Implementation** - All 8 tools fully implemented and working
 - ✅ **LSP Communication Layer** - Robust TypeScript LSP client with proper lifecycle management
-- ✅ **4-Tier Symbol Reading** - Sophisticated preview system (none/signature/full/raw)
+- ✅ **3-Tier Symbol Reading** - Sophisticated preview system (none/signature/expanded)
 - ✅ **Type Safety** - Strict TypeScript with comprehensive error handling
 - ✅ **State Management** - Proper stores for diagnostics, logs, and workspace state
 - ✅ **File Lifecycle Management** - Efficient preloaded file handling
@@ -171,7 +171,7 @@ The `read` tool in the `typescript-new` MCP server provides a sophisticated four
 - **Output**: Symbol names + condensed type signatures in backticks on new lines
 - **Best For**: "How do I use this API?" - understanding function parameters, return types, and method overloads
 
-### 3. **Full Mode** (`previewMode: 'full'`)
+### 3. **Expanded Mode** (`previewMode: 'expanded'`)
 
 - **Use Case**: Implementation understanding and algorithm analysis
 - **Output**: Complete code blocks for leaf symbols only (prevents duplication)
@@ -202,7 +202,7 @@ mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'none' });
 mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'signature' });
 
 // Implementation details
-mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'full' });
+mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'expanded' });
 
 // Complete context
 Read({ file_path: '/path/to/file.ts' });

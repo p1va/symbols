@@ -151,14 +151,14 @@ class TypeScriptTestSuite extends LanguageTestSuite {
           this.assertSymbolExists(sigResult, 'TestConfig');
           this.assertSymbolExists(sigResult, 'TestService');
 
-          // Test with full mode
-          const fullResult = await this.client.readSymbols(
+          // Test with expanded mode
+          const expandedResult = await this.client.readSymbols(
             this.getMainFilePath(),
             99,
-            'full'
+            'expanded'
           );
-          this.assertToolResult(fullResult);
-          this.assertSymbolExists(fullResult, 'main');
+          this.assertToolResult(expandedResult);
+          this.assertSymbolExists(expandedResult, 'main');
         });
 
         test('Should search for TypeScript symbols', async () => {

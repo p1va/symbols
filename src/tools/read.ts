@@ -25,7 +25,7 @@ export function registerReadTool(
     {
       title: 'Read',
       description:
-        'Reads a file using different levels of preview (none,signature,full) and returns a clean structured view of its symbols. IMPORTANT: Use this during exploring or when just interested in the outline (members, signatures, return types) rather than full implementation.',
+        "Reads a file's symbols with preview levels (none, signature, expanded). Expanded shows longer per-symbol snippets. Use this when exploring structure and intent rather than needing the entire raw file.",
       inputSchema: fileSchema,
     },
     async (request) => {
@@ -41,7 +41,8 @@ export function registerReadTool(
       const formattedText = await formatReadResults(
         { symbols: result.data },
         validatedRequest.file,
-        validatedRequest.maxDepth || 99,
+        // Use nullish coalescing so 0 is respected
+        validatedRequest.maxDepth ?? 99,
         validatedRequest.previewMode || 'none'
       );
       return {
@@ -65,7 +66,7 @@ async function formatReadResults(
   data: { symbols: FlattenedSymbol[] },
   filePath: string,
   maxDepth: number = 99,
-  previewMode: 'none' | 'signature' | 'full' = 'none'
+  previewMode: 'none' | 'signature' | 'expanded' = 'none'
 ): Promise<string> {
   if (!data.symbols || data.symbols.length === 0) {
     return `No symbols found in ${formatFilePath(filePath)}`;
@@ -111,7 +112,7 @@ async function formatReadResults(
             result.codeSnippet,
             100
           );
-        } else if (previewMode === 'full') {
+        } else if (previewMode === 'expanded') {
           enriched.codeSnippet = result.codeSnippet;
         }
       }
@@ -213,7 +214,7 @@ async function formatReadResults(
         containerContent += `${indent}  \`${signaturePreview}\`\n`;
       }
 
-      // Add full code snippet if available (only for leaf symbols to avoid duplication)
+      // Add expanded code snippet if available (only for leaf symbols to avoid duplication)
       if (codeSnippet && isLeafSymbol(symbol, enrichedSymbols)) {
         const preview = createCodePreview(codeSnippet, 0); // 0 = no truncation, show entire code
         const snippetLines = preview.split('\n');

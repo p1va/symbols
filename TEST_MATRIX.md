@@ -20,7 +20,7 @@ This document tracks the testing status of all MCP tools across different Langua
 | **`read`**                                                                                            |            |      |         |     |      |      |
 | `read` tool with `previewMode: none`                                                                  | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
 | `read` tool with `previewMode: signature`                                                             | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
-| `read` tool with `previewMode: full` (complete code blocks)                                           | ❓         | ⚠️\* | ✅      | ❓  | ❓   | ❓   |
+| `read` tool with `previewMode: expanded` (longer per-symbol snippets)                                  | ❓         | ⚠️\* | ✅      | ❓  | ❓   | ❓   |
 | **`inspect`**                                                                                         |            |      |         |     |      |      |
 | `inspect` tool returns documentation when available                                                   | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
 | `inspect` tool returns decompiled location for external symbols                                       | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
@@ -42,7 +42,7 @@ This document tracks the testing status of all MCP tools across different Langua
 **C# Implementation Notes:**
 
 - \*Read previewMode: none already includes the signature without modifiers (public async)
-- \*Read previewMode: full shows minimal symbol names instead of complete code blocks
+- \*Read previewMode: expanded shows minimal symbol names instead of longer snippets
 - Excellent decompilation support for .NET Framework symbols
 - Strong type information and documentation extraction
 - All core tools working as expected

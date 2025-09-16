@@ -21,7 +21,7 @@ When paired with a Language Server of choice, the Symbols MCP server offers a se
 The MCP server provides the following tools:
 
 - **`search`**: searches symbols across the codebase [see here](examples/01-search.md)
-- **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `full`) [see here](examples/02-read-signature-mode.md)
+- **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `expanded`) [see here](examples/02-read-signature-mode.md)
 - **`inspect`**: inspects a symbol and returns its documentation, its definition and implementation for both local and external symbols [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
 - **`completion`**: suggests a list of contextual completions at a given location [see here](examples/06-completion.md)
 - **`references`**: finds references for a symbol across the codebase [see here](examples/05-references.md)
@@ -299,7 +299,7 @@ Update your `CLAUDE.md` or `AGENTS.md` with instructions on tool use recommendin
 The MCP server provides the following tools:
 
 - Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
-- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `full` symbols in a given file with different level of details.
+- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `expanded` symbols in a given file with different level of details.
 - Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__read`
 - **`mcp__symbols__completion`**: suggests a list of completions
 - Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
