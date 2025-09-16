@@ -7,13 +7,13 @@
     "url": "https://github.com/p1va/symbols",
     "source": "github"
   },
-  "version": "1.0.0",
+  "version": "{{VERSION}}",
   "packages": [
     {
       "registry_type": "npm",
       "registry_base_url": "https://registry.npmjs.org",
       "identifier": "@p1va/symbols",
-      "version": "0.0.10",
+      "version": "{{VERSION}}",
       "transport": {
         "type": "stdio"
       },

@@ -1,4 +1,4 @@
-name: Create Release and Publish to npm
+name: Release and Publish to NPM
 
 on:
   push:
@@ -21,15 +21,29 @@ jobs:
       - name: Setup and Install
         uses: ./.github/actions/setup-and-install
 
-      - name: ⚒️ Build
+      - name: Build
         run: pnpm build
+
+      - name: Update MCP server.json with version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          sed "s/{{VERSION}}/$VERSION/g" server.json > server.json.tmp
+          mv server.json.tmp server.json
 
       - name: Create GitHub Release
         run: gh release create "${{ github.ref_name }}" --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to npm
+      - name: Publish to NPM
         run: pnpm publish --provenance --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to MCP Registry
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.0.0/mcp-publisher_1.0.0_linux_amd64.tar.gz" | tar xz mcp-publisher
+          chmod +x mcp-publisher
+          
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
