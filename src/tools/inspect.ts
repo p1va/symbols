@@ -10,7 +10,8 @@ import { formatCursorContext } from '../utils/cursorContext.js';
 import { enrichSymbolLocations } from './enrichment.js';
 import { createSignaturePreview } from './enrichment.js';
 import { formatFilePath } from './utils.js';
-import { Hover, Location, MarkedString } from 'vscode-languageserver-protocol';
+import { Hover, Location } from 'vscode-languageserver-protocol';
+import { validateSymbolPosition } from './validation.js';
 
 export function registerInspectTool(
   server: McpServer,
@@ -28,10 +29,16 @@ export function registerInspectTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
+      // Validate and parse request arguments
+      const validatedRequest = validateSymbolPosition(request);
+
       // Convert raw request to branded position type
       const symbolRequest = {
-        file: request.file,
-        position: createOneBasedPosition(request.line, request.character),
+        file: validatedRequest.file,
+        position: createOneBasedPosition(
+          validatedRequest.line,
+          validatedRequest.character
+        ),
       };
 
       const result = await LspOperations.inspectSymbol(ctx, symbolRequest);
@@ -143,18 +150,18 @@ function extractHoverContent(hover: Hover): string | null {
     return value.trim();
   }
 
-  // Handle MarkedString array (multiple content pieces)
+  // Handle array of content pieces (legacy MarkedString array or mixed content)
   if (Array.isArray(contents)) {
     return contents
-      .map((item: MarkedString) => {
+      .map((item) => {
         if (typeof item === 'string') return item;
         if (typeof item === 'object' && 'value' in item) {
-          const markedItem = item as { language?: string; value: string };
+          const contentItem = item as { language?: string; value: string };
           // For code blocks, preserve them but clean up formatting
-          if (markedItem.language) {
-            return markedItem.value; // Return raw code without fences
+          if (contentItem.language) {
+            return contentItem.value; // Return raw code without fences
           }
-          return markedItem.value;
+          return contentItem.value;
         }
         return JSON.stringify(item);
       })
@@ -163,12 +170,10 @@ function extractHoverContent(hover: Hover): string | null {
       .trim();
   }
 
-  // Handle single MarkedString object
+  // Handle single content object (could be legacy MarkedString or other format)
   if (typeof contents === 'object' && 'value' in contents) {
-    const markedString = contents as MarkedString;
-    if (typeof markedString === 'object' && 'value' in markedString) {
-      return markedString.value.trim();
-    }
+    const contentObject = contents as { language?: string; value: string };
+    return contentObject.value.trim();
   }
 
   return null;

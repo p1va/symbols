@@ -6,6 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DiagnosticEntry, LspContext } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { fileSchema } from './schemas.js';
+import { validateFile } from './validation.js';
 
 /**
  * Format diagnostics in VS Code style with severity symbols, sorted by severity then line number
@@ -97,14 +98,17 @@ export function registerDiagnosticsTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
-      const result = await LspOperations.getDiagnostics(ctx, request);
+      // Validate and parse request arguments
+      const validatedRequest = validateFile(request);
+
+      const result = await LspOperations.getDiagnostics(ctx, validatedRequest);
       if (!result.ok) throw new Error(result.error.message);
 
       // Format diagnostics in VS Code style
       const formattedDiagnostics = formatDiagnostics(result.data);
 
       return {
-        content: [{ type: 'text', text: formattedDiagnostics }],
+        content: [{ type: 'text' as const, text: formattedDiagnostics }],
       };
     }
   );

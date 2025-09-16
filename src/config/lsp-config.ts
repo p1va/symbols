@@ -25,8 +25,14 @@ const LspConfigSchema = z.object({
   extensions: z.record(z.string(), z.string()), // file extension -> language ID
   workspace_files: z.array(z.string()).default([]),
   preload_files: z.array(z.string()).default([]), // files to open during initialization
-  diagnostics: DiagnosticsConfigSchema.default({}),
-  symbols: SymbolsConfigSchema.default({}),
+  diagnostics: DiagnosticsConfigSchema.default({
+    strategy: 'push',
+    wait_timeout_ms: 2000,
+  }),
+  symbols: SymbolsConfigSchema.default({
+    max_depth: null,
+    kinds: [],
+  }),
   environment: z.record(z.string(), z.string()).optional(),
   workspace_loader: z.string().optional(), // workspace loader type ('default', 'csharp', etc.)
 });

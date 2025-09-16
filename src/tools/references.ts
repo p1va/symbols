@@ -10,6 +10,7 @@ import { formatCursorContext } from '../utils/cursorContext.js';
 import { formatFilePath } from './utils.js';
 import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
 import { Location } from '../types/lsp.js';
+import { validateSymbolPosition } from './validation.js';
 
 export function registerReferencesTool(
   server: McpServer,
@@ -26,10 +27,16 @@ export function registerReferencesTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
+      // Validate and parse request arguments
+      const validatedRequest = validateSymbolPosition(request);
+
       // Convert raw request to branded position type
       const symbolRequest = {
-        file: request.file,
-        position: createOneBasedPosition(request.line, request.character),
+        file: validatedRequest.file,
+        position: createOneBasedPosition(
+          validatedRequest.line,
+          validatedRequest.character
+        ),
       };
 
       const result = await LspOperations.findReferences(ctx, symbolRequest);

@@ -14,6 +14,7 @@ import {
 } from './enrichment.js';
 // Removed deprecated typescript.js imports - configuration is now handled via YAML files
 import { FlattenedSymbol } from '../types/lsp.js';
+import { validateFile } from './validation.js';
 
 export function registerReadTool(
   server: McpServer,
@@ -31,14 +32,17 @@ export function registerReadTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
-      const result = await LspOperations.readSymbols(ctx, request);
+      // Validate and parse request arguments
+      const validatedRequest = validateFile(request);
+
+      const result = await LspOperations.readSymbols(ctx, validatedRequest);
       if (!result.ok) throw new Error(result.error.message);
 
       const formattedText = await formatReadResults(
         { symbols: result.data },
-        request.file,
-        request.maxDepth || 99,
-        request.previewMode || 'none'
+        validatedRequest.file,
+        validatedRequest.maxDepth || 99,
+        validatedRequest.previewMode || 'none'
       );
       return {
         content: [

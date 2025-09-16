@@ -9,6 +9,7 @@ import { searchSchema } from './schemas.js';
 import { getSymbolKindName, formatFilePath } from './utils.js';
 import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
 import { SymbolSearchResult } from '../types/lsp.js';
+import { validateSearch } from './validation.js';
 
 export function registerSearchTool(
   server: McpServer,
@@ -26,12 +27,15 @@ export function registerSearchTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
-      const result = await LspOperations.searchSymbols(ctx, request);
+      // Validate and parse request arguments
+      const validatedRequest = validateSearch(request);
+
+      const result = await LspOperations.searchSymbols(ctx, validatedRequest);
       if (!result.ok) throw new Error(result.error.message);
 
       const formattedText = await formatSearchResults(
         result.data,
-        request.query
+        validatedRequest.query
       );
       return {
         content: [

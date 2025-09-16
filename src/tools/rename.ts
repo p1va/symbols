@@ -8,6 +8,7 @@ import * as LspOperations from '../lsp/operations/index.js';
 import { renameSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursorContext.js';
 import { applyWorkspaceChanges, formatRenameResults } from './utils.js';
+import { validateRename } from './validation.js';
 
 export function registerRenameTool(
   server: McpServer,
@@ -25,11 +26,17 @@ export function registerRenameTool(
       const ctx = createContext();
       if (!ctx.client) throw new Error('LSP client not initialized');
 
+      // Validate and parse request arguments
+      const validatedRequest = validateRename(request);
+
       // Convert raw request to branded position type
       const renameRequest = {
-        file: request.file,
-        position: createOneBasedPosition(request.line, request.character),
-        newName: request.newName,
+        file: validatedRequest.file,
+        position: createOneBasedPosition(
+          validatedRequest.line,
+          validatedRequest.character
+        ),
+        newName: validatedRequest.newName,
       };
 
       const result = await LspOperations.rename(ctx, renameRequest);
@@ -43,7 +50,7 @@ export function registerRenameTool(
 
       // Extract symbol name from cursor context or use generic fallback
       const symbolName = cursorContext?.symbolName || 'symbol';
-      const newName = request.newName;
+      const newName = validatedRequest.newName;
 
       // Format the results
       const formattedResults = await formatRenameResults(
