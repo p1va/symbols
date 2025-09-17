@@ -6,8 +6,9 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
-import envPaths from 'env-paths';
 import { resolveBinCommand } from '../utils/bin-resolver.js';
+import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
+import { getAppPaths } from '../utils/appPaths.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -86,7 +87,7 @@ export function loadLspConfig(
   workspacePath?: string
 ): ConfigWithSource {
   // Get OS-specific config directory using env-paths
-  const paths = envPaths('symbols');
+  const paths = getAppPaths();
 
   // Try different config locations with priority: CLI > workspace > repo > cwd > home
   const workspaceConfigPaths = workspacePath
@@ -196,28 +197,45 @@ export function loadLspConfig(
   );
 
   for (const source of configSources) {
-    try {
-      if (fs.existsSync(source.path)) {
-        const yamlContent = fs.readFileSync(source.path, 'utf8');
-        const parsed = yaml.load(yamlContent);
-
-        // Validate with Zod
-        const config = ConfigFileSchema.parse(parsed);
-
-        // Expand environment variables in the configuration
-        const expandedConfig = expandEnvironmentVariables(config);
-
-        return {
-          config: expandedConfig,
-          source: {
-            path: path.resolve(source.path),
-            type: source.type,
-            description: source.description,
-          },
-        };
-      }
-    } catch {
+    if (!fs.existsSync(source.path)) {
       continue;
+    }
+
+    const resolvedPath = path.resolve(source.path);
+
+    try {
+      const yamlContent = fs.readFileSync(source.path, 'utf8');
+      const parsed = yaml.load(yamlContent);
+
+      const config = ConfigFileSchema.parse(parsed);
+      const expandedConfig = expandEnvironmentVariables(config);
+
+      return {
+        config: expandedConfig,
+        source: {
+          path: resolvedPath,
+          type: source.type,
+          description: source.description,
+        },
+      };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const issues = error.issues
+          .map((issue) => {
+            const pathStr =
+              issue.path.length > 0 ? issue.path.join('.') : '<root>';
+            return `${pathStr}: ${issue.message}`;
+          })
+          .join('; ');
+
+        throw new Error(`Invalid configuration in ${resolvedPath}: ${issues}`);
+      }
+
+      throw new Error(
+        `Failed to load configuration from ${resolvedPath}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -257,6 +275,26 @@ function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
       ])
     ),
   };
+}
+
+function describeShellToken(token: ShellQuoteToken): string {
+  if (token === null) {
+    return 'null';
+  }
+
+  if (typeof token === 'object') {
+    return JSON.stringify(token as Record<string, unknown>);
+  }
+
+  if (
+    typeof token === 'number' ||
+    typeof token === 'bigint' ||
+    typeof token === 'boolean'
+  ) {
+    return String(token);
+  }
+
+  return String(token);
 }
 
 /**
@@ -311,10 +349,21 @@ export function getLspConfig(
     return null;
   }
 
-  // Parse command into name and args
-  const commandParts = lspConfig.command.trim().split(' ').filter(Boolean);
-  const commandName = commandParts[0];
-  const commandArgs = commandParts.slice(1);
+  // Parse command into name and args (respecting quoted segments and spaces)
+  const parsedParts: ShellQuoteToken[] = shellParse(lspConfig.command.trim());
+  const commandSegments: string[] = [];
+
+  for (const part of parsedParts) {
+    if (typeof part !== 'string') {
+      const description = describeShellToken(part);
+      throw new Error(
+        `Unsupported shell token in command for LSP ${lspName}: ${description}`
+      );
+    }
+    commandSegments.push(part);
+  }
+
+  const [commandName, ...commandArgs] = commandSegments;
 
   if (!commandName) {
     throw new Error(`Invalid command for LSP ${lspName}: ${lspConfig.command}`);

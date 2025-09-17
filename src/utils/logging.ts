@@ -6,7 +6,7 @@
 import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
-import envPaths from 'env-paths';
+import { getAppPaths } from './appPaths.js';
 
 /**
  * Sanitize a string to be filesystem-safe
@@ -46,7 +46,7 @@ export function generateLogFileName(
  * Get the standardized log directory using env-paths
  */
 export function getLogDirectory(): string {
-  const paths = envPaths('symbols');
+  const paths = getAppPaths();
   return paths.log;
 }
 

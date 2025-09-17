@@ -2,8 +2,8 @@ import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import fs from 'fs';
 import path from 'path';
-import envPaths from 'env-paths';
 import logger from './logger.js';
+import { getAppPaths } from './appPaths.js';
 
 const req = createRequire(import.meta.url);
 const DEFAULT_CONFIG_NAME = 'symbols.yaml';
@@ -15,7 +15,7 @@ const DEFAULT_CONFIG_ASSET = 'default-symbols.yaml';
  */
 export async function handleFirstRun(): Promise<void> {
   try {
-    const paths = envPaths('symbols');
+    const paths = getAppPaths();
     const userConfigPath = path.join(paths.config, DEFAULT_CONFIG_NAME);
 
     // Check if user config directory exists
@@ -78,7 +78,7 @@ async function createDefaultConfig(
  * Gets the path to the user's config directory
  */
 export function getUserConfigPath(): string {
-  const paths = envPaths('symbols');
+  const paths = getAppPaths();
   return path.join(paths.config, DEFAULT_CONFIG_NAME);
 }
 
@@ -86,7 +86,7 @@ export function getUserConfigPath(): string {
  * Checks if user has any existing configuration
  */
 export function hasExistingConfig(): boolean {
-  const paths = envPaths('symbols');
+  const paths = getAppPaths();
   const userConfigPath = path.join(paths.config, DEFAULT_CONFIG_NAME);
 
   // Check various possible config file locations

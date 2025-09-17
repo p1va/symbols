@@ -20,7 +20,7 @@ This document tracks the testing status of all MCP tools across different Langua
 | **`read`**                                                                                            |            |      |         |     |      |      |
 | `read` tool with `previewMode: none`                                                                  | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
 | `read` tool with `previewMode: signature`                                                             | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
-| `read` tool with `previewMode: expanded` (longer per-symbol snippets)                                  | ❓         | ⚠️\* | ✅      | ❓  | ❓   | ❓   |
+| `read` tool with `previewMode: expanded` (longer per-symbol snippets)                                 | ❓         | ⚠️\* | ✅      | ❓  | ❓   | ❓   |
 | **`inspect`**                                                                                         |            |      |         |     |      |      |
 | `inspect` tool returns documentation when available                                                   | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |
 | `inspect` tool returns decompiled location for external symbols                                       | ❓         | ✅   | ✅      | ❓  | ❓   | ❓   |

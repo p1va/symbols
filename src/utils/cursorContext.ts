@@ -380,7 +380,7 @@ export function formatCursorContext(context: CursorContext): string {
   const symbolInfo =
     context.symbolName && context.symbolKind
       ? `(${context.symbolKind}) ${context.symbolName}`
-      : 'No symbol at this line';
+      : 'n/a';
 
   // Semantic token info (precise clicked token)
   const targetToken =
@@ -390,7 +390,7 @@ export function formatCursorContext(context: CursorContext): string {
             ? ` [${context.tokenModifiers.join(', ')}]`
             : ''
         }`
-      : 'Unknown token';
+      : 'n/a';
 
   // Capitalize first letter of operation and format file path
   const capitalizedOperation =
@@ -398,7 +398,7 @@ export function formatCursorContext(context: CursorContext): string {
   const formattedPath = formatFilePath(context.file);
 
   return `${capitalizedOperation} on ${formattedPath}:${context.position.line}:${context.position.character}
-    Cursor: \`${context.snippet}\`
-    Target: ${targetToken}
-    Symbol: ${symbolInfo}`;
+    Snippet: \`${context.snippet}\`
+    At Cursor: ${targetToken}
+    At Line: ${symbolInfo}`;
 }

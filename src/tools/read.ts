@@ -62,6 +62,41 @@ interface SymbolWithDepth {
   depth: number;
 }
 
+function humanizeSymbolKind(kind: string): string {
+  return kind.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+}
+
+function pluralizeSymbolKind(kind: string, count: number): string {
+  const humanized = humanizeSymbolKind(kind);
+  if (count === 1) {
+    return `1 ${humanized}`;
+  }
+
+  const words = humanized.split(' ');
+  if (words.length === 0) {
+    return `${count}`;
+  }
+
+  const lastWordIndex = words.length - 1;
+  const lastWord = words[lastWordIndex]!;
+  let pluralLast = lastWord;
+
+  if (lastWord === 'property') {
+    pluralLast = 'properties';
+  } else if (lastWord === 'class') {
+    pluralLast = 'classes';
+  } else if (lastWord === 'index') {
+    pluralLast = 'indices';
+  } else if (lastWord.endsWith('y') && !/[aeiou]y$/.test(lastWord)) {
+    pluralLast = `${lastWord.slice(0, -1)}ies`;
+  } else {
+    pluralLast = `${lastWord}s`;
+  }
+
+  words[lastWordIndex] = pluralLast;
+  return `${count} ${words.join(' ')}`;
+}
+
 async function formatReadResults(
   data: { symbols: FlattenedSymbol[] },
   filePath: string,
@@ -140,11 +175,7 @@ async function formatReadResults(
   // Create summary line
   const typeBreakdown = Array.from(symbolCounts.entries())
     .sort(([, a], [, b]) => b - a) // Sort by count descending
-    .map(([type, count]) =>
-      count === 1
-        ? `1 ${type.toLowerCase()}`
-        : `${count} ${type.toLowerCase()}s`
-    )
+    .map(([type, count]) => pluralizeSymbolKind(type, count))
     .join(', ');
 
   const sections = [];

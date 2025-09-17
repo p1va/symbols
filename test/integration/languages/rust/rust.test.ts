@@ -37,7 +37,7 @@ class RustTestSuite extends LanguageTestSuite {
 
           if (contentText && contentText.text) {
             // The Rust LSP returned some symbol information, that's success
-            expect(contentText.text).toContain('Symbol:');
+            expect(contentText.text).toContain('At Line:');
           }
         });
 

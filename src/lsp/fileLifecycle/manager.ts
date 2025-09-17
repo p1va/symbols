@@ -4,6 +4,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { pathToFileURL } from 'url';
 
 import {
   LspClient,
@@ -58,7 +59,14 @@ export async function openFileWithStrategy(
 ): Promise<Result<FileOpenResult>> {
   return await tryResultAsync(
     async () => {
-      const uri = `file://${path.resolve(filePath)}`;
+      const baseDir = workspacePath
+        ? path.resolve(workspacePath)
+        : process.cwd();
+      const absolutePath = path.isAbsolute(filePath)
+        ? path.resolve(filePath)
+        : path.resolve(baseDir, filePath);
+      const normalizedPath = path.normalize(absolutePath);
+      const uri = pathToFileURL(normalizedPath).toString();
       const preloaded = preloadedFiles.get(uri);
       const isPreloaded = !!preloaded;
       const wasAlreadyOpen = preloaded?.isOpen ?? false;
@@ -75,7 +83,7 @@ export async function openFileWithStrategy(
       if (strategy === 'transient') {
         // Always read fresh from filesystem for transient operations
         try {
-          content = await fs.promises.readFile(filePath, 'utf8');
+          content = await fs.promises.readFile(normalizedPath, 'utf8');
           version = preloaded ? preloaded.version + 1 : 1; // Increment version if preloaded
         } catch (error) {
           const lspError = createLspError(
@@ -92,7 +100,7 @@ export async function openFileWithStrategy(
       } else {
         // Read from filesystem for non-preloaded files
         try {
-          content = await fs.promises.readFile(filePath, 'utf8');
+          content = await fs.promises.readFile(normalizedPath, 'utf8');
           version = 1;
         } catch (error) {
           const lspError = createLspError(
@@ -114,7 +122,7 @@ export async function openFileWithStrategy(
 
       // Open the file
       const languageId =
-        getLanguageId(filePath, configPath, workspacePath) || 'plaintext';
+        getLanguageId(normalizedPath, configPath, workspacePath) || 'plaintext';
       const openResult = await openFile(
         client,
         uri,

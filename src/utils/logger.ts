@@ -1,7 +1,7 @@
 import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
-import envPaths from 'env-paths';
+import { getAppPaths } from './appPaths.js';
 
 // Unified logging system - starts with session logging, upgradeable to contextual
 let currentLogger: winston.Logger | null = null;
@@ -65,7 +65,7 @@ function createLogger(logFilePath: string): winston.Logger {
 function initializeSessionLogger(): void {
   try {
     // Use env-paths for cross-platform log directory
-    const logDir = envPaths('symbols').log;
+    const logDir = getAppPaths().log;
 
     // Generate timestamped filename for this session
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -110,7 +110,7 @@ function upgradeToContextualLogger(
 ): void {
   try {
     // Generate contextual log filename
-    const logDir = envPaths('symbols').log;
+    const logDir = getAppPaths().log;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     // Find workspace name from path
@@ -134,19 +134,36 @@ function upgradeToContextualLogger(
       `Workspace: ${workspacePath}, LSP: ${lspName || 'auto-detect'}`
     );
 
-    // Read existing logs if the session log exists and is different
-    let existingContent = '';
-    if (currentLogFile !== contextualLogFile && fs.existsSync(currentLogFile)) {
-      existingContent = fs.readFileSync(currentLogFile, 'utf8');
+    // Ensure destination directory exists before any file operations
+    const logDirExists = fs.existsSync(logDir);
+    if (!logDirExists) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    // Copy existing session log without loading it into memory
+    if (
+      currentLogFile !== contextualLogFile &&
+      currentLogFile !== 'uninitialized' &&
+      fs.existsSync(currentLogFile)
+    ) {
+      try {
+        fs.copyFileSync(currentLogFile, contextualLogFile);
+      } catch (copyError) {
+        logger.warn('Failed to copy existing session log to contextual log', {
+          error:
+            copyError instanceof Error
+              ? copyError.message
+              : String(copyError),
+        });
+        // Ensure file exists even if copy failed
+        if (!fs.existsSync(contextualLogFile)) {
+          fs.writeFileSync(contextualLogFile, '');
+        }
+      }
     }
 
     // Create new contextual logger
     const newLogger = createLogger(contextualLogFile);
-
-    // Write existing content to new file if we have any
-    if (existingContent) {
-      fs.appendFileSync(contextualLogFile, existingContent);
-    }
 
     // Add transition marker in new file
     newLogger.info('='.repeat(80));
@@ -170,8 +187,13 @@ function upgradeToContextualLogger(
     ) {
       try {
         fs.unlinkSync(oldLogFile);
-      } catch {
-        // Ignore cleanup errors
+      } catch (unlinkError) {
+        logger.debug('Failed to remove old session log', {
+          error:
+            unlinkError instanceof Error
+              ? unlinkError.message
+              : String(unlinkError),
+        });
       }
     }
   } catch (error) {

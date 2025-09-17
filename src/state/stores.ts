@@ -84,10 +84,10 @@ export function createDiagnosticProviderStore(): DiagnosticProviderStore {
         });
       });
 
-      logger.info('Retrieving providers for document', {
+      logger.debug('Retrieving providers for document', {
         uri,
         languageId,
-        providers,
+        providerCount: filteredProviders.length,
       });
 
       return filteredProviders;

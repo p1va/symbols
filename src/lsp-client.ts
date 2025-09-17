@@ -254,7 +254,14 @@ export function createLspClient(
     // Log all incoming requests (including unhandled ones)
     connection.onRequest((method: string, params: unknown) => {
       logger.debug('LSP request received', { method, params });
-      // Return empty response for unhandled requests to prevent crashes
+
+      if (method === 'workspace/configuration') {
+        return [];
+      }
+
+      // Return null instead of MethodNotFound error to prevent LSP crashes
+      // Some LSPs (like pyright) crash when receiving MethodNotFound responses
+      // for requests they send that we don't handle (e.g., textDocument/semanticTokens/full)
       return null;
     });
 
