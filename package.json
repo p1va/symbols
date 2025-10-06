@@ -51,7 +51,7 @@
     "test:integration:rust:ci": "CI=true vitest run test/integration/languages/rust/"
   },
   "type": "module",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.16.1",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
