@@ -42,10 +42,9 @@ class PythonTestSuite extends LanguageTestSuite {
         });
 
         test('Should read Python file symbols', async () => {
-          const result = await this.client.readSymbols(
+          const result = await this.client.outline(
             this.getMainFilePath(),
-            99,
-            'signature'
+            true
           );
 
           this.assertToolResult(result);

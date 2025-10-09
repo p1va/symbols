@@ -172,6 +172,7 @@ export function showHelp(): void {
 
 /**
  * Show active configuration in YAML format
+ * @param configPath - Optional path to configuration file
  */
 export function showConfig(configPath?: string): void {
   try {

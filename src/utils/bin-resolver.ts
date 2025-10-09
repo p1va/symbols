@@ -1,14 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-
-const requireResolve = createRequire(path.join(process.cwd(), 'package.json'));
 
 interface PackageJson {
   bin?: string | Record<string, string>;
 }
 
+// Get the directory where this module is located (dist/utils/)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Get the CLI's root directory (where package.json is)
+// From dist/utils/bin-resolver.js -> go up to dist/ -> go up to root/
+const CLI_ROOT = path.resolve(__dirname, '..', '..');
+
+/**
+ * Resolve the path to an executable from a package in the CLI's node_modules
+ * This allows the CLI to bundle language servers as dependencies
+ * @param pkg - Package name
+ * @param executable - Optional executable name (defaults to package name)
+ */
 export function resolveBinPath(pkg: string, executable?: string): string {
+  // Create a require function that resolves from the CLI's installation directory
+  const requireResolve = createRequire(path.join(CLI_ROOT, 'package.json'));
+
   try {
     const modulePath = requireResolve.resolve(`${pkg}/package.json`);
     const packageDir = path.dirname(modulePath);
@@ -57,7 +73,10 @@ export function resolveBinPath(pkg: string, executable?: string): string {
       error.message.includes('Cannot find module')
     ) {
       throw new Error(
-        `Package ${pkg} is not installed or not found in node_modules`
+        `Package ${pkg} is not installed in the CLI's dependencies. Searched in: ${CLI_ROOT}\n` +
+          `Hint: The symbols CLI should include ${pkg} as a dependency. If you installed symbols, try:\n` +
+          `  - Reinstalling: npm install -g @p1va/symbols (or your package manager)\n` +
+          `  - Or installing the language server separately in your workspace`
       );
     }
     throw error;
@@ -84,6 +103,12 @@ export function isNodeScript(filePath: string): boolean {
   }
 }
 
+/**
+ * Resolve a package executable into a command and args
+ * Resolves from the CLI's own node_modules
+ * @param pkg - Package name
+ * @param executable - Optional executable name (defaults to package name)
+ */
 export function resolveBinCommand(
   pkg: string,
   executable?: string

@@ -34,22 +34,17 @@ export const symbolPositionWithTransformSchema = z
 
 export const fileSchema = {
   file: z.string().describe(fileDescription),
-  maxDepth: z
-    .number()
-    .int()
-    .min(0)
+  preview: z
+    .boolean()
     .optional()
-    .default(99)
+    .default(false)
     .describe(
-      'Filters output symbols based on their depth in the syntax tree. e.g. 0 = only top-level symbols, 1 = top-level and first-level children, etc.'
+      'Include code preview snippets from symbol declarations. Default false for compact output.'
     ),
-  previewMode: z
-    .enum(['none', 'signature', 'expanded'])
-    .optional()
-    .default('none')
-    .describe(
-      'Preview mode for symbols: none = names only, signature = first few lines (good for intent), expanded = longer per-symbol snippets.'
-    ),
+} as const;
+
+export const diagnosticsSchema = {
+  file: z.string().describe(fileDescription),
 } as const;
 
 export const searchSchema = {

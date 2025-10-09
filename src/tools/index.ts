@@ -11,7 +11,7 @@ import { registerCompletionTool } from './completion.js';
 import { registerWindowLogsTool } from './logs.js';
 import { registerRenameTool } from './rename.js';
 import { registerSearchTool } from './search.js';
-import { registerReadTool } from './read.js';
+import { registerOutlineTool } from './outline.js';
 import { registerDiagnosticsTool } from './diagnostics.js';
 
 /**
@@ -27,6 +27,6 @@ export function registerAllTools(
   registerWindowLogsTool(server, createContext);
   registerRenameTool(server, createContext);
   registerSearchTool(server, createContext);
-  registerReadTool(server, createContext);
+  registerOutlineTool(server, createContext);
   registerDiagnosticsTool(server, createContext);
 }

@@ -400,5 +400,5 @@ export function formatCursorContext(context: CursorContext): string {
   return `${capitalizedOperation} on ${formattedPath}:${context.position.line}:${context.position.character}
     Snippet: \`${context.snippet}\`
     At Cursor: ${targetToken}
-    At Line: ${symbolInfo}`;
+    Container: ${symbolInfo}`;
 }

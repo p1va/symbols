@@ -1,12 +1,12 @@
 <div align="center">
 
-# symbols
+# Symbols MCP
 
-An MCP server for reading, inspecting and searching codebase symbols
+An MCP server for reading, inspecting and navigating codebase symbols
 
 ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
-![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?logo=typescript&logoColor=white)
+![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
 ![Go](https://img.shields.io/badge/go-%2300ADD8.svg?logo=go&logoColor=white)
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)
 
@@ -14,26 +14,48 @@ An MCP server for reading, inspecting and searching codebase symbols
 
 ## Introduction
 
-When paired with a Language Server of choice, the Symbols MCP server offers a set of tools that enable Coding Agents to discover and navigate the codebase and its dependencies in a way that is faster and a more efficient use of the model's context.
+By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
 
-## MCP Tools
+### Available Tools
 
-The MCP server provides the following tools:
+- **`outline`**: returns a concise outline of code symbols in a given file
+  - `preview: false`: compact with just names and kinds
+  - `preview: true`: with more info like signature, modifiers and return types
+- **`inspect`**: returns context for a symbol at a given location
+  - **documentation** and signature if applicable
+  - **declaration location** and code preview
+  - **implementation location** and code preview (for both local and external symbols) [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
+  - **decompiled location** and preview (for both local and external symbols) [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
 
-- **`search`**: searches symbols across the codebase [see here](examples/01-search.md)
-- **`read`**: reads symbols in a code file with different level of preview (`none`, `signature`, `expanded`) [see here](examples/02-read-signature-mode.md)
-- **`inspect`**: inspects a symbol and returns its documentation, its definition and implementation for both local and external symbols [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
-- **`completion`**: suggests a list of contextual completions at a given location [see here](examples/06-completion.md)
+- **`search`**: searches symbols across the codebase [example](examples/01-search.md)
+
 - **`references`**: finds references for a symbol across the codebase [see here](examples/05-references.md)
-- **`rename`**: renames a symbol across the codebase
-- **`diagnostics`**: retrieves active diagnostics in a file
-- **`logs`**: retrieves logs from the underlying Language Server
+- **`rename`**: renames a symbol and all of its references across the codebase
+- **`diagnostics`**: retrieves active diagnostics in a given file
+- **`completion`**: returns a list of contextual completions at a given location [see here](examples/06-completion.md)
+- **`logs`**: retrieves Language Server's logs
+
+### Use Cases
+
+<details>
+
+<summary><b>Gather high-level understanding of codebase</b></summary>
+
+**Tools:** `read` `search`
+
+**Example prompt:** `Could you please explore the codebase and get a high-level understanding of its structure, components and responsibilities using the navigation tools from "symbols" MCP server. Please use the read tool with previewMode signature to efficently read a simple outline for each file you think is relevant.`
+
+</details>
 
 ## Installation
 
 ### 1. Install Language Server(s)
 
-For the MCP server to work it is important to install the Language Server(s) relevant for the programming language of the codebase
+`npx -y @p1va/symbols@latest`
+
+The npm package comes with both **TypeScript** and Python's **Pyright** as dependencies. When you run  those binaries are available automatically. For other languages you need to install and update the LSP separately.
+
+Configure each LSP according to your project’s needs (see the example configuration). The sections below list the recommended installation commands and quick health checks.
 
 <details>
 
@@ -192,7 +214,40 @@ rust-analyzer --version
 
 ### 2. Configuration
 
-Configuration can be provided and overwritten at different levels. For the sake of simplicty here we will be adding it system-wide. More options can be seen as described in the `--help` command
+A configuration file tells the server which language servers are available, how to launch them, and what defaults to use. Settings are resolved in this order:
+
+1. CLI flag `--config`
+2. Workspace-local files (`$WORKSPACE/symbols.yaml`, `symbols.yml`, `lsps.yaml`, `lsps.yml`)
+3. Current working directory (same filenames as above)
+4. OS-specific config directory (e.g. `~/.config/symbols-nodejs/symbols.yaml` on Linux)
+
+The schema is defined in [`src/config/lsp-config.ts`](src/config/lsp-config.ts). At a high level:
+
+```yaml
+lsps:
+  typescript:
+    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
+    extensions:
+      '.ts': typescript
+      '.tsx': typescriptreact
+    preload_files:
+      - ./src/index.ts
+    diagnostics:
+      strategy: push
+    symbols:
+      max_depth: 2
+```
+
+- `command` supports `${LOCAL_NODE_MODULE}/package:bin` placeholders; the server resolves them to `node_modules/.bin` executables.
+- `preload_files` keep specific files open so symbol indexing works immediately.
+- `diagnostics.strategy` can be `push` (default) or `pull` depending on the LSP.
+- `environment` lets you inject environment variables (e.g. `GOPATH`).
+
+Run `npx @p1va/symbols --show-config` to inspect the final merged config.
+
+#### Workspace behaviour
+
+By default the server works relative to the current directory. Provide `--workspace /absolute/path` (or set `SYMBOLS_WORKSPACE`) so that file operations, preload paths, and config resolution happen from the project root. This is especially important when your agent launches the MCP server from a temporary folder.
 
 <details>
 
@@ -309,6 +364,14 @@ The MCP server provides the following tools:
 
 </details>
 
+## Troubleshooting
+
+- **Inspect the active configuration** – `npx -y @p1va/symbols@latest --show-config` prints the merged YAML along with the path it came from.
+- **Check the logs** – every run writes to `~/.config/symbols-nodejs/log/*.log` (or the OS equivalent). The file name includes your workspace and LSP name.
+- **Verify the LSP binary** – run the `command` listed in `symbols.yaml` with `--stdio` (or the appropriate flag) to ensure it starts cleanly. For `${LOCAL_NODE_MODULE}` commands, the server automatically resolves the executable in `node_modules`.
+- **Increase verbosity** – set `LOGLEVEL=debug` before launching the server to see detailed connection messages and requests.
+- **Workspace mismatch** – if symbols are missing, confirm the server is launched with the correct `--workspace` path so relative files resolve properly.
+
 ## Development
 
 - `pnpm lint` outputs the lint violations
@@ -319,3 +382,12 @@ The MCP server provides the following tools:
 - `pnpm start` starts the built artifacts
 - `pnpm test:unit` runs the unit tests
 - `pnpm test:integration:{language id}` runs the integration tests for a given language
+
+## Motivation
+
+- Having fun while learning something new, better understanding of MCP by understanding LSP who inspired it
+- Avoid long and complicated commands in .mcp.json file or similar and prefer a dedicated configuration file
+- Supports for the official Microsoft Code Analysis Language Server for C# and both mechanisms of diagnostic publishing (pull and push)
+- Keep tools productive but to the minimum (potentially allowing for hiding unused ones) and don't pollute the context
+- Don't leak the complexity of the Language Server interaction
+

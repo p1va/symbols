@@ -140,25 +140,23 @@ class TypeScriptTestSuite extends LanguageTestSuite {
         });
 
         test('Should find TypeScript symbols with different preview modes', async () => {
-          // Test with signature mode
-          const sigResult = await this.client.readSymbols(
+          // Test without preview (compact)
+          const compactResult = await this.client.outline(
             this.getMainFilePath(),
-            99,
-            'signature'
+            false
           );
-          this.assertToolResult(sigResult);
-          this.assertSymbolExists(sigResult, 'main');
-          this.assertSymbolExists(sigResult, 'TestConfig');
-          this.assertSymbolExists(sigResult, 'TestService');
+          this.assertToolResult(compactResult);
+          this.assertSymbolExists(compactResult, 'main');
+          this.assertSymbolExists(compactResult, 'TestConfig');
+          this.assertSymbolExists(compactResult, 'TestService');
 
-          // Test with expanded mode
-          const expandedResult = await this.client.readSymbols(
+          // Test with preview (signature/declaration snippets)
+          const previewResult = await this.client.outline(
             this.getMainFilePath(),
-            99,
-            'expanded'
+            true
           );
-          this.assertToolResult(expandedResult);
-          this.assertSymbolExists(expandedResult, 'main');
+          this.assertToolResult(previewResult);
+          this.assertSymbolExists(previewResult, 'main');
         });
 
         test('Should search for TypeScript symbols', async () => {

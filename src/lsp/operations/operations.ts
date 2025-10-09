@@ -463,7 +463,7 @@ export async function searchSymbols(
   );
 }
 
-export async function readSymbols(
+export async function outlineSymbols(
   ctx: LspContext,
   request: FileRequest
 ): Promise<Result<FlattenedSymbol[]>> {

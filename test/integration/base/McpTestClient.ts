@@ -252,26 +252,22 @@ export class McpTestClient {
 
   async getDiagnostics(
     file: string,
-    maxDepth?: number,
-    previewMode?: string,
+    preview?: boolean,
     debug = false
   ): Promise<ToolCallResult> {
     const args: Record<string, unknown> = { file };
-    if (maxDepth !== undefined) args.maxDepth = maxDepth;
-    if (previewMode) args.previewMode = previewMode;
+    if (preview !== undefined) args.preview = preview;
     return this.callTool('diagnostics', args, debug);
   }
 
-  async readSymbols(
+  async outline(
     file: string,
-    maxDepth?: number,
-    previewMode?: string,
+    preview?: boolean,
     debug = false
   ): Promise<ToolCallResult> {
     const args: Record<string, unknown> = { file };
-    if (maxDepth !== undefined) args.maxDepth = maxDepth;
-    if (previewMode) args.previewMode = previewMode;
-    return this.callTool('read', args, debug);
+    if (preview !== undefined) args.preview = preview;
+    return this.callTool('outline', args, debug);
   }
 
   async searchSymbols(query: string): Promise<ToolCallResult> {

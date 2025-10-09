@@ -9,7 +9,7 @@ import {
 import {
   inspectSymbol,
   searchSymbols,
-  readSymbols,
+  outlineSymbols,
   findReferences,
   completion,
   logs,
@@ -448,8 +448,8 @@ describe('LSP Operations', () => {
   // ---------------------------------------------------------------------------
   // READ SYMBOLS TESTS
   // ---------------------------------------------------------------------------
-  describe('readSymbols', () => {
-    it('should read document symbols successfully', async () => {
+  describe('outline', () => {
+    it('should get outline of symbols successfully', async () => {
       const ctx = createMockContext();
       const request: FileRequest = { file: TEST_CONSTANTS.testFile };
 
@@ -477,7 +477,7 @@ describe('LSP Operations', () => {
       );
       mockTryResultAsync.mockImplementation(async (fn) => await fn());
 
-      await readSymbols(ctx, request);
+      await outlineSymbols(ctx, request);
 
       expect(mockValidateFileRequest).toHaveBeenCalledWith(ctx, request);
       expect(mockConnection.sendRequest).toHaveBeenCalledWith(
@@ -494,7 +494,7 @@ describe('LSP Operations', () => {
 
       mockValidateFileRequest.mockReturnValue(VALIDATION_ERRORS.invalidPath);
 
-      const result = await readSymbols(ctx, request);
+      const result = await outlineSymbols(ctx, request);
 
       expect(result.ok).toBe(false);
       expect(mockValidateFileRequest).toHaveBeenCalledWith(ctx, request);
@@ -527,7 +527,7 @@ describe('LSP Operations', () => {
         }
       });
 
-      await expect(readSymbols(ctx, request)).rejects.toThrow(
+      await expect(outlineSymbols(ctx, request)).rejects.toThrow(
         'Document symbol request failed: Document symbol request failed'
       );
       expect(mockConnection.sendRequest).toHaveBeenCalledWith(
@@ -558,7 +558,7 @@ describe('LSP Operations', () => {
       );
       mockTryResultAsync.mockImplementation(async (fn) => await fn());
 
-      await readSymbols(ctx, request);
+      await outlineSymbols(ctx, request);
 
       expect(mockConnection.sendRequest).toHaveBeenCalledWith(
         'textDocument/documentSymbol',
