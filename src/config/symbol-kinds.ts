@@ -80,6 +80,9 @@ export function isContainerKind(
 
 /**
  * Checks if a symbol kind is a leaf (should not expand children)
+ *
+ * This is the logical inverse of isContainerKind() and is provided
+ * for API completeness and semantic clarity.
  */
 export function isLeafKind(
   kind: number,

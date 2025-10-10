@@ -32,6 +32,8 @@ export const symbolPositionWithTransformSchema = z
     position: createOneBasedPosition(line, character),
   }));
 
+// File-only schemas don't need transform versions since they don't have
+// line/character fields to convert into OneBasedPosition
 export const fileSchema = {
   file: z.string().describe(fileDescription),
   preview: z

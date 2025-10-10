@@ -137,6 +137,11 @@ function filterSymbolsByContainerLeaf(
 }
 
 /**
+ * Maximum depth for container chain walking to prevent infinite loops
+ */
+const MAX_CONTAINER_DEPTH = 10;
+
+/**
  * Calculates depth for display purposes (indentation)
  * This is purely for formatting, not for filtering
  */
@@ -147,13 +152,12 @@ function calculateDisplayDepth(
   let depth = 0;
   let currentContainer = symbol.containerName;
 
-  while (currentContainer && symbolsByName.has(currentContainer)) {
-    depth++;
+  while (currentContainer && depth < MAX_CONTAINER_DEPTH) {
     const parentSymbol = symbolsByName.get(currentContainer);
-    currentContainer = parentSymbol?.containerName;
+    if (!parentSymbol) break;
 
-    // Prevent infinite loops
-    if (depth > 10) break;
+    depth++;
+    currentContainer = parentSymbol.containerName;
   }
 
   return depth;
@@ -308,7 +312,7 @@ function findRootContainerName(
   let currentContainer = symbol.containerName;
   let depth = 0;
 
-  while (currentContainer && depth < 10) {
+  while (currentContainer && depth < MAX_CONTAINER_DEPTH) {
     const parentSymbol = symbolsByName.get(currentContainer);
     if (!parentSymbol || !parentSymbol.containerName) {
       // Found the root
