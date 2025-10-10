@@ -22,17 +22,14 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
   - `preview: false`: compact with just names and kinds
   - `preview: true`: with more info like signature, modifiers and return types
 - **`inspect`**: returns context for a symbol at a given location
-  - **documentation** and signature if applicable
-  - **declaration location** and code preview
-  - **implementation location** and code preview (for both local and external symbols) [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
-  - **decompiled location** and preview (for both local and external symbols) [see here](examples/03-inspect-codebase-symbol.md) and [here](examples/04-inspect-third-party-library.md)
-
-- **`search`**: searches symbols across the codebase [example](examples/01-search.md)
-
-- **`references`**: finds references for a symbol across the codebase [see here](examples/05-references.md)
+  - documentation and signature if applicable
+  - declaration location and code preview
+  - implementation location and code preview (for both local and external symbols)
+- **`search`**: searches symbols across the codebase
+- **`references`**: finds references for a symbol across the codebase
 - **`rename`**: renames a symbol and all of its references across the codebase
 - **`diagnostics`**: retrieves active diagnostics in a given file
-- **`completion`**: returns a list of contextual completions at a given location [see here](examples/06-completion.md)
+- **`completion`**: returns a list of contextual completions at a given location
 - **`logs`**: retrieves Language Server's logs
 
 ### Use Cases
