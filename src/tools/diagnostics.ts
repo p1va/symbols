@@ -5,7 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { DiagnosticEntry, LspContext } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
-import { fileSchema } from './schemas.js';
+import { diagnosticsSchema } from './schemas.js';
 import { validateFile } from './validation.js';
 
 /**
@@ -92,7 +92,7 @@ export function registerDiagnosticsTool(
       title: 'Diagnostics',
       description:
         'Retrieves active diagnostics (errors/warnings/hints) for a code file',
-      inputSchema: fileSchema,
+      inputSchema: diagnosticsSchema,
     },
     async (request) => {
       const ctx = createContext();

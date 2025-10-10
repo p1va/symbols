@@ -37,7 +37,7 @@ class RustTestSuite extends LanguageTestSuite {
 
           if (contentText && contentText.text) {
             // The Rust LSP returned some symbol information, that's success
-            expect(contentText.text).toContain('At Line:');
+            expect(contentText.text).toContain('Container:');
           }
         });
 
@@ -137,10 +137,9 @@ class RustTestSuite extends LanguageTestSuite {
         });
 
         test('Should get Rust file symbols with crate documentation', async () => {
-          const result = await this.client.readSymbols(
+          const result = await this.client.outline(
             this.getMainFilePath(),
-            2,
-            'signature',
+            true,
             true
           );
 

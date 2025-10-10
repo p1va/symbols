@@ -43,7 +43,7 @@ import { setupShutdown } from './shutdown.js';
 let lspClient: LspClient | null = null;
 let lspProcess: ChildProcessWithoutNullStreams | null = null;
 let lspName: string = '';
-let lspConfig: ParsedLspConfig | null = null;
+let lspConfiguration: ParsedLspConfig | null = null;
 let workspaceUri: string = '';
 let workspacePath: string = '';
 const preloadedFiles: PreloadedFiles = new Map();
@@ -137,28 +137,28 @@ async function initializeLsp(): Promise<void> {
     });
 
     // Load LSP configuration
-    lspConfig = getLspConfig(lspName, config.configPath, config.workspace);
-    if (!lspConfig) {
+    lspConfiguration = getLspConfig(lspName, config.configPath, config.workspace);
+    if (!lspConfiguration) {
       logger.error(`LSP configuration not found for: ${lspName}`);
       throw new Error(`LSP configuration not found for: ${lspName}`);
     }
 
     logger.debug('LSP configuration loaded', {
       lspName,
-      command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
-      extensions: Object.keys(lspConfig.extensions),
-      diagnosticsStrategy: lspConfig.diagnostics.strategy,
+      command: `${lspConfiguration.commandName} ${lspConfiguration.commandArgs.join(' ')}`,
+      extensions: Object.keys(lspConfiguration.extensions),
+      diagnosticsStrategy: lspConfiguration.diagnostics.strategy,
     });
 
     const workspaceConfig: LspConfig = {
       workspaceUri,
       workspaceName,
-      preloadFiles: lspConfig.preload_files || [],
+      preloadFiles: lspConfiguration.preload_files || [],
     };
 
     const clientResult = createLspClient(
       workspaceConfig,
-      lspConfig,
+      lspConfiguration,
       diagnosticsStore,
       diagnosticProviderStore,
       windowLogStore,
@@ -174,7 +174,7 @@ async function initializeLsp(): Promise<void> {
       workspaceConfig,
       diagnosticProviderStore,
       workspaceLoaderStore,
-      lspConfig
+      lspConfiguration
     );
 
     if (!initResult.ok) {
@@ -271,7 +271,7 @@ function createContext(): LspContext {
     workspaceUri,
     workspacePath,
     lspName,
-    lspConfig,
+    lspConfig: lspConfiguration,
   };
 }
 

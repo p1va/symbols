@@ -102,7 +102,7 @@ export abstract class LanguageTestSuite {
       expect(tools).toHaveLength(expectedCount);
       expect(tools.map((t) => t.name)).toContain('inspect');
       expect(tools.map((t) => t.name)).toContain('diagnostics');
-      expect(tools.map((t) => t.name)).toContain('read');
+      expect(tools.map((t) => t.name)).toContain('outline');
       expect(tools.map((t) => t.name)).toContain('references');
       expect(tools.map((t) => t.name)).toContain('completion');
       expect(tools.map((t) => t.name)).toContain('search');
@@ -111,7 +111,7 @@ export abstract class LanguageTestSuite {
     });
 
     test('Should read file symbols', async () => {
-      const result = await this.client.readSymbols(this.getMainFilePath());
+      const result = await this.client.outline(this.getMainFilePath());
 
       expect(result.isError).toBe(false);
       expect(result.content).toBeDefined();

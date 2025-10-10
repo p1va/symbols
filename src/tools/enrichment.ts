@@ -53,7 +53,8 @@ function decodeFileUriToPath(uri: string): string {
  * Enriches a list of symbols with code snippets by reading their source files
  */
 export async function enrichSymbolsWithCode<T extends EnrichableSymbol>(
-  symbols: T[]
+  symbols: T[],
+  options?: { extractFullDeclaration?: boolean }
 ): Promise<EnrichedSymbol<T>[]> {
   const fileCache: FileCache = {};
   const enrichedSymbols: EnrichedSymbol<T>[] = [];
@@ -81,7 +82,9 @@ export async function enrichSymbolsWithCode<T extends EnrichableSymbol>(
       // Extract code snippets for all symbols in this file
       for (const symbol of fileSymbols) {
         const range = extractRangeFromSymbol(symbol);
-        const snippet = range ? extractCodeSnippet(lines, range) : null;
+        const snippet = range
+          ? extractCodeSnippet(lines, range, options?.extractFullDeclaration)
+          : null;
         const enriched: EnrichedSymbol<T> = { symbol };
         if (snippet) {
           enriched.codeSnippet = snippet;
@@ -127,12 +130,33 @@ function extractRangeFromSymbol(symbol: EnrichableSymbol): Range | null {
 
 /**
  * Extracts code snippet from file lines using LSP range (0-based)
+ * @param fileLines - Array of file lines
+ * @param range - LSP range (0-based)
+ * @param extractFullDeclaration - If true, extracts from character 0 to get full declaration with modifiers
  */
-function extractCodeSnippet(fileLines: string[], range: Range): string {
+function extractCodeSnippet(
+  fileLines: string[],
+  range: Range,
+  extractFullDeclaration?: boolean
+): string {
   const startLine = range.start.line;
-  const endLine = range.end.line;
-  const startChar = range.start.character;
-  const endChar = range.end.character;
+  let endLine = range.end.line;
+  let startChar = range.start.character;
+  let endChar = range.end.character;
+
+  // For signature mode: extract full declaration starting from column 0
+  // Get up to 3-4 lines to handle multi-line declarations
+  if (extractFullDeclaration) {
+    startChar = 0;
+    // Get a few lines for multi-line declarations, but cap at the symbol's end or 4 lines
+    endLine = Math.min(startLine + 3, range.end.line);
+    // Get to end of line or reasonable length
+    if (endLine === startLine) {
+      endChar = Math.min(fileLines[startLine]?.length ?? 0, 200);
+    } else {
+      endChar = Math.min(fileLines[endLine]?.length ?? 0, 200);
+    }
+  }
 
   // Validate line numbers
   if (

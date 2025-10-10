@@ -1,0 +1,50 @@
+# Example: Customizing Container Symbol Kinds
+#
+# This example shows how to override which symbol kinds are treated as "containers"
+# (showing their children) vs "leaves" (hiding their children like local variables).
+
+lsps:
+  typescript:
+    command: npx typescript-language-server --stdio
+    extensions:
+      .ts: typescript
+      .tsx: typescriptreact
+    workspace_files:
+      - package.json
+      - tsconfig.json
+    symbols:
+      # Option 1: Use readable string names (recommended)
+      containerKinds:
+        - File
+        - Module
+        - Namespace
+        - Class
+        - Interface
+        - Enum
+        - Struct
+        - Object
+        # Note: Excluding "Package" means package symbols won't expand children
+
+  python:
+    command: pyright-langserver --stdio
+    extensions:
+      .py: python
+    workspace_files:
+      - pyproject.toml
+      - setup.py
+    symbols:
+      # Option 2: Mix strings and numbers (both work)
+      containerKinds:
+        - File       # 1
+        - Module     # 2
+        - Class      # 5
+        - 10         # Enum (using number)
+        - Interface  # 11
+
+  # If symbols.containerKinds is not specified, defaults are used:
+  # File, Module, Namespace, Package, Class, Interface, Enum, Struct, Object
+  csharp:
+    command: csharp-ls
+    extensions:
+      .cs: csharp
+    # Using defaults - no symbols config needed

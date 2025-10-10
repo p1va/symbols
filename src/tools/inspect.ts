@@ -70,8 +70,7 @@ export function registerInspectTool(
       ) {
         const definitionText = await formatLocationGroup(
           inspectData.definition,
-          'Definition',
-          cursorContext
+          'Definition'
         );
         sections.push(definitionText);
       }
@@ -84,8 +83,7 @@ export function registerInspectTool(
       ) {
         const typeDefText = await formatLocationGroup(
           inspectData.typeDefinition,
-          'Type Definition',
-          cursorContext
+          'Type Definition'
         );
         sections.push(typeDefText);
       }
@@ -98,8 +96,7 @@ export function registerInspectTool(
       ) {
         const implText = await formatLocationGroup(
           inspectData.implementation,
-          'Implementation',
-          cursorContext
+          'Implementation'
         );
         sections.push(implText);
       }
@@ -136,18 +133,7 @@ function extractHoverContent(hover: Hover): string | null {
     'value' in contents
   ) {
     const markupContent = contents as { kind: string; value: string };
-    // Remove markdown code fences if present for cleaner display
-    let value = markupContent.value;
-    if (markupContent.kind === 'markdown') {
-      // Clean up common markdown patterns for better readability
-      value = value
-        .replace(/^```typescript\n/, '')
-        .replace(/^```ts\n/, '')
-        .replace(/\n```$/, '')
-        .replace(/^```\n/, '')
-        .replace(/\n```$/, '');
-    }
-    return value.trim();
+    return markupContent.value.trim();
   }
 
   // Handle array of content pieces (legacy MarkedString array or mixed content)
@@ -184,8 +170,7 @@ function extractHoverContent(hover: Hover): string | null {
  */
 async function formatLocationGroup(
   locations: Location[],
-  groupTitle: string,
-  cursorContext?: { symbolName?: string } | null
+  groupTitle: string
 ): Promise<string> {
   if (!locations || locations.length === 0) return '';
 
@@ -237,23 +222,9 @@ async function formatLocationGroup(
 
   // Format output
   const totalCount = locations.length;
-  const fileCount = fileGroups.size;
-  const plural = fileCount === 1 ? '' : 's';
 
-  // Get symbol name from cursor context if available
-  const symbolName = cursorContext?.symbolName || 'symbol';
-
-  // Create more descriptive headers based on the group title
-  let contextualTitle;
-  if (groupTitle === 'Definition') {
-    contextualTitle = `Definition: ${totalCount} location${totalCount === 1 ? '' : 's'} where ${symbolName} is defined`;
-  } else if (groupTitle === 'Type Definition') {
-    contextualTitle = `Type Definition: ${totalCount} location${totalCount === 1 ? '' : 's'} where the type is defined`;
-  } else if (groupTitle === 'Implementation') {
-    contextualTitle = `Implementation: ${totalCount} location${totalCount === 1 ? '' : 's'} where ${symbolName} is implemented`;
-  } else {
-    contextualTitle = `${groupTitle}: ${totalCount} location${totalCount === 1 ? '' : 's'} across ${fileCount} file${plural}`;
-  }
+  // Simple, clear title without dynamic symbol names
+  const contextualTitle = `${groupTitle}: ${totalCount} location${totalCount === 1 ? '' : 's'}`;
 
   let result = contextualTitle;
 

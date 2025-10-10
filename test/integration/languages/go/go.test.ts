@@ -111,10 +111,9 @@ class GoTestSuite extends LanguageTestSuite {
         });
 
         test('Should get Go file symbols with package documentation', async () => {
-          const result = await this.client.readSymbols(
+          const result = await this.client.outline(
             this.getMainFilePath(),
-            2,
-            'signature',
+            true,
             true
           );
 

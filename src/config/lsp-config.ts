@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { resolveBinCommand } from '../utils/bin-resolver.js';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
 import { getAppPaths } from '../utils/appPaths.js';
+import { symbolKindNamesToNumbers } from './symbol-kinds.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -17,8 +18,7 @@ const DiagnosticsConfigSchema = z.object({
 });
 
 const SymbolsConfigSchema = z.object({
-  max_depth: z.number().min(0).nullable().default(null),
-  kinds: z.array(z.string()).default([]),
+  containerKinds: z.array(z.union([z.string(), z.number()])).optional(),
 });
 
 const LspConfigSchema = z.object({
@@ -30,10 +30,7 @@ const LspConfigSchema = z.object({
     strategy: 'push',
     wait_timeout_ms: 2000,
   }),
-  symbols: SymbolsConfigSchema.default({
-    max_depth: null,
-    kinds: [],
-  }),
+  symbols: SymbolsConfigSchema.default({}),
   environment: z.record(z.string(), z.string()).optional(),
   workspace_loader: z.string().optional(), // workspace loader type ('default', 'csharp', etc.)
 });
@@ -64,12 +61,21 @@ export interface ConfigWithSource {
 }
 
 /**
- * Extended LSP configuration with parsed command and args
+ * Parsed symbols config with containerKinds converted to numbers
  */
-export interface ParsedLspConfig extends LspConfig {
+export interface ParsedSymbolsConfig {
+  containerKinds?: number[];
+}
+
+/**
+ * Extended LSP configuration with parsed command and args
+ * Omits symbols from LspConfig and replaces it with ParsedSymbolsConfig
+ */
+export interface ParsedLspConfig extends Omit<LspConfig, 'symbols'> {
   name: string;
   commandName: string;
   commandArgs: string[];
+  symbols: ParsedSymbolsConfig;
 }
 
 /**
@@ -253,6 +259,7 @@ export function loadLspConfig(
 /**
  * Expand environment variables in configuration values
  * Supports $VAR and ${VAR} syntax
+ * @param config - Configuration to expand
  */
 function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
   return {
@@ -300,9 +307,11 @@ function describeShellToken(token: ShellQuoteToken): string {
 /**
  * Expand environment variables in a string
  * Supports both $VAR and ${VAR} syntax
+ * @param str - String to expand
  */
 function expandString(str: string): string {
   // Handle LOCAL_NODE_MODULE expansion with syntax ${LOCAL_NODE_MODULE}/package-name
+  // This resolves from the CLI's own node_modules, not the workspace
   str = str.replace(
     /\$\{LOCAL_NODE_MODULE\}\/([^}\s]+)/g,
     (match: string, packageSpec: string) => {
@@ -369,8 +378,17 @@ export function getLspConfig(
     throw new Error(`Invalid command for LSP ${lspName}: ${lspConfig.command}`);
   }
 
+  // Convert containerKinds from string/mixed array to numbers
+  const symbols: ParsedSymbolsConfig = {};
+  if (lspConfig.symbols?.containerKinds) {
+    symbols.containerKinds = symbolKindNamesToNumbers(
+      lspConfig.symbols.containerKinds
+    );
+  }
+
   return {
     ...lspConfig,
+    symbols,
     name: lspName,
     commandName,
     commandArgs,
