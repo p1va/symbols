@@ -2,7 +2,7 @@
 
 # Symbols MCP
 
-An MCP server for reading, inspecting and navigating codebase symbols
+Read, inspect and navigate through codebase symbols by connecting to a Language Server
 
 ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?logo=typescript&logoColor=white)
@@ -16,33 +16,22 @@ An MCP server for reading, inspecting and navigating codebase symbols
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
 
+
 ### Available Tools
 
 - **`outline`**: returns a concise outline of code symbols in a given file
-  - `preview: false`: compact with just names and kinds
-  - `preview: true`: with more info like signature, modifiers and return types
-- **`inspect`**: returns context for a symbol at a given location
-  - documentation and signature if applicable
-  - declaration location and code preview
-  - implementation location and code preview (for both local and external symbols)
+  - `preview: false` keeps it compact with just names and kinds
+  - `preview: true` includes a code snippet to preview things like signature, modifiers and return types
+- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, Nuget, ...)
+  - any documentation and signature details
+  - symbol declaration location with code preview
+  - symbol implementation location with code preview
 - **`search`**: searches symbols across the codebase
-- **`references`**: finds references for a symbol across the codebase
-- **`rename`**: renames a symbol and all of its references across the codebase
+- **`references`**: finds all references of a symbol across the codebase
+- **`rename`**: renames all references of a symbol across the codebase
 - **`diagnostics`**: retrieves active diagnostics in a given file
 - **`completion`**: returns a list of contextual completions at a given location
-- **`logs`**: retrieves Language Server's logs
-
-### Use Cases
-
-<details>
-
-<summary><b>Gather high-level understanding of codebase</b></summary>
-
-**Tools:** `read` `search`
-
-**Example prompt:** `Could you please explore the codebase and get a high-level understanding of its structure, components and responsibilities using the navigation tools from "symbols" MCP server. Please use the read tool with previewMode signature to efficently read a simple outline for each file you think is relevant.`
-
-</details>
+- **`logs`**: retrieves Language Server own logs for troubleshooting
 
 ## Installation
 
@@ -50,9 +39,9 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
 
 `npx -y @p1va/symbols@latest`
 
-The npm package comes with both **TypeScript** and Python's **Pyright** as dependencies. When you run  those binaries are available automatically. For other languages you need to install and update the LSP separately.
+The npm package comes with both **TypeScript** and Python's **Pyright** Language Servers pre-installed along with their configuration so that they *should* work out of the box.
 
-Configure each LSP according to your project’s needs (see the example configuration). The sections below list the recommended installation commands and quick health checks.
+For other languages the Language Server needs to be installed and the MCP server configured with details.
 
 <details>
 
