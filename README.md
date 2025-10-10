@@ -4,18 +4,14 @@
 
 Read, inspect and navigate through codebase symbols by connecting to a Language Server
 
-![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
-![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?logo=typescript&logoColor=white)
-![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
-![Go](https://img.shields.io/badge/go-%2300ADD8.svg?logo=go&logoColor=white)
-![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)
+![NPM Version](https://img.shields.io/npm/v/%40p1va%2Fsymbols?style=flat)
+
 
 </div>
 
 ## Introduction
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
-
 
 ### Available Tools
 
@@ -35,13 +31,112 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
 
 ## Installation
 
-### 1. Install Language Server(s)
+The MCP server runs via `npx -y @p1va/symbols@latest`
 
-`npx -y @p1va/symbols@latest`
+To configure things and have this MCP server working we need
+-  The MCP server added to the MCP configuration file for the coding agent of choice
+-  The relevant Language Server for the codebase's language installed and available to the MCP server
+-  The MCP server configured with the right command to execute the Language Server when the correspoding language is detected
 
 The npm package comes with both **TypeScript** and Python's **Pyright** Language Servers pre-installed along with their configuration so that they *should* work out of the box.
 
 For other languages the Language Server needs to be installed and the MCP server configured with details.
+
+
+| Languagge      | Language Server    | Installation      | Configuration |   	|
+|---             |---	                |---	              |---	|---	  |
+| ![TS](https://img.shields.io/badge/typescript-%23007ACC.svg?logo=typescript&logoColor=white)| TS language server	  | ✅ Pre-installed	| ✅ Pre-configured |   	|
+| ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)         | Pyright               | ✅ Pre-installed	| ✅ Pre-configured	|   	|
+| ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)          | Microsoft Roslyn	    | 🔌 Needs install 	| 🔗 [Download](examples/configs/csharp.yaml) |   	|
+| ![Go](https://img.shields.io/badge/go-%2300ADD8.svg?logo=go&logoColor=white)                | gopls  	              | 🔌 Needs install 	| 🔗 [Download](examples/configs/go.yaml)     |    	|
+| ![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)          | rust-analyzer  	      | 🔌 Needs install 	| 🔗 [Download](examples/configs/rust.yaml)   |    	|
+| ![Java](https://img.shields.io/badge/Java-ED8B00?logo=openjdk&logoColor=white)              | jdts            	    | 🔌 Needs install 	| 🔗 [Download](examples/configs/java.yaml)   |    	|
+| Other          | other            	  | 🔌 Needs install 	| 🔗 [Follow template](examples/config/example.yaml) |   	|   	|
+
+### 1. Add MCP to Coding Agents
+
+<details>
+<summary><b>Claude Code</b></summary>
+
+Add this to `.mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "symbols": {
+      "command": "npx",
+      "args": ["-y", "@p1va/symbols@latest"]
+    }
+  }
+}
+```
+
+or
+
+```sh
+claude mcp add symbols -- npx -y @p1va/symbols@latest
+```
+
+</details>
+
+<details>
+
+<summary><b>OpenAI Codex</b></summary>
+
+Add this to `$HOME/.codex/config.toml`
+
+```toml
+[mcp_servers.symbols]
+command = "npx"
+args = ["-y", "@p1va/symbols@latest"]
+```
+
+</details>
+
+<details>
+
+<summary><b>Gemini CLI</b></summary>
+
+Add this to `.gemini/settings.json`
+
+```json
+{
+  "mcpServers": {
+    "symbols": {
+      "command": "npx",
+      "args": ["-y", "@p1va/symbols@latest"],
+      "env": {},
+      "cwd": ".",
+      "timeout": 30000,
+      "trust": true
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+
+<summary><b>Copilot in VS Code</b></summary>
+
+Add this to `.vscode/mcp.json`
+
+```json
+{
+  "servers": {
+    "symbols": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@p1va/symbols@latest"]
+    }
+  }
+}
+```
+
+</details>
+
+### 2. Install Language Server(s)
 
 <details>
 
@@ -198,7 +293,7 @@ rust-analyzer --version
 
 </details>
 
-### 2. Configuration
+### 3. Configuration
 
 A configuration file tells the server which language servers are available, how to launch them, and what defaults to use. Settings are resolved in this order:
 
@@ -265,99 +360,6 @@ mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Con
 
 </details>
 
-### 3. Add MCP to Coding Agents
-
-Once the Language Server(s) have been installed and the configuration download it is possible to add the MCP server command `npx -y @p1va/symbols@latest` to coding agents
-
-<details>
-<summary><b>Claude Code</b></summary>
-
-Add this to `.mcp.json`
-
-```json
-{
-  "mcpServers": {
-    "symbols": {
-      "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest"]
-    }
-  }
-}
-```
-
-or
-
-```sh
-claude mcp add symbols -- npx -y @p1va/symbols@latest
-```
-
-</details>
-
-<details>
-
-<summary><b>OpenAI Codex</b></summary>
-
-Add this to `$HOME/.codex/config.toml`
-
-```toml
-[mcp_servers.symbols]
-command = "npx"
-args = ["-y", "@p1va/symbols@latest"]
-```
-
-</details>
-
-<details>
-
-<summary><b>Copilot in VS Code</b></summary>
-
-Add this to `.vscode/mcp.json`
-
-```json
-{
-  "servers": {
-    "symbols": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest"]
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary>
-Guidance for AGENTS.md and CLAUDE.md 
-</summary>
-
-Update your `CLAUDE.md` or `AGENTS.md` with instructions on tool use recommending to prefer LSP-based discovery over traditional file read.
-
-```md
-## Tool Usage Policy Addendum
-
-The MCP server provides the following tools:
-
-- Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
-- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `expanded` symbols in a given file with different level of details.
-- Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__read`
-- **`mcp__symbols__completion`**: suggests a list of completions
-- Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
-- Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase
-- Use **`mcp__symbols__diagnostics`** to retrieve active diagnostics for a given document
-```
-
-</details>
-
-## Troubleshooting
-
-- **Inspect the active configuration** – `npx -y @p1va/symbols@latest --show-config` prints the merged YAML along with the path it came from.
-- **Check the logs** – every run writes to `~/.config/symbols-nodejs/log/*.log` (or the OS equivalent). The file name includes your workspace and LSP name.
-- **Verify the LSP binary** – run the `command` listed in `symbols.yaml` with `--stdio` (or the appropriate flag) to ensure it starts cleanly. For `${LOCAL_NODE_MODULE}` commands, the server automatically resolves the executable in `node_modules`.
-- **Increase verbosity** – set `LOGLEVEL=debug` before launching the server to see detailed connection messages and requests.
-- **Workspace mismatch** – if symbols are missing, confirm the server is launched with the correct `--workspace` path so relative files resolve properly.
-
 ## Development
 
 - `pnpm lint` outputs the lint violations
@@ -368,12 +370,3 @@ The MCP server provides the following tools:
 - `pnpm start` starts the built artifacts
 - `pnpm test:unit` runs the unit tests
 - `pnpm test:integration:{language id}` runs the integration tests for a given language
-
-## Motivation
-
-- Having fun while learning something new, better understanding of MCP by understanding LSP who inspired it
-- Avoid long and complicated commands in .mcp.json file or similar and prefer a dedicated configuration file
-- Supports for the official Microsoft Code Analysis Language Server for C# and both mechanisms of diagnostic publishing (pull and push)
-- Keep tools productive but to the minimum (potentially allowing for hiding unused ones) and don't pollute the context
-- Don't leak the complexity of the Language Server interaction
-
