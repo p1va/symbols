@@ -17,46 +17,24 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
 
 - **`outline`**: returns a concise outline of code symbols in a given file
   - `preview: false` keeps it compact with just names and kinds
-  - `preview: true` includes a code snippet to preview things like signature, modifiers and return types
-- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, Nuget, ...)
+  - `preview: true` includes a code snippet with signatures, modifiers, return types...
+- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, Nuget, ... )
   - any documentation and signature details
   - symbol declaration location with code preview
   - symbol implementation location with code preview
-- **`search`**: searches symbols across the codebase
+- **`search`**: returns matching symbols across the codebase
 - **`references`**: finds all references of a symbol across the codebase
 - **`rename`**: renames all references of a symbol across the codebase
-- **`diagnostics`**: retrieves active diagnostics in a given file
+- **`diagnostics`**: returns active diagnostics in a given file
 - **`completion`**: returns a list of contextual completions at a given location
-- **`logs`**: retrieves Language Server own logs for troubleshooting
+- **`logs`**: returns Language Server own logs for troubleshooting
 
 ## Installation
 
-The MCP server runs via `npx -y @p1va/symbols@latest`
-
-To configure things and have this MCP server working we need
--  The MCP server added to the MCP configuration file for the coding agent of choice
--  The relevant Language Server for the codebase's language installed and available to the MCP server
--  The MCP server configured with the right command to execute the Language Server when the correspoding language is detected
-
-The npm package comes with both **TypeScript** and Python's **Pyright** Language Servers pre-installed along with their configuration so that they *should* work out of the box.
-
-For other languages the Language Server needs to be installed and the MCP server configured with details.
-
-
-| Languagge      | Language Server    | Installation      | Configuration |   	|
-|---             |---	                |---	              |---	|---	  |
-| ![TS](https://img.shields.io/badge/typescript-%23007ACC.svg?logo=typescript&logoColor=white)| TS language server	  | ✅ Pre-installed	| ✅ Pre-configured |   	|
-| ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)         | Pyright               | ✅ Pre-installed	| ✅ Pre-configured	|   	|
-| ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)          | Microsoft Roslyn	    | 🔌 Needs install 	| 🔗 [Download](examples/configs/csharp.yaml) |   	|
-| ![Go](https://img.shields.io/badge/go-%2300ADD8.svg?logo=go&logoColor=white)                | gopls  	              | 🔌 Needs install 	| 🔗 [Download](examples/configs/go.yaml)     |    	|
-| ![Rust](https://img.shields.io/badge/rust-%23000000.svg?logo=rust&logoColor=white)          | rust-analyzer  	      | 🔌 Needs install 	| 🔗 [Download](examples/configs/rust.yaml)   |    	|
-| ![Java](https://img.shields.io/badge/Java-ED8B00?logo=openjdk&logoColor=white)              | jdts            	    | 🔌 Needs install 	| 🔗 [Download](examples/configs/java.yaml)   |    	|
-| Other          | other            	  | 🔌 Needs install 	| 🔗 [Follow template](examples/config/example.yaml) |   	|   	|
-
-### 1. Add MCP to Coding Agents
+### 1. MCP Server
 
 <details>
-<summary><b>Claude Code</b></summary>
+<summary><img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" alt="Claude Code" style="vertical-align: middle;"></summary>
 
 Add this to `.mcp.json`
 
@@ -76,12 +54,9 @@ or
 ```sh
 claude mcp add symbols -- npx -y @p1va/symbols@latest
 ```
-
 </details>
 
-<details>
-
-<summary><b>OpenAI Codex</b></summary>
+<details><summary><img src="https://img.shields.io/badge/OpenAI_Codex-%23412991?logo=openai&logoColor=white" alt="OpenAI Codex" style="vertical-align: middle;"></summary>
 
 Add this to `$HOME/.codex/config.toml`
 
@@ -90,12 +65,9 @@ Add this to `$HOME/.codex/config.toml`
 command = "npx"
 args = ["-y", "@p1va/symbols@latest"]
 ```
-
 </details>
 
-<details>
-
-<summary><b>Gemini CLI</b></summary>
+<details><summary><img src="https://img.shields.io/badge/Gemini_CLI-8E75B2?logo=google%20gemini&logoColor=white" alt="Gemini CLI" style="vertical-align: middle;"></summary>
 
 Add this to `.gemini/settings.json`
 
@@ -113,12 +85,11 @@ Add this to `.gemini/settings.json`
   }
 }
 ```
-
 </details>
 
 <details>
 
-<summary><b>Copilot in VS Code</b></summary>
+<summary><img src="https://img.shields.io/badge/GitHub_Copilot-8957E5?logo=github-copilot&logoColor=white" alt="GitHub Copilo" style="vertical-align: middle;"></summary>
 
 Add this to `.vscode/mcp.json`
 
@@ -136,25 +107,25 @@ Add this to `.vscode/mcp.json`
 
 </details>
 
-### 2. Install Language Server(s)
+### 2. Language Servers
 
 <details>
+<summary>
+<img src="https://img.shields.io/badge/PY-3670A0?&logo=python&logoColor=ffdd54" alt="Python" style="vertical-align: middle;">
+<b>(Pre-Installed)</b>
+</summary>
 
-<summary><b>Python - Pyright</b></summary>
+### Python's Pyright
 
-### Installation
+#### Installation
 
-```sh
-npm install -g pyright
-```
+[Pyright]() is already installed as a dependecies of this MCP server and doesn't need installation
 
-To double-check the outcome of the installation run the command below
+#### Configuration
 
-```sh
-pyright-langserver --stdio
-```
+A default configuration for Pyright is created during startup so things *should* work out of the box
 
-### Troubleshooting
+#### Troubleshooting
 
 A symptom of Pyright not being properly configured is the `diagnostics` tool only reporting module import errors even when none appear in the IDE.
 
@@ -168,9 +139,12 @@ venv = ".venv"
 
 </details>
 
-<details>
 
-<summary><b>TypeScript - TS Language Server</b></summary>
+<details>
+<summary>
+<img src="https://img.shields.io/badge/TS-%23007ACC.svg?logo=typescript&logoColor=white" alt="Typescript" style="vertical-align: middle;">
+<b>(Pre-Installed)</b>
+</summary>
 
 ### Installation
 
@@ -189,8 +163,10 @@ You should see the language server start and wait for LSP messages.
 </details>
 
 <details>
-
-<summary><b>C# - Roslyn</b></summary>
+<summary>
+<img src="https://img.shields.io/badge/CS-blueviolet?logo=dotnet" alt="C#" style="vertical-align: middle;">
+<b></b>
+</summary>
 
 ### Installation
 
@@ -254,12 +230,14 @@ To double-check the outcome of the installation run the command below
 ```sh
 $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 ```
-
 </details>
 
-<details>
 
-<summary><b>Go - Gopls</b></summary>
+<details>
+<summary>
+<img src="https://img.shields.io/badge/GO-%2300ADD8.svg?logo=go&logoColor=white" alt="GO" style="vertical-align: middle;">
+<b></b>
+</summary>
 
 ### Installation
 
@@ -276,8 +254,10 @@ gopls version
 </details>
 
 <details>
-
-<summary><b>Rust - rust-analyzer</b></summary>
+<summary>
+<img src="https://img.shields.io/badge/RS-%23000000.svg?logo=rust&logoColor=white" alt="RS" style="vertical-align: middle;">
+<b></b>
+</summary>
 
 ### Installation
 
@@ -292,6 +272,18 @@ rust-analyzer --version
 ```
 
 </details>
+
+<details>
+<summary>
+<img src="https://img.shields.io/badge/JV-ED8B00?logo=openjdk&logoColor=white
+" alt="JV" style="vertical-align: middle;">
+<b></b>
+</summary>
+
+### Installation
+
+</details>
+
 
 ### 3. Configuration
 
