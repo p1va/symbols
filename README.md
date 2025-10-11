@@ -12,6 +12,7 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 ## Introduction
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
+The server offers a minimal toolset intended to be easy to use for the model and light on its context.
 
 ### Available Tools
 
@@ -34,13 +35,17 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
 ### 1. MCP Server
 
 <details>
+
 <summary>
-<div style="display: inline-block;">
-<img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" alt="Claude Code" style="vertical-align: middle;">
-</div>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" valign="middle">
+  </picture>
 </summary>
 
-Add this to `.mcp.json`
+### Claude Code
+
+To install the MCP server add this to your repository `.mcp.json` file
 
 ```json
 {
@@ -60,9 +65,18 @@ claude mcp add symbols -- npx -y @p1va/symbols@latest
 ```
 </details>
 
-<details><summary><img src="https://img.shields.io/badge/OpenAI_Codex-%23412991?logo=openai&logoColor=white" alt="OpenAI Codex" style="vertical-align: middle;"></summary>
+<details>
 
-Add this to `$HOME/.codex/config.toml`
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/OpenAI_Codex-%23412991?logo=openai&logoColor=white" valign="middle">
+  </picture>
+</summary>
+
+### OpenAI Codex
+
+To install the MCP server add this to your global `$HOME/.codex/config.toml` file
 
 ```toml
 [mcp_servers.symbols]
@@ -71,9 +85,18 @@ args = ["-y", "@p1va/symbols@latest"]
 ```
 </details>
 
-<details><summary><img src="https://img.shields.io/badge/Gemini_CLI-8E75B2?logo=google%20gemini&logoColor=white" alt="Gemini CLI" style="vertical-align: middle;"></summary>
+<details>
+  
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/Gemini_CLI-8E75B2?logo=google%20gemini&logoColor=white" valign="middle">
+  </picture>
+</summary>  
 
-Add this to `.gemini/settings.json`
+### Google Gemini CLI
+
+To install the MCP server add this to your repository `.gemini/settings.json` file
 
 ```json
 {
@@ -89,13 +112,21 @@ Add this to `.gemini/settings.json`
   }
 }
 ```
+
 </details>
 
 <details>
 
-<summary><img src="https://img.shields.io/badge/GitHub_Copilot-8957E5?logo=github-copilot&logoColor=white" alt="GitHub Copilo" style="vertical-align: middle;"></summary>
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/GitHub_Copilot-8957E5?logo=github-copilot&logoColor=white" valign="middle">
+  </picture>
+</summary>
 
-Add this to `.vscode/mcp.json`
+### GitHub Copilot
+
+To install the MCP server add this to your repository's `.vscode/mcp.json` file
 
 ```json
 {
@@ -114,12 +145,19 @@ Add this to `.vscode/mcp.json`
 ### 2. Language Servers
 
 <details>
+
 <summary>
-<img src="https://img.shields.io/badge/PY-3670A0?&logo=python&logoColor=ffdd54" alt="Python" style="vertical-align: middle;">
-<b>(Pre-Installed)</b>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/PY-3670A0?&logo=python&logoColor=ffdd54" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Python</b>
+  &nbsp;
+  (pre-installed)
 </summary>
 
-### Python's Pyright
+### Pyright
 
 #### Installation
 
@@ -143,14 +181,22 @@ venv = ".venv"
 
 </details>
 
-
 <details>
+
 <summary>
-<img src="https://img.shields.io/badge/TS-%23007ACC.svg?logo=typescript&logoColor=white" alt="Typescript" style="vertical-align: middle;">
-<b>(Pre-Installed)</b>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/TS-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Typescript</b>
+  &nbsp;
+  (pre-installed)
 </summary>
 
-### Installation
+### Typescript Language Server
+
+#### Installation
 
 ```sh
 npm install -g typescript typescript-language-server
@@ -167,12 +213,19 @@ You should see the language server start and wait for LSP messages.
 </details>
 
 <details>
+
 <summary>
-<img src="https://img.shields.io/badge/CS-blueviolet?logo=dotnet" alt="C#" style="vertical-align: middle;">
-<b></b>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/CS-blueviolet?logo=dotnet" valign="middle">
+  </picture>
+  &nbsp;
+  <b>C#</b>
 </summary>
 
-### Installation
+### Microsoft Roslyn Language Server
+
+#### Installation
 
 The official Csharp Language Server is distributed over nuget as a self-contained executable.
 
@@ -236,14 +289,20 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 ```
 </details>
 
-
 <details>
+
 <summary>
-<img src="https://img.shields.io/badge/GO-%2300ADD8.svg?logo=go&logoColor=white" alt="GO" style="vertical-align: middle;">
-<b></b>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/GO-%2300ADD8.svg?logo=go&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Go</b>
 </summary>
 
-### Installation
+### Gopls
+
+#### Installation
 
 ```sh
 go install golang.org/x/tools/gopls@latest
@@ -258,12 +317,19 @@ gopls version
 </details>
 
 <details>
+
 <summary>
-<img src="https://img.shields.io/badge/RS-%23000000.svg?logo=rust&logoColor=white" alt="RS" style="vertical-align: middle;">
-<b></b>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/RS-%23000000.svg?logo=rust&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Rust</b>
 </summary>
 
-### Installation
+### Rust-analyzer
+
+#### Installation
 
 ```sh
 rustup component add rust-analyzer
@@ -278,13 +344,23 @@ rust-analyzer --version
 </details>
 
 <details>
+  
 <summary>
-<img src="https://img.shields.io/badge/JV-ED8B00?logo=openjdk&logoColor=white
-" alt="JV" style="vertical-align: middle;">
-<b></b>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/JV-ED8B00?logo=openjdk&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Java</b>
 </summary>
 
-### Installation
+### jdt.ls
+
+x
+
+#### Installation
+
+x
 
 </details>
 
@@ -366,28 +442,4 @@ mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Con
 - `pnpm start` starts the built artifacts
 - `pnpm test:unit` runs the unit tests
 - `pnpm test:integration:{language id}` runs the integration tests for a given language
-
-
-
-<details>
-
-<summary>
-&nbsp;<picture><img src="https://img.shields.io/badge/T1-ED8B00?logo=openjdk&logoColor=white" style="vertical-align: middle;"></picture>
-</summary>
-
-<p>This is a test.</p>
-
-</details>
-
-
-<details>
-<summary>
-<a href="#">
-<img src="https://img.shields.io/badge/T2-ED8B00?logo=openjdk&logoColor=white" alt="Test 2" style="vertical-align: middle;">
-</a>
-</summary>
-
-<p>This is a test.</p>
-
-</details>
 
