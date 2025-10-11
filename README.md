@@ -366,3 +366,18 @@ mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Con
 - `pnpm start` starts the built artifacts
 - `pnpm test:unit` runs the unit tests
 - `pnpm test:integration:{language id}` runs the integration tests for a given language
+
+
+
+<details>
+<summary>
+  <div style="display: inline-block; vertical-align: middle;">
+    <img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white" alt="GitHub Badge">
+  </div>
+  <strong>Test:</strong> Click here to expand.
+</summary>
+
+<br>
+<p>If you can see this text, the known-good example is working correctly.</p>
+
+</details>
