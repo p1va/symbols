@@ -371,13 +371,12 @@ mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Con
 
 <details>
 <summary>
-  <div style="display: inline-block; vertical-align: middle;">
-    <img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white" alt="GitHub Badge">
-  </div>
-  <strong>Test:</strong> Click here to expand.
+  <svg width="106" height="20" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+    <image href="https://img.shields.io/badge/Claude_Code-555?logo=claude" />
+  </svg>
+  Some text right next to the badge
 </summary>
 
-<br>
-<p>If you can see this text, the known-good example is working correctly.</p>
+<p>This content should be revealed.</p>
 
 </details>
