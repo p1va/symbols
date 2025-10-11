@@ -370,9 +370,9 @@ mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Con
 
 
 <details>
-<summary>
+<summary style="display: flex; align-items: center;">
 <picture style="vertical-align: middle;">
-<img src="https://img.shields.io/badge/T1-ED8B00?logo=openjdk&logoColor=white" alt="Test 1" style="vertical-align: middle;">
+<img src="https://img.shields.io/badge/T1-ED8B00?logo=openjdk&logoColor=white">
 </picture>
 </summary>
 
