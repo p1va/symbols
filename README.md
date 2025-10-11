@@ -35,9 +35,9 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
 
 <details>
 <summary>
-<span>
+<div style="display: inline-block;">
 <img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" alt="Claude Code" style="vertical-align: middle;">
-</span>
+</div>
 </summary>
 
 Add this to `.mcp.json`
