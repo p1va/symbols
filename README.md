@@ -371,12 +371,24 @@ mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Con
 
 <details>
 <summary>
-  <svg width="106" height="20" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
-    <image href="https://img.shields.io/badge/Claude_Code-555?logo=claude" />
-  </svg>
-  Some text right next to the badge
+<picture>
+<img src="https://img.shields.io/badge/T1-ED8B00?logo=openjdk&logoColor=white" alt="Test 1" style="vertical-align: middle;">
+</picture>
 </summary>
 
-<p>This content should be revealed.</p>
+<p>This is a test.</p>
 
 </details>
+
+
+<details>
+<summary>
+<a href="#">
+<img src="https://img.shields.io/badge/T2-ED8B00?logo=openjdk&logoColor=white" alt="Test 2" style="vertical-align: middle;">
+</a>
+</summary>
+
+<p>This is a test.</p>
+
+</details>
+
