@@ -12,7 +12,7 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 ## Introduction
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
-The server offers a minimal toolset intended to be easy to use for the model and light on its context.
+The server offers a minimal toolset intended to be easy to use and light on the model's context.
 
 ### Available Tools
 
@@ -145,14 +145,13 @@ To install the MCP server add this to your repository's `.vscode/mcp.json` file
 ### 2. Language Servers
 
 <details>
-
 <summary>
   &nbsp;
   <picture>
     <img src="https://img.shields.io/badge/PY-3670A0?&logo=python&logoColor=ffdd54" valign="middle">
   </picture>
   &nbsp;
-  <b>Python</b>
+  <b>Python - Pyright</b>
   &nbsp;
   (pre-installed)
 </summary>
@@ -161,11 +160,11 @@ To install the MCP server add this to your repository's `.vscode/mcp.json` file
 
 #### Installation
 
-[Pyright]() is already installed as a dependecies of this MCP server and doesn't need installation
+[Pyright](https://github.com/microsoft/pyright) is installed as a dependecy of this MCP server and does not need installation.
 
 #### Configuration
 
-A default configuration for Pyright is created during startup so things *should* work out of the box
+A default configuration for Pyright is created during startup so things *should* work out of the box.
 
 #### Troubleshooting
 
@@ -189,7 +188,7 @@ venv = ".venv"
     <img src="https://img.shields.io/badge/TS-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Typescript</b>
+  <b>TS/JS - TS Language Server</b>
   &nbsp;
   (pre-installed)
 </summary>
@@ -198,17 +197,11 @@ venv = ".venv"
 
 #### Installation
 
-```sh
-npm install -g typescript typescript-language-server
-```
+[Typescript Language Server](https://github.com/typescript-language-server/typescript-language-server) for TS and JS is installed as a dependecy of this MCP server and does not need installation.
 
-To double-check the outcome of the installation run the command below
+#### Configuration
 
-```sh
-typescript-language-server --stdio
-```
-
-You should see the language server start and wait for LSP messages.
+A default configuration for TS Language Server is created during startup so things *should* work out of the box.
 
 </details>
 
@@ -220,14 +213,14 @@ You should see the language server start and wait for LSP messages.
     <img src="https://img.shields.io/badge/CS-blueviolet?logo=dotnet" valign="middle">
   </picture>
   &nbsp;
-  <b>C#</b>
+  <b>C# - Roslyn</b>
 </summary>
 
-### Microsoft Roslyn Language Server
+### Roslyn Language Server
 
 #### Installation
 
-The official Csharp Language Server is distributed over nuget as a self-contained executable.
+The official Csharp Language Server is distributed over the VS IDE Nuget as a self-contained executable.
 
 To download it via the `dotnet` command, create a temporary project file named `ServerDownload.csproj` with the following content:
 
@@ -290,6 +283,26 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 </details>
 
 <details>
+  
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://custom-icon-badges.demolab.com/badge/CS-0078d7.svg?logo=vsc&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>C# - Roslyn</b> via VSCode C# DevKit
+</summary>
+
+### Roslyn
+x
+
+#### Installation
+x
+
+</details>
+
+
+<details>
 
 <summary>
   &nbsp;
@@ -297,7 +310,7 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
     <img src="https://img.shields.io/badge/GO-%2300ADD8.svg?logo=go&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Go</b>
+  <b>Go - gopls</b>
 </summary>
 
 ### Gopls
@@ -324,7 +337,7 @@ gopls version
     <img src="https://img.shields.io/badge/RS-%23000000.svg?logo=rust&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Rust</b>
+  <b>Rust - rust-analyzer</b>
 </summary>
 
 ### Rust-analyzer
@@ -351,7 +364,7 @@ rust-analyzer --version
     <img src="https://img.shields.io/badge/JV-ED8B00?logo=openjdk&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Java</b>
+  <b>Java - jdt.ls</b>
 </summary>
 
 ### jdt.ls
