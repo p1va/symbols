@@ -34,7 +34,11 @@ By connecting to a Language Server of choice this MCP server makes it easy and e
 ### 1. MCP Server
 
 <details>
-<summary><img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" alt="Claude Code" style="vertical-align: middle;"></summary>
+<summary>
+<span>
+<img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" alt="Claude Code" style="vertical-align: middle;">
+</span>
+</summary>
 
 Add this to `.mcp.json`
 
