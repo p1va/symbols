@@ -381,75 +381,18 @@ x
 
 ### 3. Configuration
 
-To avoid having to include long and complicated commands to launch Language Servers directly in the MCP configuration file this Server uses its own configuration file where multiple Language Server profiles can be declared. Configuration can be provided globally and overridden at the working directory and command line argument.
+A configuration file is used to capture Language Servers to launch.
+It can be provided globally and overridden at the working directory and command line argument.
 Settings are resolved in this order:
 
-1. CLI flag `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
-2. Workspace-local files (`$WORKSPACE/symbols.yaml`, `symbols.yml`, `lsps.yaml`, `lsps.yml`)
-3. Current working directory (same filenames as above)
-4. OS-specific config directory (e.g. `~/.config/symbols-nodejs/symbols.yaml` on Linux)
+- **Global** level in shared config file
   - **Linux:** `~/.config/symbols-nodejs/symbols.yam`
   - **MacOS:** `~/Library/Preferences/symbols-nodejs/symbols.yaml`
   - **Windows:** `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
-  
-
-The schema is defined in [`src/config/lsp-config.ts`](src/config/lsp-config.ts). At a high level:
-
-```yaml
-lsps:
-  typescript:
-    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
-    extensions:
-      '.ts': typescript
-      '.tsx': typescriptreact
-    preload_files:
-      - ./src/index.ts
-    diagnostics:
-      strategy: push
-    symbols:
-      max_depth: 2
-```
-
-- `command` supports `${LOCAL_NODE_MODULE}/package:bin` placeholders; the server resolves them to `node_modules/.bin` executables.
-- `preload_files` keep specific files open so symbol indexing works immediately.
-- `diagnostics.strategy` can be `push` (default) or `pull` depending on the LSP.
-- `environment` lets you inject environment variables (e.g. `GOPATH`).
+- **Workspace** level files (`$WORKSPACE/symbols.yaml`, `symbols.yml`, `lsps.yaml`, `lsps.yml`)
+- **Execution** level via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 
 Run `npx @p1va/symbols --show-config` to inspect the final merged config.
-
-#### Workspace behaviour
-
-By default the server works relative to the current directory. Provide `--workspace /absolute/path` (or set `SYMBOLS_WORKSPACE`) so that file operations, preload paths, and config resolution happen from the project root. This is especially important when your agent launches the MCP server from a temporary folder.
-
-<details>
-
-<summary><b>Linux</b></summary>
-
-```sh
-mkdir -p ~/.config/symbols-nodejs && curl -o ~/.config/symbols-nodejs/symbols.yaml https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/all-lsps.yaml
-```
-
-</details>
-
-<details>
-
-<summary><b>MacOS</b></summary>
-
-```sh
-mkdir -p ~/Library/Preferences/symbols-nodejs && curl -o ~/Library/Preferences/symbols-nodejs/symbols.yaml https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/all-lsps.yaml
-```
-
-</details>
-
-<details>
-
-<summary><b>Windows</b></summary>
-
-```sh
-mkdir "%APPDATA%\symbols-nodejs\Config" && curl -o "%APPDATA%\symbols-nodejs\Config\symbols.yaml" https://raw.githubusercontent.com/p1va/symbols/refs/heads/main/examples/configs/all-lsps.yaml
-```
-
-</details>
 
 ## Development
 
