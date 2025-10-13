@@ -137,7 +137,11 @@ async function initializeLsp(): Promise<void> {
     });
 
     // Load LSP configuration
-    lspConfiguration = getLspConfig(lspName, config.configPath, config.workspace);
+    lspConfiguration = getLspConfig(
+      lspName,
+      config.configPath,
+      config.workspace
+    );
     if (!lspConfiguration) {
       logger.error(`LSP configuration not found for: ${lspName}`);
       throw new Error(`LSP configuration not found for: ${lspName}`);

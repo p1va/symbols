@@ -151,9 +151,7 @@ function upgradeToContextualLogger(
       } catch (copyError) {
         logger.warn('Failed to copy existing session log to contextual log', {
           error:
-            copyError instanceof Error
-              ? copyError.message
-              : String(copyError),
+            copyError instanceof Error ? copyError.message : String(copyError),
         });
         // Ensure file exists even if copy failed
         if (!fs.existsSync(contextualLogFile)) {
