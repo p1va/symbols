@@ -168,7 +168,7 @@ Install the Language Servers relevant to your codebases
 
 #### Configuration
 
-✅ A default configuration for this Language Server is created during startup so things *should* work out of the box.
+✅ A default configuration for this Language Server is created during startup so things *should* just work.
 
 #### Troubleshooting
 
@@ -205,7 +205,7 @@ venv = ".venv"
 
 #### Configuration
 
-✅ A default configuration for this Language Server is created during startup so things *should* work out of the box.
+✅ A default configuration for this Language Server is created during startup so things *should* just work.
 
 </details>
 
@@ -226,7 +226,7 @@ venv = ".venv"
 
 The official Csharp Language Server is distributed over the [VS IDE Nuget feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
 
-To download and extract it to an installation directory we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` having the following content:
+To download it we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` with the following content:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -259,7 +259,7 @@ To download and extract it to an installation directory we use the `dotnet` CLI 
 </Project>
 ```
 
-Then pick the platform identifier matching your machine
+We then pick the platform identifier matching the machine from:
 
 - `win-x64`
 - `win-arm64`
@@ -271,20 +271,29 @@ Then pick the platform identifier matching your machine
 - `osx-arm64`
 - `neutral`
 
-Finally restore the temporary project to trigger the download the Language Server to `RestorePackagesPath` and extract it to its final location in  `ServerPath`.
+And finally restore the temporary project to trigger the download of the Language Server.
+
+Adjust both `RestorePackagesPath` and `ServerPath` to your machine and keep track of the latter.
+
+```sh
+ServerPath=$HOME/.csharp-lsp/
+```
 
 ```sh
 dotnet restore ServerDownload.csproj \
-  /p:Platform=YOUR-PLATFORM-ID \
-  /p:RestorePackagesPath=/tmp/lsp-download \
-  /p:ServerPath=$HOME/.csharp-lsp/
+  /p:Platform=your-platform-id \
+  /p:RestorePackagesPath=/tmp/your/download/location \
+  /p:ServerPath=$ServerPath
 ```
 
-To double-check the outcome of the installation run the command below
+#### Verify Installation
+
+To verify the outcome of the installation we run the command below
 
 ```sh
-$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
+$ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
 ```
+
 </details>
 
 <details>
