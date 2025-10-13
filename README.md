@@ -32,7 +32,7 @@ The server offers a minimal toolset intended to be easy to use and light on the 
 
 ## Installation
 
-### 1. MCP Server
+### 1. Add MCP Server
 
 <details>
 
@@ -142,7 +142,7 @@ To install the MCP server add this to your repository's `.vscode/mcp.json` file
 
 </details>
 
-### 2. Language Servers
+### 2. Install Language Servers
 
 <details>
 <summary>
@@ -151,7 +151,7 @@ To install the MCP server add this to your repository's `.vscode/mcp.json` file
     <img src="https://img.shields.io/badge/PY-3670A0?&logo=python&logoColor=ffdd54" valign="middle">
   </picture>
   &nbsp;
-  <b>Python - Pyright</b>
+  <b>Pyright</b>
   &nbsp;
   (pre-installed)
 </summary>
@@ -160,15 +160,15 @@ To install the MCP server add this to your repository's `.vscode/mcp.json` file
 
 #### Installation
 
-[Pyright](https://github.com/microsoft/pyright) is installed as a dependecy of this MCP server and does not need installation.
+✅ This Language Server is installed as a dependecy of the MCP server and does not need installation.
 
 #### Configuration
 
-A default configuration for Pyright is created during startup so things *should* work out of the box.
+✅ A default configuration for this Language Server is created during startup so things *should* work out of the box.
 
 #### Troubleshooting
 
-A symptom of Pyright not being properly configured is the `diagnostics` tool only reporting module import errors even when none appear in the IDE.
+If the `logs` tool output includes errors or the `diagnostics` tool only reports module import errors even when none appear in the IDE these might be signs of Pyright not detecting the virtual environment.
 
 You can update your `pyproject.toml` to correctly point it to the virtual environment location.
 
@@ -188,20 +188,20 @@ venv = ".venv"
     <img src="https://img.shields.io/badge/TS-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>TS/JS - TS Language Server</b>
+  <b>TS Language Server</b>
   &nbsp;
   (pre-installed)
 </summary>
 
-### Typescript Language Server
+### Typescript Language Server for TS and JS
 
 #### Installation
 
-[Typescript Language Server](https://github.com/typescript-language-server/typescript-language-server) for TS and JS is installed as a dependecy of this MCP server and does not need installation.
+✅ This Language Server is installed as a dependecy of the MCP server and does not need installation.
 
 #### Configuration
 
-A default configuration for TS Language Server is created during startup so things *should* work out of the box.
+✅ A default configuration for this Language Server is created during startup so things *should* work out of the box.
 
 </details>
 
@@ -210,19 +210,19 @@ A default configuration for TS Language Server is created during startup so thin
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/CS-blueviolet?logo=dotnet" valign="middle">
+    <img src="https://img.shields.io/badge/C%23-blueviolet?logo=dotnet" valign="middle">
   </picture>
   &nbsp;
-  <b>C# - Roslyn</b>
+  <b>Roslyn</b> via Nuget Feed
 </summary>
 
 ### Roslyn Language Server
 
 #### Installation
 
-The official Csharp Language Server is distributed over the VS IDE Nuget as a self-contained executable.
+The official Csharp Language Server is distributed over the [VS IDE Nuget feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
 
-To download it via the `dotnet` command, create a temporary project file named `ServerDownload.csproj` with the following content:
+To download and extract it to an installation directory we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` having the following content:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -267,11 +267,12 @@ Then pick the platform identifier matching your machine
 - `osx-arm64`
 - `neutral`
 
-Finally restore the temporary project to download the Language Server to the `ServerPath` location
+Finally restore the temporary project to trigger the download the Language Server to `RestorePackagesPath` and extract it to its final location in  `ServerPath`.
 
 ```sh
 dotnet restore ServerDownload.csproj \
   /p:Platform=YOUR-PLATFORM-ID \
+  /p:RestorePackagesPath=/tmp/lsp-download \
   /p:ServerPath=$HOME/.csharp-lsp/
 ```
 
@@ -287,10 +288,10 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 <summary>
   &nbsp;
   <picture>
-    <img src="https://custom-icon-badges.demolab.com/badge/CS-0078d7.svg?logo=vsc&logoColor=white" valign="middle">
+    <img src="https://custom-icon-badges.demolab.com/badge/C%23-0078d7.svg?logo=vsc&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>C# - Roslyn</b> via VSCode C# DevKit
+  <b>Roslyn</b> via C# DevKit for VSCode
 </summary>
 
 ### Roslyn
@@ -310,7 +311,7 @@ x
     <img src="https://img.shields.io/badge/GO-%2300ADD8.svg?logo=go&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Go - gopls</b>
+  <b>Gopls</b>
 </summary>
 
 ### Gopls
@@ -337,7 +338,7 @@ gopls version
     <img src="https://img.shields.io/badge/RS-%23000000.svg?logo=rust&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Rust - rust-analyzer</b>
+  <b>Rust-analyzer</b>
 </summary>
 
 ### Rust-analyzer
@@ -364,7 +365,7 @@ rust-analyzer --version
     <img src="https://img.shields.io/badge/JV-ED8B00?logo=openjdk&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Java - jdt.ls</b>
+  <b>Jdt.ls</b>
 </summary>
 
 ### jdt.ls
@@ -380,12 +381,17 @@ x
 
 ### 3. Configuration
 
-A configuration file tells the server which language servers are available, how to launch them, and what defaults to use. Settings are resolved in this order:
+To avoid having to include long and complicated commands to launch Language Servers directly in the MCP configuration file this Server uses its own configuration file where multiple Language Server profiles can be declared. Configuration can be provided globally and overridden at the working directory and command line argument.
+Settings are resolved in this order:
 
-1. CLI flag `--config`
+1. CLI flag `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 2. Workspace-local files (`$WORKSPACE/symbols.yaml`, `symbols.yml`, `lsps.yaml`, `lsps.yml`)
 3. Current working directory (same filenames as above)
 4. OS-specific config directory (e.g. `~/.config/symbols-nodejs/symbols.yaml` on Linux)
+  - **Linux:** `~/.config/symbols-nodejs/symbols.yam`
+  - **MacOS:** `~/Library/Preferences/symbols-nodejs/symbols.yaml`
+  - **Windows:** `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
+  
 
 The schema is defined in [`src/config/lsp-config.ts`](src/config/lsp-config.ts). At a high level:
 
