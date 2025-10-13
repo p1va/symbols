@@ -26,7 +26,7 @@ import { getLanguageId } from '../../config/lsp-config.js';
 import {
   generateCursorContext,
   CursorContext,
-} from '../../utils/cursorContext.js';
+} from '../../utils/cursor-context.js';
 
 /**
  * File lifecycle strategy - makes the intent explicit

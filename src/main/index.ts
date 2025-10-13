@@ -9,7 +9,7 @@ import {
 } from '../utils/cli.js';
 
 import { createLspClient, initializeLspClient } from '../lsp-client.js';
-import { openFileWithStrategy } from '../lsp/fileLifecycle/index.js';
+import { openFileWithStrategy } from '../lsp/file-lifecycle/index.js';
 import {
   createDiagnosticsStore,
   createDiagnosticProviderStore,
@@ -33,10 +33,10 @@ import {
   listAvailableLsps,
   ParsedLspConfig,
 } from '../config/lsp-config.js';
-import { getDefaultPreloadFiles } from '../utils/logLevel.js';
+import { getDefaultPreloadFiles } from '../utils/log-level.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
 import { handleFirstRun } from '../utils/first-run.js';
-import { createServer } from './createServer.js';
+import { createServer } from './create-server.js';
 import { setupShutdown } from './shutdown.js';
 
 // Module-level state

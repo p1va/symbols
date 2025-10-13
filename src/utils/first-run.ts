@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import fs from 'fs';
 import path from 'path';
 import logger from './logger.js';
-import { getAppPaths } from './appPaths.js';
+import { getAppPaths } from './app-paths.js';
 
 const req = createRequire(import.meta.url);
 const DEFAULT_CONFIG_NAME = 'symbols.yaml';

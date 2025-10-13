@@ -5,7 +5,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LspContext } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
-import { getLogLevelName } from '../utils/logLevel.js';
+import { getLogLevelName } from '../utils/log-level.js';
 
 /**
  * Get symbol for log level severity (using subtle ASCII symbols like diagnostics)

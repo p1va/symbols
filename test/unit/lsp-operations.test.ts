@@ -35,7 +35,7 @@ vi.mock('../../src/validation.js', () => ({
   validateWorkspaceOperation: vi.fn(),
 }));
 
-vi.mock('../../src/lsp/fileLifecycle/index.js', () => ({
+vi.mock('../../src/lsp/file-lifecycle/index.js', () => ({
   executeWithCursorContext: vi.fn(),
   executeWithExplicitLifecycle: vi.fn(),
 }));
@@ -57,7 +57,7 @@ import {
 import {
   executeWithCursorContext,
   executeWithExplicitLifecycle,
-} from '../../src/lsp/fileLifecycle/index.js';
+} from '../../src/lsp/file-lifecycle/index.js';
 import { tryResult, tryResultAsync } from '../../src/types.js';
 
 // =============================================================================

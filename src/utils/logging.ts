@@ -6,7 +6,7 @@
 import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
-import { getAppPaths } from './appPaths.js';
+import { getAppPaths } from './app-paths.js';
 
 /**
  * Sanitize a string to be filesystem-safe
