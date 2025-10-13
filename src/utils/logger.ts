@@ -1,7 +1,7 @@
 import winston from 'winston';
 import fs from 'fs';
 import path from 'path';
-import { getAppPaths } from './appPaths.js';
+import { getAppPaths } from './app-paths.js';
 
 // Unified logging system - starts with session logging, upgradeable to contextual
 let currentLogger: winston.Logger | null = null;

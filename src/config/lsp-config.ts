@@ -8,7 +8,7 @@ import yaml from 'js-yaml';
 import { z } from 'zod';
 import { resolveBinCommand } from '../utils/bin-resolver.js';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
-import { getAppPaths } from '../utils/appPaths.js';
+import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
 
 // Zod schemas for validation

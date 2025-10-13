@@ -6,7 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LspContext, createOneBasedPosition } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
-import { formatCursorContext } from '../utils/cursorContext.js';
+import { formatCursorContext } from '../utils/cursor-context.js';
 import { getSymbolKindName } from './utils.js';
 import { CompletionResult } from '../types/lsp.js';
 import { validateSymbolPosition } from './validation.js';

@@ -59,7 +59,7 @@ import {
   executeWithCursorContext,
   executeWithExplicitLifecycle,
   OperationWithContextResult,
-} from '../fileLifecycle/index.js';
+} from '../file-lifecycle/index.js';
 import { CompletionTriggerKind } from 'vscode-languageserver-protocol';
 
 // Helper to convert ValidationError to LspOperationError

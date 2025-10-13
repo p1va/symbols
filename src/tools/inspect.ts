@@ -6,7 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { LspContext, createOneBasedPosition } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
-import { formatCursorContext } from '../utils/cursorContext.js';
+import { formatCursorContext } from '../utils/cursor-context.js';
 import { enrichSymbolLocations } from './enrichment.js';
 import { createSignaturePreview } from './enrichment.js';
 import { formatFilePath } from './utils.js';
