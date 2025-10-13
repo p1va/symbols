@@ -12,7 +12,7 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 ## Introduction
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
-The server offers a minimal toolset intended to be easy to use and light on the model's context.
+The server offers a minimal toolset intended to be simple to use and light on the model's context.
 
 ### Available Tools
 
@@ -33,6 +33,8 @@ The server offers a minimal toolset intended to be easy to use and light on the 
 ## Installation
 
 ### 1. Add MCP Server
+
+Add the MCP server to your coding agent of choice
 
 <details>
 
@@ -143,6 +145,8 @@ To install the MCP server add this to your repository's `.vscode/mcp.json` file
 </details>
 
 ### 2. Install Language Servers
+
+Install the Language Servers relevant to your codebases
 
 <details>
 <summary>
@@ -381,17 +385,19 @@ x
 
 ### 3. Configuration
 
-A YAML configure file is how the MCP server knows which Language Server to launch and when.
-It can be set globally, loaded from the coding agent working directory or explicitly passed with a command line argument.
+A YAML config file is how the MCP server knows which LSP to launch and when. 
+A default global one is created on first run and includes Typescript and Python.
 
-- **Global** configuration file is created on first run with default configurations for Typescript and Python
+Config can be set globally, loaded from the current working directory or explicitly passed with a command line argument.
+
+- **Global** config file is created on the first run and includes Typescript and Python by default
   - Linux: `~/.config/symbols-nodejs/symbols.yam`
   - MacOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
   - Windows: `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
-- **Workspace** level files (`$WORKSPACE/symbols.yaml`, `symbols.yml`, `lsps.yaml`, `lsps.yml`)
-- **Execution** level via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
+- **Workspace** level config file is searched with these names `symbols.y(a)ml` or `lsps.y(a)ml`
+- **Override** via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 
-Run `npx @p1va/symbols --show-config` to inspect the final merged config.
+Run `npx -y @p1va/symbols@latest --show-config` to inspect the active config.
 
 ## Development
 
