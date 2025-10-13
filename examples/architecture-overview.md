@@ -3,6 +3,7 @@
 This document summarizes the overall structure of the Symbols MCP server codebase and highlights the most relevant files to review when you want to understand how the system fits together.
 
 ## Entry Point & Runtime Bootstrap
+
 - `src/main/index.ts`
   - Parses CLI flags, resolves configuration, and detects the LSP to launch.
   - Creates logging/state stores and exposes the `createContext` helper the MCP tools consume.
@@ -12,6 +13,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Coordinates JSON-RPC shutdown and surfaces crash information for diagnostics.
 
 ## Configuration & CLI Plumbing
+
 - `src/utils/cli.ts`
   - Defines CLI schema, workspace/path validation, and log-level parsing.
   - Resolves combined CLI/env configuration and reports available LSPs.
@@ -24,6 +26,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Computes per-user config and log directories with consistent OS-specific paths.
 
 ## LSP Process & Transport
+
 - `src/lsp-client.ts`
   - Resolves command paths, spawns the LSP child process, and attaches stdio handlers.
   - Establishes the JSON-RPC connection, registers notification/request handlers, and extracts diagnostic providers.
@@ -33,6 +36,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Wraps LSP calls, handles preload data, and enriches results with cursor context before closing files when appropriate.
 
 ## Core LSP Operations Layer
+
 - `src/lsp/operations/operations.ts`
   - Exposes high-level operations (`inspect`, `read`, `search`, `references`, `completion`, `rename`, `diagnostics`, `logs`).
   - Validates inputs, coordinates file lifecycle, performs LSP requests, and normalizes responses.
@@ -45,6 +49,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Supplies reusable result helpers for operations to short-circuit on invalid inputs.
 
 ## Tool Registration & Presentation
+
 - `src/tools/index.ts`
   - Registers every MCP tool using the shared `createContext` factory.
 - `src/tools/read.ts`
@@ -69,6 +74,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Applies workspace edits to local files, formats rename summaries, and normalizes symbol kinds.
 
 ## Shared State & Stores
+
 - `src/state/stores.ts`
   - Provides in-memory stores for diagnostics, window logs, and workspace loader state.
   - Handles provider registration/filtering and exposes convenience getters for tooling.
@@ -80,6 +86,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Detects `.sln`/project files, initializes C#-specific workspace metadata, and reacts to server notifications.
 
 ## Types & Utilities
+
 - `src/types.ts`
   - Defines domain interfaces (LspContext, diagnostics, errors, workspace state) and error factories.
 - `src/types/lsp.ts`
@@ -92,6 +99,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Maps log levels and suggests default preload files for workspaces lacking configuration.
 
 ## Testing Surface
+
 - `test/unit/lsp-operations.test.ts`
   - Exercises the operations layer with mocked LSP clients and validation paths.
 - `test/unit/validation.test.ts`

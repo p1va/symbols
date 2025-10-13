@@ -35,11 +35,11 @@ lsps:
     symbols:
       # Option 2: Mix strings and numbers (both work)
       containerKinds:
-        - File       # 1
-        - Module     # 2
-        - Class      # 5
-        - 10         # Enum (using number)
-        - Interface  # 11
+        - File # 1
+        - Module # 2
+        - Class # 5
+        - 10 # Enum (using number)
+        - Interface # 11
 
   # If symbols.containerKinds is not specified, defaults are used:
   # File, Module, Namespace, Package, Class, Interface, Enum, Struct, Object

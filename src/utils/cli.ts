@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as yaml from 'js-yaml';
 import logger from './logger.js';
 import { listAvailableLsps, loadLspConfig } from '../config/lsp-config.js';
+import { showTemplateList, showTemplate } from './templates.js';
 
 export interface CliArgs {
   workspace?: string;
@@ -17,6 +18,9 @@ export interface CliArgs {
   configPath?: string;
   help?: boolean;
   showConfig?: boolean;
+  command?: 'template';
+  templateCommand?: 'list' | 'show';
+  templateName?: string;
 }
 
 /**
@@ -34,6 +38,43 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
   const argv = yargs(hideBin(args))
     .scriptName('symbols')
     .usage('$0 [options]')
+    .command(
+      'template <command> [name]',
+      'Manage configuration templates',
+      (yargs) => {
+        return yargs
+          .positional('command', {
+            describe: 'Template command to execute',
+            choices: ['list', 'show'],
+            demandOption: true,
+          })
+          .positional('name', {
+            describe: 'Template name (required for show command)',
+            type: 'string',
+          })
+          .example('$0 template list', 'List all available templates')
+          .example('$0 template show typescript', 'Show TypeScript template')
+          .example(
+            '$0 template show typescript > symbols.yaml',
+            'Save template to file'
+          );
+      },
+      (argv) => {
+        // Handle template command
+        if (argv.command === 'list') {
+          showTemplateList();
+          process.exit(0);
+        } else if (argv.command === 'show') {
+          if (!argv.name) {
+            console.error('Error: template name is required for show command');
+            console.error('Usage: symbols template show <name>');
+            process.exit(1);
+          }
+          showTemplate(argv.name);
+          process.exit(0);
+        }
+      }
+    )
     .option('workspace', {
       alias: 'w',
       type: 'string',
