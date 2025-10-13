@@ -36,7 +36,7 @@ import {
 import { getDefaultPreloadFiles } from '../utils/log-level.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
 import { handleFirstRun } from '../utils/first-run.js';
-import { createServer } from './createServer.js';
+import { createServer } from './create-server.js';
 import { setupShutdown } from './shutdown.js';
 
 // Module-level state
