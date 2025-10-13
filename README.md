@@ -381,14 +381,13 @@ x
 
 ### 3. Configuration
 
-A configuration file is used to capture Language Servers to launch.
-It can be provided globally and overridden at the working directory and command line argument.
-Settings are resolved in this order:
+A YAML configure file is how the MCP server knows which Language Server to launch and when.
+It can be set globally, loaded from the coding agent working directory or explicitly passed with a command line argument.
 
-- **Global** level in shared config file
-  - **Linux:** `~/.config/symbols-nodejs/symbols.yam`
-  - **MacOS:** `~/Library/Preferences/symbols-nodejs/symbols.yaml`
-  - **Windows:** `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
+- **Global** configuration file is created on first run with default configurations for Typescript and Python
+  - Linux: `~/.config/symbols-nodejs/symbols.yam`
+  - MacOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
+  - Windows: `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
 - **Workspace** level files (`$WORKSPACE/symbols.yaml`, `symbols.yml`, `lsps.yaml`, `lsps.yml`)
 - **Execution** level via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 
