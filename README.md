@@ -11,8 +11,8 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 
 ## Introduction
 
-By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
-The server offers a minimal toolset intended to be simple to use and light on the model's context.
+By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase and its dependencies.
+The server offers a minimal toolset intended to be simple to use and light on the model's context. Language Server configuration is kept in a dedicated file to keep MCP settings clean.
 
 ### Available Tools
 
@@ -294,6 +294,14 @@ To verify the outcome of the installation we run the command below
 $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
 ```
 
+#### Configuration
+
+Initialize a configuration file for the repository with
+
+```sh
+npx -y @p1va/symbols@latest template show csharp > lsps.yaml
+```
+
 </details>
 
 <details>
@@ -335,10 +343,20 @@ x
 go install golang.org/x/tools/gopls@latest
 ```
 
+#### Verify Installation
+
 To double-check the outcome of the installation run the command below
 
 ```sh
 gopls version
+```
+
+#### Configuration
+
+Initialize a config file by running this command and review paths
+
+```sh
+npx -y @p1va/symbols@latest template show go > lsps.yaml
 ```
 
 </details>
@@ -362,10 +380,20 @@ gopls version
 rustup component add rust-analyzer
 ```
 
+#### Verify Installation
+
 To double-check the outcome of the installation run the command below
 
 ```sh
 rust-analyzer --version
+```
+
+#### Configuration
+
+Initialize a configuration file for the repository by running
+
+```sh
+npx -y @p1va/symbols@latest template show rust > lsps.yaml
 ```
 
 </details>
@@ -394,19 +422,54 @@ x
 
 ### 3. Configuration
 
-A YAML config file is how the MCP server knows which LSP to launch and when. 
-A default global one is created on first run and includes Typescript and Python.
+Configuration is how the MCP server knows which LSPs are available and when to launch them.
 
-Config can be set globally, loaded from the current working directory or explicitly passed with a command line argument.
+<details>
 
-- **Global** config file is created on the first run and includes Typescript and Python by default
-  - Linux: `~/.config/symbols-nodejs/symbols.yam`
-  - MacOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
-  - Windows: `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
-- **Workspace** level config file is searched with these names `symbols.y(a)ml` or `lsps.y(a)ml`
-- **Override** via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
+<summary>
+  &nbsp;
+  ⚙️
+  &nbsp;
+  <b>More on config</b>
+</summary>
 
-Run `npx -y @p1va/symbols@latest --show-config` to inspect the active config.
+#### Global
+
+A global config file is created on first run, it includes Typescript and Python and can be found at these locations:
+- Linux: `~/.config/symbols-nodejs/symbols.yam`
+- MacOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
+- Windows: `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
+
+More LSPs can be added there and will be available in all coding agents configured with the MCP server.
+
+#### Workspace
+
+Config can also be provided at workspace level where LSPs declared in files named either `symbols.y(a)ml` or `lsps.y(a)ml` are automatically loaded.
+
+Workspace location defaults to the same location where the Coding Agent was launched.
+
+A workspace can be explicitly set by adding the `--workspace path/to/dir` flag when launching the MCP server.
+
+#### Argument
+
+A config flag provided when launching the MCP server allows to force a specific file name
+
+ `--config path/to/language-servers.yaml`
+
+#### Troubleshooting
+
+Active config can be seen with `npx -y @p1va/symbols@latest --show-config`.
+
+#### Language Server Resolution
+
+The MCP server launches the Language Server listing in its `workspace_files` any file detected in the current working directory. 
+e.g. pyproject.toml launches pyright, package.json typescript
+
+These mappings can be updated or extended by modifying the configuration.
+
+Language Server resolution can be made explicit by providing the exact Language Server to launch with this flag `--lsp name-of-ls`
+
+</details>
 
 ## Development
 
