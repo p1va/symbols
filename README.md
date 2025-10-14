@@ -11,7 +11,7 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 
 ## Introduction
 
-By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase and its dependencies.
+By connecting to a Language Server of choice this MCP server makes it easy and efficient for coding agents to explore and navigate the codebase and its dependencies.
 The server offers a minimal toolset intended to be simple to use and light on the model's context. Language Server configuration is kept in a dedicated file to keep MCP settings clean.
 
 ### Available Tools
@@ -19,7 +19,7 @@ The server offers a minimal toolset intended to be simple to use and light on th
 - **`outline`**: returns a concise outline of code symbols in a given file
   - `preview: false` keeps it compact with just names and kinds
   - `preview: true` includes a code snippet with signatures, modifiers, return types...
-- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, Nuget, ... )
+- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, NuGet, ... )
   - any documentation and signature details
   - symbol declaration location with code preview
   - symbol implementation location with code preview
@@ -164,7 +164,7 @@ Install the Language Servers relevant to your codebases
 
 #### Installation
 
-✅ This Language Server is installed as a dependecy of the MCP server and does not need installation.
+✅ This Language Server is installed as a dependency of the MCP server and does not need installation.
 
 #### Configuration
 
@@ -197,11 +197,11 @@ venv = ".venv"
   (pre-installed)
 </summary>
 
-### Typescript Language Server for TS and JS
+### TypeScript Language Server for TS and JS
 
 #### Installation
 
-✅ This Language Server is installed as a dependecy of the MCP server and does not need installation.
+✅ This Language Server is installed as a dependency of the MCP server and does not need installation.
 
 #### Configuration
 
@@ -217,14 +217,14 @@ venv = ".venv"
     <img src="https://img.shields.io/badge/C%23-blueviolet?logo=dotnet" valign="middle">
   </picture>
   &nbsp;
-  <b>Roslyn</b> via Nuget Feed
+  <b>Roslyn</b> via NuGet Feed
 </summary>
 
 ### Roslyn Language Server
 
 #### Installation
 
-The official Csharp Language Server is distributed over the [VS IDE Nuget feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
+The official C# Language Server is distributed over the [VS IDE NuGet feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
 
 To download it we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` with the following content:
 
@@ -435,9 +435,9 @@ Configuration is how the MCP server knows which LSPs are available and when to l
 
 #### Global
 
-A global config file is created on first run, it includes Typescript and Python and can be found at these locations:
-- Linux: `~/.config/symbols-nodejs/symbols.yam`
-- MacOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
+A global config file is created on first run, it includes TypeScript and Python and can be found at these locations:
+- Linux: `~/.config/symbols-nodejs/symbols.yaml`
+- macOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
 - Windows: `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
 
 More LSPs can be added there and will be available in all coding agents configured with the MCP server.
@@ -463,7 +463,7 @@ Active config can be seen with `npx -y @p1va/symbols@latest --show-config`.
 #### Language Server Resolution
 
 The MCP server launches the Language Server listing in its `workspace_files` any file detected in the current working directory. 
-e.g. pyproject.toml launches pyright, package.json typescript
+e.g. pyproject.toml launches Pyright, package.json TypeScript
 
 These mappings can be updated or extended by modifying the configuration.
 
