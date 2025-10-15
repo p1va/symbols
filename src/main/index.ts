@@ -32,6 +32,7 @@ import {
   autoDetectLsp,
   listAvailableLsps,
   ParsedLspConfig,
+  createConfigFromDirectCommand,
 } from '../config/lsp-config.js';
 import { getDefaultPreloadFiles } from '../utils/log-level.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
@@ -63,14 +64,14 @@ const workspaceState: WorkspaceState = {
 async function initializeLsp(): Promise<void> {
   try {
     // Log raw command line arguments for debugging
-    logger.info('Raw command line arguments', {
+    logger.debug('Raw command line arguments', {
       argv: process.argv,
       cwd: process.cwd(),
     });
 
     // Parse CLI arguments and resolve configuration
     const cliArgs = parseCliArgs();
-    logger.info('Parsed CLI arguments', { cliArgs });
+    logger.debug('Parsed CLI arguments', { cliArgs });
 
     // Handle help request
     if (cliArgs.help) {
@@ -93,58 +94,81 @@ async function initializeLsp(): Promise<void> {
     const workspaceName = path.basename(workspacePath);
 
     // Set log level from config (this will affect winston logger)
-    if (process.env.LOGLEVEL !== config.loglevel) {
-      process.env.LOGLEVEL = config.loglevel;
+    if (process.env.SYMBOLS_LOGLEVEL !== config.loglevel) {
+      process.env.SYMBOLS_LOGLEVEL = config.loglevel;
       logger.level = config.loglevel; // Update existing logger instance
     }
 
-    // Get LSP server name - try CLI args/environment, then auto-detection, then default to typescript
-    lspName = config.lsp || '';
+    // Check for direct command mode (-- delimiter)
+    if (cliArgs.directCommand) {
+      logger.debug('Direct command mode detected', {
+        command: cliArgs.directCommand.commandName,
+        args: cliArgs.directCommand.commandArgs,
+      });
 
-    if (!lspName) {
-      // Try auto-detection based on workspace files
-      const detectedLsp = autoDetectLsp(workspacePath, config.configPath);
-      if (detectedLsp) {
-        lspName = detectedLsp;
-        logger.info('Auto-detected LSP server', { lspName, workspacePath });
-      } else {
-        logger.error(
-          'No LSP server could be auto-detected for this workspace',
-          {
-            workspacePath,
-            availableLsps: listAvailableLsps(config.configPath),
-          }
-        );
-        throw new Error(
-          'No LSP server specified and none could be auto-detected. ' +
-            'Please specify --lsp=<server> or ensure your workspace has recognizable project files.'
-        );
-      }
+      // Create minimal config from direct command
+      lspConfiguration = createConfigFromDirectCommand(
+        cliArgs.directCommand.commandName,
+        cliArgs.directCommand.commandArgs
+      );
+      lspName = lspConfiguration.name;
+
+      logger.debug('Created LSP configuration from direct command', {
+        lspName,
+        command: cliArgs.directCommand.commandName,
+        extensionsCount: Object.keys(lspConfiguration.extensions).length,
+      });
+
+      // Switch to contextual logger
+      upgradeToContextualLogger(workspacePath, lspName);
     } else {
-      const source = cliArgs.lsp ? 'CLI argument' : 'environment variable';
-      logger.info(`Using LSP from ${source}`, { lspName });
-    }
+      // Standard mode: use config file and auto-detection
+      // Get LSP server name - try CLI args/environment, then auto-detection
+      lspName = config.lsp || '';
 
-    // Switch to contextual logger now that we know workspace and LSP
-    logger.info('Upgrading to contextual logging with workspace + LSP context');
-    upgradeToContextualLogger(workspacePath, lspName);
+      if (!lspName) {
+        // Try auto-detection based on workspace files
+        const detectedLsp = autoDetectLsp(workspacePath, config.configPath);
+        if (detectedLsp) {
+          lspName = detectedLsp;
+          logger.info('Auto-detected LSP server', { lspName, workspacePath });
+        } else {
+          logger.error(
+            'No LSP server could be auto-detected for this workspace',
+            {
+              workspacePath,
+              availableLsps: listAvailableLsps(config.configPath),
+            }
+          );
+          throw new Error(
+            'No LSP server specified and none could be auto-detected. ' +
+              'Please specify --lsp=<server> or ensure your workspace has recognizable project files.'
+          );
+        }
+      } else {
+        const source = cliArgs.lsp ? 'CLI argument' : 'environment variable';
+        logger.info(`Using LSP from ${source}`, { lspName });
+      }
 
-    logger.info('Initializing LSP client', {
-      lspName,
-      workspacePath,
-      workspaceUri,
-      workspaceName,
-    });
+      // Switch to contextual logger now that we know workspace and LSP
+      logger.debug('Upgrading to contextual logging with workspace + LSP context');
+      upgradeToContextualLogger(workspacePath, lspName);
 
-    // Load LSP configuration
-    lspConfiguration = getLspConfig(
-      lspName,
-      config.configPath,
-      config.workspace
-    );
-    if (!lspConfiguration) {
-      logger.error(`LSP configuration not found for: ${lspName}`);
-      throw new Error(`LSP configuration not found for: ${lspName}`);
+      logger.info('Initializing LSP', {
+        lspName,
+        workspacePath,
+      });
+
+      // Load LSP configuration
+      lspConfiguration = getLspConfig(
+        lspName,
+        config.configPath,
+        config.workspace
+      );
+      if (!lspConfiguration) {
+        logger.error(`LSP configuration not found for: ${lspName}`);
+        throw new Error(`LSP configuration not found for: ${lspName}`);
+      }
     }
 
     logger.debug('LSP configuration loaded', {
@@ -152,6 +176,13 @@ async function initializeLsp(): Promise<void> {
       command: `${lspConfiguration.commandName} ${lspConfiguration.commandArgs.join(' ')}`,
       extensions: Object.keys(lspConfiguration.extensions),
       diagnosticsStrategy: lspConfiguration.diagnostics.strategy,
+      diagnosticsWaitTimeout: lspConfiguration.diagnostics.wait_timeout_ms,
+      workspaceLoader: lspConfiguration.workspace_loader || 'default',
+      preloadFilesCount: lspConfiguration.preload_files?.length || 0,
+      preloadFiles:
+        lspConfiguration.preload_files && lspConfiguration.preload_files.length > 0
+          ? lspConfiguration.preload_files
+          : 'none',
     });
 
     const workspaceConfig: LspConfig = {
@@ -283,7 +314,7 @@ function createContext(): LspContext {
  * Main entry point - initializes LSP and starts MCP server
  */
 export async function main(): Promise<void> {
-  logger.info('MCP server starting up');
+  logger.debug('MCP server starting up');
 
   // Handle first-run setup (create default config if needed)
   await handleFirstRun();
@@ -303,8 +334,8 @@ export async function main(): Promise<void> {
   setupShutdown(server, lspClient, lspProcess);
 
   // Start receiving messages on stdin and sending messages on stdout
-  logger.info('Starting MCP server transport');
+  logger.debug('Starting MCP server transport');
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  logger.info('MCP server connected and ready');
+  logger.info('MCP server ready');
 }

@@ -10,6 +10,7 @@ import { resolveBinCommand } from '../utils/bin-resolver.js';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
+import { UNIVERSAL_EXTENSIONS } from './default-extensions.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -358,6 +359,46 @@ export function getLspConfig(
     return null;
   }
 
+  // Apply environment variable overrides (SYMBOLS_* prefix)
+  // Precedence: ENV vars > YAML config > Zod defaults
+
+  // Override workspace_loader if SYMBOLS_WORKSPACE_LOADER is set
+  if (process.env.SYMBOLS_WORKSPACE_LOADER) {
+    lspConfig.workspace_loader = process.env.SYMBOLS_WORKSPACE_LOADER;
+  }
+
+  // Override diagnostics.strategy if SYMBOLS_DIAGNOSTICS_STRATEGY is set
+  if (process.env.SYMBOLS_DIAGNOSTICS_STRATEGY) {
+    const strategy = process.env.SYMBOLS_DIAGNOSTICS_STRATEGY;
+    if (strategy !== 'push' && strategy !== 'pull') {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_STRATEGY: ${strategy}. Must be 'push' or 'pull'.`
+      );
+    }
+    lspConfig.diagnostics.strategy = strategy;
+  }
+
+  // Override diagnostics.wait_timeout_ms if SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT is set
+  if (process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT) {
+    const timeout = parseInt(process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT, 10);
+    if (isNaN(timeout) || timeout < 100 || timeout > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT: ${process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT}. Must be a number between 100 and 30000.`
+      );
+    }
+    lspConfig.diagnostics.wait_timeout_ms = timeout;
+  }
+
+  // Override preload_files if SYMBOLS_PRELOAD_FILES is set
+  // Uses OS-specific path delimiter (: on Unix, ; on Windows)
+  if (process.env.SYMBOLS_PRELOAD_FILES) {
+    const preloadFiles = process.env.SYMBOLS_PRELOAD_FILES.split(
+      path.delimiter
+    ).filter((file) => file.trim().length > 0);
+
+    lspConfig.preload_files = preloadFiles;
+  }
+
   // Parse command into name and args (respecting quoted segments and spaces)
   const parsedParts: ShellQuoteToken[] = shellParse(lspConfig.command.trim());
   const commandSegments: string[] = [];
@@ -418,12 +459,13 @@ export function getLspConfigForFile(
 
 /**
  * Get language ID for a file based on its extension
+ * Returns 'plaintext' if no match is found
  */
 export function getLanguageId(
   filePath: string,
   configPath?: string,
   workspacePath?: string
-): string | null {
+): string {
   const extension = path.extname(filePath);
   const { config } = loadLspConfig(configPath, workspacePath);
 
@@ -435,7 +477,8 @@ export function getLanguageId(
     }
   }
 
-  return null;
+  // Default to plaintext if no match found
+  return 'plaintext';
 }
 
 /**
@@ -487,4 +530,69 @@ export function autoDetectLsp(
     // If we can't read the directory, return null
     return null;
   }
+}
+
+/**
+ * Create a minimal ParsedLspConfig from direct command (-- mode)
+ * Uses universal extension mapping - works with any LSP server
+ */
+export function createConfigFromDirectCommand(
+  commandName: string,
+  commandArgs: string[]
+): ParsedLspConfig {
+  // Reconstruct command string from parts
+  const command = [commandName, ...commandArgs].join(' ');
+
+  // Build minimal config with universal extensions
+  // The LSP will handle only the files it recognizes
+  const config: ParsedLspConfig = {
+    name: 'direct-command',
+    command,
+    commandName,
+    commandArgs,
+    extensions: UNIVERSAL_EXTENSIONS, // Universal mapping - works for all LSPs
+    workspace_files: [], // Empty - not used in direct mode
+    preload_files: [], // Empty by default - can be overridden by env var
+    diagnostics: {
+      strategy: 'push',
+      wait_timeout_ms: 2000,
+    },
+    symbols: {},
+    workspace_loader: undefined,
+    environment: undefined,
+  };
+
+  // Apply environment variable overrides (same as regular mode)
+  if (process.env.SYMBOLS_WORKSPACE_LOADER) {
+    config.workspace_loader = process.env.SYMBOLS_WORKSPACE_LOADER;
+  }
+
+  if (process.env.SYMBOLS_DIAGNOSTICS_STRATEGY) {
+    const strategy = process.env.SYMBOLS_DIAGNOSTICS_STRATEGY;
+    if (strategy !== 'push' && strategy !== 'pull') {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_STRATEGY: ${strategy}. Must be 'push' or 'pull'.`
+      );
+    }
+    config.diagnostics.strategy = strategy;
+  }
+
+  if (process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT) {
+    const timeout = parseInt(process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT, 10);
+    if (isNaN(timeout) || timeout < 100 || timeout > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT: ${process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT}. Must be a number between 100 and 30000.`
+      );
+    }
+    config.diagnostics.wait_timeout_ms = timeout;
+  }
+
+  if (process.env.SYMBOLS_PRELOAD_FILES) {
+    const preloadFiles = process.env.SYMBOLS_PRELOAD_FILES.split(
+      path.delimiter
+    ).filter((file) => file.trim().length > 0);
+    config.preload_files = preloadFiles;
+  }
+
+  return config;
 }

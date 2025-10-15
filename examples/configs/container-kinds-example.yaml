@@ -1,14 +1,18 @@
-# Example: Customizing Container Symbol Kinds
+# Example: Customizing Container Symbol Kinds and Extensions
 #
-# This example shows how to override which symbol kinds are treated as "containers"
-# (showing their children) vs "leaves" (hiding their children like local variables).
+# This example shows:
+# 1. How to override which symbol kinds are treated as "containers" vs "leaves"
+# 2. How to extend default file extension mappings with custom ones
 
 lsps:
   typescript:
     command: npx typescript-language-server --stdio
+    # Extensions are optional - defaults cover .js, .mjs, .cjs, .jsx, .ts, .mts, .cts, .tsx, .json
+    # Only specify extensions if you need to add custom mappings or override defaults
     extensions:
-      .ts: typescript
-      .tsx: typescriptreact
+      # Example: Add a custom extension mapping
+      .mts: typescript  # Already in defaults, shown for illustration
+      .custom.ts: typescript  # Custom extension example
     workspace_files:
       - package.json
       - tsconfig.json
@@ -27,8 +31,7 @@ lsps:
 
   python:
     command: pyright-langserver --stdio
-    extensions:
-      .py: python
+    # No extensions needed - defaults cover .py, .pyw, .pyi
     workspace_files:
       - pyproject.toml
       - setup.py
@@ -45,6 +48,7 @@ lsps:
   # File, Module, Namespace, Package, Class, Interface, Enum, Struct, Object
   csharp:
     command: csharp-ls
-    extensions:
-      .cs: csharp
-    # Using defaults - no symbols config needed
+    workspace_files:
+      - '*.sln'
+      - '*.csproj'
+    # Using defaults - no extensions or symbols config needed

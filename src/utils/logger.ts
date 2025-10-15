@@ -6,6 +6,7 @@ import { getAppPaths } from './app-paths.js';
 // Unified logging system - starts with session logging, upgradeable to contextual
 let currentLogger: winston.Logger | null = null;
 let currentLogFile: string = 'uninitialized';
+let debugMode: boolean = false;
 
 // Create custom format for better readability
 const customFormat = winston.format.combine(
@@ -25,7 +26,10 @@ const customFormat = winston.format.combine(
 /**
  * Create a logger for the given log file path
  */
-function createLogger(logFilePath: string): winston.Logger {
+function createLogger(
+  logFilePath: string,
+  enableConsole: boolean = false
+): winston.Logger {
   // Ensure directory exists
   const logDir = path.dirname(logFilePath);
 
@@ -39,16 +43,40 @@ function createLogger(logFilePath: string): winston.Logger {
   }
 
   try {
-    const logger = winston.createLogger({
-      level: process.env.LOGLEVEL || 'info',
-      format: customFormat,
-      transports: [
-        new winston.transports.File({
-          filename: logFilePath,
+    const transports: winston.transport[] = [
+      new winston.transports.File({
+        filename: logFilePath,
+        handleExceptions: true,
+        handleRejections: true,
+      }),
+    ];
+
+    // Add console transport in debug mode
+    if (enableConsole) {
+      transports.push(
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.timestamp({
+              format: 'HH:mm:ss.SSS',
+            }),
+            winston.format.printf(({ timestamp, level, message, ...meta }) => {
+              const metaStr =
+                Object.keys(meta).length > 0 && meta.timestamp !== timestamp
+                  ? ` ${JSON.stringify(meta)}`
+                  : '';
+              return `[${String(timestamp)}] ${String(level).toUpperCase().padEnd(5)} ${String(message)}${metaStr}`;
+            })
+          ),
           handleExceptions: true,
           handleRejections: true,
-        }),
-      ],
+        })
+      );
+    }
+
+    const logger = winston.createLogger({
+      level: process.env.SYMBOLS_LOGLEVEL || 'info',
+      format: customFormat,
+      transports,
     });
     return logger;
   } catch (error) {
@@ -62,7 +90,9 @@ function createLogger(logFilePath: string): winston.Logger {
 /**
  * Initialize with basic session logging
  */
-function initializeSessionLogger(): void {
+function initializeSessionLogger(enableDebug: boolean = false): void {
+  debugMode = enableDebug;
+
   try {
     // Use env-paths for cross-platform log directory
     const logDir = getAppPaths().log;
@@ -71,15 +101,18 @@ function initializeSessionLogger(): void {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     currentLogFile = path.join(logDir, `session-${timestamp}.log`);
 
-    currentLogger = createLogger(currentLogFile);
+    currentLogger = createLogger(currentLogFile, debugMode);
 
     // Log session start
-    currentLogger.info('='.repeat(80));
-    currentLogger.info(`Session started - Log file: ${currentLogFile}`);
-    currentLogger.info(`Log level: ${currentLogger.level}`);
-    currentLogger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    currentLogger.info(`PID: ${process.pid}`);
-    currentLogger.info('='.repeat(80));
+    currentLogger.debug('='.repeat(80));
+    currentLogger.debug(`Session started - Log file: ${currentLogFile}`);
+    currentLogger.debug(`Log level: ${currentLogger.level}`);
+    currentLogger.debug(`Debug mode: ${debugMode ? 'enabled' : 'disabled'}`);
+    currentLogger.debug(
+      `Environment: ${process.env.NODE_ENV || 'development'}`
+    );
+    currentLogger.debug(`PID: ${process.pid}`);
+    currentLogger.debug('='.repeat(80));
   } catch (error) {
     process.stderr.write(
       `[INIT] Failed to initialize session logger: ${error instanceof Error ? error.message : String(error)}\n`
@@ -160,15 +193,16 @@ function upgradeToContextualLogger(
       }
     }
 
-    // Create new contextual logger
-    const newLogger = createLogger(contextualLogFile);
+    // Create new contextual logger (preserve debug mode)
+    const newLogger = createLogger(contextualLogFile, debugMode);
 
     // Add transition marker in new file
-    newLogger.info('='.repeat(80));
-    newLogger.info('TRANSITIONED TO CONTEXTUAL LOGGING');
-    newLogger.info(`Workspace: ${workspacePath}`);
-    newLogger.info(`LSP: ${lspName || 'auto-detect'}`);
-    newLogger.info('='.repeat(80));
+    newLogger.debug('='.repeat(80));
+    newLogger.debug('TRANSITIONED TO CONTEXTUAL LOGGING');
+    newLogger.debug(`Workspace: ${workspacePath}`);
+    newLogger.debug(`LSP: ${lspName || 'auto-detect'}`);
+    newLogger.debug(`Debug mode: ${debugMode ? 'enabled' : 'disabled'}`);
+    newLogger.debug('='.repeat(80));
 
     // Save old session file path before switching
     const oldLogFile = currentLogFile;
@@ -204,9 +238,10 @@ function upgradeToContextualLogger(
 
 /**
  * Initialize the logger system - must be called before using logger
+ * @param enableDebug - Enable console output for debugging
  */
-export function initLogger(): void {
-  initializeSessionLogger();
+export function initLogger(enableDebug: boolean = false): void {
+  initializeSessionLogger(enableDebug);
 }
 
 // No automatic initialization - must call initLogger() explicitly

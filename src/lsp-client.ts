@@ -41,7 +41,7 @@ export function createLspClient(
   workspaceLoaderStore: WorkspaceLoaderStore
 ): Result<LspClientResult> {
   try {
-    logger.info('Creating LSP client', {
+    logger.debug('Creating LSP client', {
       lspName: lspConfig.name,
       command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
       workspace: workspaceConfig.workspaceUri,
@@ -50,17 +50,13 @@ export function createLspClient(
         : 'none',
     });
 
-    // Set up environment variables if specified
-    const env = lspConfig.environment
-      ? {
-          ...process.env,
-          ...lspConfig.environment,
-          SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
-        }
-      : {
-          ...process.env,
-          SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
-        };
+    // Create expansion environment (temporary, for variable substitution in command/args)
+    // Includes all env vars + YAML overrides + SYMBOLS_WORKSPACE_NAME for substitution
+    const expansionEnv = {
+      ...process.env,
+      ...(lspConfig.environment || {}),
+      SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
+    };
 
     logger.debug('Spawning LSP server process', {
       commandName: lspConfig.commandName,
@@ -80,20 +76,30 @@ export function createLspClient(
         });
     };
 
-    // Trim and expand environment variables in command and args
+    // Expand command and args using the expansion environment
     const processedCommandName = expandEnvVarsWithCustomEnv(
       lspConfig.commandName,
-      env
+      expansionEnv
     );
     const processedCommandArgs = lspConfig.commandArgs.map((arg) =>
-      expandEnvVarsWithCustomEnv(arg, env)
+      expandEnvVarsWithCustomEnv(arg, expansionEnv)
     );
+
+    // Create clean LSP runtime environment (filters out SYMBOLS_* vars except those in YAML)
+    // This ensures SYMBOLS_* vars used by the MCP server don't leak to LSP processes
+    const filteredProcessEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([key]) => !key.startsWith('SYMBOLS_'))
+    );
+
+    const lspEnv = lspConfig.environment
+      ? { ...filteredProcessEnv, ...lspConfig.environment }
+      : filteredProcessEnv;
 
     logger.debug('Processed LSP command with environment variables', {
       originalCommand: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
       processedCommand: `${processedCommandName} ${processedCommandArgs.join(' ')}`,
       workspaceName: workspaceConfig.workspaceName,
-      symbolsWorkspaceName: env.SYMBOLS_WORKSPACE_NAME,
+      symbolsWorkspaceName: expansionEnv.SYMBOLS_WORKSPACE_NAME,
     });
 
     // Check if command exists before spawning (comprehensive validation)
@@ -175,9 +181,9 @@ export function createLspClient(
       hasCustomEnv: !!lspConfig.environment,
     });
 
-    // Spawn the configured Language Server
+    // Spawn the configured Language Server with clean environment
     const serverProcess = cp.spawn(processedCommandName, processedCommandArgs, {
-      env,
+      env: lspEnv,
       // 1st stdin, 2nd stdout, 3rd stderr
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -303,7 +309,7 @@ export function createLspClient(
       process: serverProcess,
     };
 
-    logger.info('LSP client created successfully', {
+    logger.debug('LSP client created successfully', {
       lspName: lspConfig.name,
       pid: serverProcess.pid,
       hasProcessId: client.processId !== undefined,
@@ -476,7 +482,7 @@ async function initializeWorkspaceLoader(
     const initialState = await loader.initialize(client, config);
     workspaceLoaderStore.setState(initialState);
 
-    logger.info('Workspace loader initialized', {
+    logger.debug('Workspace loader initialized', {
       loaderType,
       workspaceType: initialState.type,
       ready: initialState.ready,
@@ -540,7 +546,7 @@ function extractDiagnosticProvidersFromCapabilities(
       };
 
       diagnosticProviderStore.addProvider(provider);
-      logger.info('Added diagnostic provider from server capabilities', {
+      logger.debug('Added diagnostic provider from server capabilities', {
         providerId: provider.id,
         workspaceDiagnostics: provider.workspaceDiagnostics,
         interFileDependencies: provider.interFileDependencies,
@@ -625,7 +631,7 @@ function setupNotificationHandlers(
             };
 
             diagnosticProviderStore.addProvider(provider);
-            logger.info('Added diagnostic provider from registration', {
+            logger.debug('Added diagnostic provider from registration', {
               providerId: provider.id,
               method: registration.method,
               hasDocumentSelector: !!provider.documentSelector,

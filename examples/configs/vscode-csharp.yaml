@@ -15,8 +15,6 @@ lsps:
         --stdio
     workspace_loader: 'csharp'
     # This setup should also support razor although mapping needs adding
-    extensions:
-      '.cs': 'csharp'
     workspace_files:
       - '*.sln'
       - '*.csproj'

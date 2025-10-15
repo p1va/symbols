@@ -2,8 +2,12 @@
 import { main } from './main/index.js';
 import logger, { initLogger } from './utils/logger.js';
 
+// Check for --debug flag early (before full CLI parsing)
+// This allows us to initialize the logger with console output
+const debugMode = process.argv.includes('--debug');
+
 // Initialize logging system first, before any other operations
-initLogger();
+initLogger(debugMode);
 
 logger.info('Starting...');
 

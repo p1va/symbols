@@ -1,8 +1,6 @@
 lsps:
   rust:
     command: 'rust-analyzer'
-    extensions:
-      '.rs': 'rust'
     workspace_files:
       - 'Cargo.toml'
       - 'Cargo.lock'

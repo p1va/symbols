@@ -120,9 +120,12 @@ export async function openFileWithStrategy(
         }
       }
 
-      // Open the file
-      const languageId =
-        getLanguageId(normalizedPath, configPath, workspacePath) || 'plaintext';
+      // Open the file (getLanguageId defaults to 'plaintext' if no match)
+      const languageId = getLanguageId(
+        normalizedPath,
+        configPath,
+        workspacePath
+      );
       const openResult = await openFile(
         client,
         uri,

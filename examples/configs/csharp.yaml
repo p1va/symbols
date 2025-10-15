@@ -5,9 +5,11 @@ lsps:
         --logLevel=Information
         --extensionLogDirectory=$HOME/.csharp-lsp/logs
         --stdio
-    workspace_loader: 'csharp'
     extensions:
-      '.cs': 'csharp'
+      .cs: csharp
+      .cshtml: razor
+      .razor: razor
+    workspace_loader: 'csharp'
     workspace_files:
       - '*.sln'
       - '*.csproj'

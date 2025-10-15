@@ -18,9 +18,15 @@ export interface CliArgs {
   configPath?: string;
   help?: boolean;
   showConfig?: boolean;
+  debug?: boolean;
   command?: 'template';
   templateCommand?: 'list' | 'show';
   templateName?: string;
+  directCommand?: {
+    // Direct LSP command (everything after --)
+    commandName: string;
+    commandArgs: string[];
+  };
 }
 
 /**
@@ -29,13 +35,36 @@ export interface CliArgs {
 export function parseCliArgs(args: string[] = process.argv): CliArgs {
   // Log CLI arguments using unified logger
   // IMPORTANT: No console output here - MCP uses stdin/stdout for communication
-  logger.info('[CLI] Raw arguments received', {
+  logger.debug('[CLI] Raw arguments received', {
     rawArgs: args,
     cwd: process.cwd(),
     pid: process.pid,
   });
 
-  const argv = yargs(hideBin(args))
+  // Check for -- delimiter for direct LSP command
+  const rawArgs = hideBin(args);
+  const dashIndex = rawArgs.indexOf('--');
+  let directCommand: CliArgs['directCommand'] | undefined;
+  let argsToProcess = rawArgs;
+
+  if (dashIndex !== -1) {
+    // Extract everything after -- as the direct command
+    const commandParts = rawArgs.slice(dashIndex + 1);
+    if (commandParts.length > 0) {
+      const [commandName, ...commandArgs] = commandParts;
+      if (commandName) {
+        directCommand = { commandName, commandArgs };
+        logger.debug('[CLI] Direct command detected', {
+          commandName,
+          commandArgs,
+        });
+      }
+    }
+    // Process only args before --
+    argsToProcess = rawArgs.slice(0, dashIndex);
+  }
+
+  const argv = yargs(argsToProcess)
     .scriptName('symbols')
     .usage('$0 [options]')
     .command(
@@ -105,21 +134,58 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
       type: 'boolean',
       describe: 'Output the active configuration in YAML format and exit',
     })
-    .env('SYMBOLS') // Support SYMBOLS_WORKSPACE, SYMBOLS_LSP, etc.
+    .option('debug', {
+      type: 'boolean',
+      describe: 'Enable debug mode with console logging for troubleshooting',
+      default: false,
+    })
+    // Note: We don't use .env() here because we only want specific SYMBOLS_* env vars
+    // to be treated as CLI arguments (WORKSPACE, LSP, LOGLEVEL, CONFIG_PATH).
+    // Other SYMBOLS_* vars (like WORKSPACE_LOADER, DIAGNOSTICS_*) are LSP-specific
+    // and are read directly in getLspConfig() rather than exposed as CLI args.
     .example('$0 --workspace /path/to/project', 'Use specific workspace')
     .example('$0 --lsp pyright --workspace /path/to/python', 'Use Python LSP')
     .example('$0 --loglevel debug', 'Enable debug logging')
+    .example('$0 --debug', 'Run in debug mode with console output')
     .example('$0 --show-config', 'Show active configuration')
     .example(
       '$0 --show-config --config symbols.yaml',
       'Show config from custom file'
     )
     .example('$0 --config symbols.yaml', 'Use custom configuration file')
+    .example(
+      '$0 -- npx typescript-language-server --stdio',
+      'Direct LSP command (no config needed)'
+    )
+    .example('$0 -- gopls', 'Direct command for Go LSP')
     .help()
     .alias('help', 'h')
     .strict()
     .version(false) // Disable version since we don't have one
     .check((argv) => {
+      // Check for conflicts with direct command mode (--)
+      if (directCommand) {
+        const incompatibleOptions = [];
+
+        if (argv.lsp) {
+          incompatibleOptions.push('--lsp');
+        }
+        if (argv.config) {
+          incompatibleOptions.push('--config');
+        }
+        if (argv['show-config']) {
+          incompatibleOptions.push('--show-config');
+        }
+
+        if (incompatibleOptions.length > 0) {
+          throw new Error(
+            `Direct command mode (--) is incompatible with: ${incompatibleOptions.join(', ')}\n` +
+              `When using --, only --workspace and --loglevel are allowed.\n` +
+              `Direct command mode bypasses configuration files and LSP selection.`
+          );
+        }
+      }
+
       // Validate workspace directory if provided
       if (argv.workspace) {
         const workspacePath = path.resolve(argv.workspace);
@@ -192,6 +258,7 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
   const result: CliArgs = {
     help: Boolean(argv.help),
     showConfig: Boolean(argv['show-config']),
+    debug: Boolean(argv.debug),
   };
 
   // yargs has already validated these exist if provided, so we can trust them
@@ -199,6 +266,11 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
   if (argv.lsp !== undefined) result.lsp = argv.lsp;
   if (argv.loglevel !== undefined) result.loglevel = argv.loglevel;
   if (argv.config !== undefined) result.configPath = argv.config;
+
+  // Add direct command if detected
+  if (directCommand) {
+    result.directCommand = directCommand;
+  }
 
   return result;
 }
@@ -244,13 +316,24 @@ export function showConfig(configPath?: string): void {
 
 /**
  * Resolve configuration from CLI args, environment variables, and defaults
+ *
+ * Environment variables supported:
+ * - SYMBOLS_WORKSPACE: Workspace directory path
+ * - SYMBOLS_LSP: LSP server name
+ * - SYMBOLS_LOGLEVEL: Log level (debug, info, warn, error)
+ * - SYMBOLS_CONFIG_PATH: Path to configuration file
+ *
+ * Note: LSP-specific env vars (WORKSPACE_LOADER, DIAGNOSTICS_*, PRELOAD_FILES)
+ * are read directly in getLspConfig() and don't need CLI arg equivalents.
  */
 export function resolveConfig(cliArgs: CliArgs): {
   workspace: string;
   lsp?: string;
   loglevel: string;
   configPath?: string;
+  debug: boolean;
 } {
+  // Explicitly read SYMBOLS_* environment variables (without using yargs .env())
   const lsp = cliArgs.lsp || process.env.SYMBOLS_LSP;
   const configPath = cliArgs.configPath || process.env.SYMBOLS_CONFIG_PATH;
   const result: {
@@ -258,10 +341,12 @@ export function resolveConfig(cliArgs: CliArgs): {
     lsp?: string;
     loglevel: string;
     configPath?: string;
+    debug: boolean;
   } = {
     workspace:
       cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),
-    loglevel: cliArgs.loglevel || process.env.LOGLEVEL || 'info',
+    loglevel: cliArgs.loglevel || process.env.SYMBOLS_LOGLEVEL || 'info',
+    debug: cliArgs.debug || false,
   };
 
   if (lsp) {

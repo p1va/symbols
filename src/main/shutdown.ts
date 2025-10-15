@@ -48,13 +48,46 @@ export function setupShutdown(
     shuttingDown = true;
 
     try {
-      // 1. Send LSP shutdown sequence
+      // Set up exit listener BEFORE sending signals to avoid race condition
+      const exitPromise = once(lspProcess, 'exit');
+
+      // 1. Send LSP shutdown sequence with timeout
+      // These requests might hang if the LSP connection is broken or the process exits quickly
       if (lspClient.isInitialized) {
         logger.debug('Sending LSP shutdown request');
-        await lspClient.connection.sendRequest('shutdown');
+
+        const shutdownTimeout = new Promise<void>((resolve) => {
+          setTimeout(() => {
+            logger.debug('Shutdown request timed out (connection may be closed)');
+            resolve();
+          }, 500); // 500ms timeout for shutdown request
+        });
+
+        const shutdownRequest = lspClient.connection
+          .sendRequest('shutdown')
+          .then(() => {
+            logger.debug('Shutdown request acknowledged by LSP');
+          })
+          .catch((error) => {
+            logger.debug('Shutdown request error (expected if connection closed)', {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+
+        await Promise.race([shutdownRequest, shutdownTimeout]);
 
         logger.debug('Sending LSP exit notification');
-        await lspClient.connection.sendNotification('exit', null);
+
+        // Exit notification is fire-and-forget, don't wait for it
+        // Wrap in try/catch since connection might already be closed
+        try {
+          lspClient.connection.sendNotification('exit', null).catch(() => {
+            // Ignore errors
+          });
+        } catch {
+          // Connection already closed, that's fine
+          logger.debug('Exit notification failed (connection already closed)');
+        }
 
         // 2. Send SIGTERM to LSP process
         if (!lspProcess.killed) {
@@ -90,16 +123,34 @@ export function setupShutdown(
         }
       }, timeoutMs);
 
-      // Wait for LSP process to exit naturally
+      // Wait for LSP process to exit naturally (using the promise we set up earlier)
       logger.debug('Waiting for LSP process to exit');
-      await once(lspProcess, 'exit');
+      await exitPromise;
       clearTimeout(timer);
-      logger.debug('LSP process exited successfully');
+      logger.info('LSP process exited successfully');
 
-      // 4. MCP server shutdown
+      // 4. MCP server shutdown with timeout
+      // The StdioServerTransport might hang waiting for stdin to close,
+      // so we race against a timeout to ensure we exit
       logger.debug('Closing MCP server');
-      await server.close();
-      logger.info('Graceful shutdown completed successfully');
+
+      const serverClosePromise = server.close().catch((error) => {
+        logger.debug('MCP server close error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          logger.debug('MCP server close timed out, forcing exit');
+          resolve();
+        }, 1000);
+      });
+
+      await Promise.race([serverClosePromise, timeoutPromise]);
+      logger.debug('MCP server close completed or timed out');
+
+      logger.info('Shutdown complete, exiting...');
     } catch (error) {
       logger.error('Error during graceful shutdown', {
         signal,
@@ -115,11 +166,12 @@ export function setupShutdown(
         lspProcess.kill('SIGKILL');
       }
       // Use non-zero exit code for failed shutdown
+      logger.info('Exiting with error code 1');
       process.exit(1);
     }
 
-    // Successful shutdown
-    logger.info('Exiting process after successful shutdown');
+    // Successful shutdown - exit immediately
+    logger.info('Exiting with code 0');
     process.exit(0);
   };
 
@@ -158,7 +210,7 @@ export function setupShutdown(
   // Register LSP crash detection
   lspProcess.once('exit', lspCrashHandler);
 
-  logger.info('Shutdown handlers configured successfully', {
+  logger.debug('Shutdown handlers configured successfully', {
     timeoutMs,
     lspProcessPid: lspProcess.pid,
   });

@@ -6,8 +6,6 @@ lsps:
         --extensionLogDirectory=$HOME/.csharp-lsp/logs
         --stdio
     workspace_loader: 'csharp'
-    extensions:
-      '.cs': 'csharp'
     workspace_files:
       - '*.sln'
       - '*.csproj'

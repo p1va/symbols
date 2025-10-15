@@ -97,14 +97,14 @@ export function createContextualLogger(
 
   // Log session start with context information
   try {
-    logger.info('='.repeat(80));
-    logger.info(`New session started - Log file: ${logFilePath}`);
-    logger.info(`Workspace: ${workspacePath}`);
-    logger.info(`LSP: ${lspName || 'auto-detect'}`);
-    logger.info(`Log level: ${logger.level}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    logger.info(`PID: ${process.pid}`);
-    logger.info('='.repeat(80));
+    logger.debug('='.repeat(80));
+    logger.debug(`New session started - Log file: ${logFilePath}`);
+    logger.debug(`Workspace: ${workspacePath}`);
+    logger.debug(`LSP: ${lspName || 'auto-detect'}`);
+    logger.debug(`Log level: ${logger.level}`);
+    logger.debug(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.debug(`PID: ${process.pid}`);
+    logger.debug('='.repeat(80));
   } catch (error) {
     console.error('Failed to write initial log entries:', error);
     // Don't exit here - let the process continue but warn about logging issues
@@ -157,12 +157,12 @@ export function createLegacyLogger(): winston.Logger {
 
   // Log session start with error handling
   try {
-    logger.info('='.repeat(80));
-    logger.info(`New session started - Log file: ${sessionLogFile}`);
-    logger.info(`Log level: ${logger.level}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    logger.info(`PID: ${process.pid}`);
-    logger.info('='.repeat(80));
+    logger.debug('='.repeat(80));
+    logger.debug(`New session started - Log file: ${sessionLogFile}`);
+    logger.debug(`Log level: ${logger.level}`);
+    logger.debug(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.debug(`PID: ${process.pid}`);
+    logger.debug('='.repeat(80));
   } catch (error) {
     console.error('Failed to write initial log entries:', error);
     // Don't exit here - let the process continue but warn about logging issues

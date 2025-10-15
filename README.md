@@ -385,7 +385,34 @@ x
 
 ### 3. Configuration
 
-A YAML config file is how the MCP server knows which LSP to launch and when. 
+#### Quick Start (No Configuration Required)
+
+For quick testing, you can run the tool without any configuration by using the `--` delimiter to specify the LSP command directly:
+
+```bash
+# TypeScript/JavaScript
+npx -y @p1va/symbols@latest -- npx typescript-language-server --stdio
+
+# Python (Pyright)
+npx -y @p1va/symbols@latest -- npx pyright-langserver --stdio
+
+# Go
+npx -y @p1va/symbols@latest -- gopls
+
+# Rust
+npx -y @p1va/symbols@latest -- rust-analyzer
+
+# Specify workspace and log level (the only options allowed with --)
+npx -y @p1va/symbols@latest --workspace /path/to/project --loglevel debug -- gopls
+```
+
+This mode uses universal file extension mappings that work with all LSP servers. Perfect for trying out the tool before creating a configuration file!
+
+**Note:** When using `--`, only `--workspace` and `--loglevel` options are allowed. The `--lsp`, `--config`, and `--show-config` options are incompatible with direct command mode since it bypasses configuration files.
+
+#### Advanced Configuration
+
+For production use, a YAML config file gives you full control over LSP configuration.
 A default global one is created on first run and includes Typescript and Python.
 
 Config can be set globally, loaded from the current working directory or explicitly passed with a command line argument.
@@ -398,6 +425,45 @@ Config can be set globally, loaded from the current working directory or explici
 - **Override** via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 
 Run `npx -y @p1va/symbols@latest --show-config` to inspect the active config.
+
+#### Environment Variables
+
+The MCP server supports environment variables for configuration. All variables use the `SYMBOLS_` prefix to clearly separate MCP server configuration from LSP-specific environment variables.
+
+**MCP Server Configuration** (apply globally to the MCP server):
+
+- `SYMBOLS_WORKSPACE` - Workspace directory path (defaults to current directory)
+- `SYMBOLS_LSP` - LSP server name to use (overrides auto-detection)
+- `SYMBOLS_LOGLEVEL` - Log level: `debug`, `info`, `warn`, or `error` (defaults to `info`)
+- `SYMBOLS_CONFIG_PATH` - Path to configuration file
+
+**LSP-Specific Configuration** (apply to the active LSP server):
+
+- `SYMBOLS_WORKSPACE_LOADER` - Workspace loader type: `default`, `csharp`, etc.
+- `SYMBOLS_DIAGNOSTICS_STRATEGY` - Diagnostics strategy: `push` or `pull` (defaults to `push`)
+- `SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT` - Diagnostics wait timeout in milliseconds (100-30000, defaults to 2000)
+- `SYMBOLS_PRELOAD_FILES` - Colon-separated (Unix) or semicolon-separated (Windows) list of files to preload during initialization
+
+Configuration precedence: **Environment Variables** > **YAML Config** > **Defaults**
+
+Example:
+```bash
+# Set diagnostics to pull mode with extended timeout
+export SYMBOLS_DIAGNOSTICS_STRATEGY=pull
+export SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT=5000
+
+# Use C# workspace loader
+export SYMBOLS_WORKSPACE_LOADER=csharp
+
+# Preload specific files (Unix/Linux/macOS - use : as delimiter)
+export SYMBOLS_PRELOAD_FILES="src/index.ts:src/types.ts:src/utils.ts"
+
+# Preload specific files (Windows - use ; as delimiter)
+# set SYMBOLS_PRELOAD_FILES=src\index.ts;src\types.ts;src\utils.ts
+
+# Start the MCP server
+npx -y @p1va/symbols@latest
+```
 
 ## Development
 
