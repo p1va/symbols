@@ -3,7 +3,7 @@
 lsps:
   # Python using Pyright
   pyright:
-    command: ${LOCAL_NODE_MODULE}/pyright:pyright-langserver --stdio
+    command: pyright-langserver --stdio
     workspace_files:
       - 'pyproject.toml'
       - 'requirements.txt'
@@ -14,7 +14,7 @@ lsps:
 
   # TypeScript/JavaScript
   typescript:
-    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
+    command: typescript-language-server --stdio
     workspace_files:
       - 'package.json'
       - 'tsconfig.json'

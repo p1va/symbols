@@ -1,11 +1,11 @@
 # Default Symbols configuration file
 # This configuration includes TypeScript and Python Language Servers
-# which are bundled with the symbols package for ease of use.
+# Install them with: pnpm install -g typescript-language-server pyright
 
 lsps:
-  # TypeScript/JavaScript (bundled)
+  # TypeScript/JavaScript
   typescript:
-    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
+    command: typescript-language-server --stdio
     extensions:
       '.js': 'javascript'
       '.mjs': 'javascript'
@@ -31,9 +31,9 @@ lsps:
       strategy: 'push'
       wait_timeout_ms: 2000
 
-  # Python using Pyright (bundled)
+  # Python using Pyright
   pyright:
-    command: ${LOCAL_NODE_MODULE}/pyright:pyright-langserver --stdio
+    command: pyright-langserver --stdio
     extensions:
       '.py': 'python'
     workspace_files:

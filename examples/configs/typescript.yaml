@@ -1,6 +1,6 @@
 lsps:
   typescript:
-    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
+    command: typescript-language-server --stdio
     extensions:
       .js: javascript
       .mjs: javascript

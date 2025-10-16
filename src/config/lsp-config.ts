@@ -6,7 +6,6 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
-import { resolveBinCommand } from '../utils/bin-resolver.js';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
@@ -311,26 +310,6 @@ function describeShellToken(token: ShellQuoteToken): string {
  * @param str - String to expand
  */
 function expandString(str: string): string {
-  // Handle LOCAL_NODE_MODULE expansion with syntax ${LOCAL_NODE_MODULE}/package-name
-  // This resolves from the CLI's own node_modules, not the workspace
-  str = str.replace(
-    /\$\{LOCAL_NODE_MODULE\}\/([^}\s]+)/g,
-    (match: string, packageSpec: string) => {
-      const [pkg, executable] = packageSpec.includes(':')
-        ? packageSpec.split(':', 2)
-        : [packageSpec, undefined];
-
-      try {
-        const { commandName, commandArgs } = resolveBinCommand(pkg, executable);
-        return [commandName, ...commandArgs].join(' ');
-      } catch (error) {
-        throw new Error(
-          `Failed to resolve local node module ${packageSpec}: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
-  );
-
   // Handle regular environment variable expansion
   return str.replace(
     /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,

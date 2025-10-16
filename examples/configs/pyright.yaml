@@ -1,6 +1,8 @@
 lsps:
   pyright:
-    command: ${LOCAL_NODE_MODULE}/pyright:pyright-langserver --stdio
+    command: pyright-langserver --stdio
+    extensions:
+      '.py': 'python'
     workspace_files:
       - 'pyproject.toml'
       - 'requirements.txt'
