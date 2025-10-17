@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   rust:
     command: 'rust-analyzer'
     workspace_files:

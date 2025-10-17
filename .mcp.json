@@ -4,6 +4,7 @@
       "command": "node",
       "args": [
         "dist/index.js",
+        "run",
         "--",
         "npx",
         "-y",

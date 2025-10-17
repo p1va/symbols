@@ -40,10 +40,10 @@ languages/
    mkdir -p test/integration/languages/{language}/test-project
    ```
 
-2. **Create LSP configuration** (`lsps.yaml`):
+2. **Create LSP configuration** (`symbols.yaml`):
 
    ```yaml
-   lsps:
+   language-servers:
      { lsp-name }:
        command: '{lsp-command}'
        extensions:

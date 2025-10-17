@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   csharp:
     command: >
       dotnet $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll

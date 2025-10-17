@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
-import { UNIVERSAL_EXTENSIONS } from './default-extensions.js';
+import { DEFAULT_EXTENSIONS } from './default-extensions.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -23,7 +23,7 @@ const SymbolsConfigSchema = z.object({
 
 const LspConfigSchema = z.object({
   command: z.string(),
-  extensions: z.record(z.string(), z.string()), // file extension -> language ID
+  extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID, merged with DEFAULT_EXTENSIONS
   workspace_files: z.array(z.string()).default([]),
   preload_files: z.array(z.string()).default([]), // files to open during initialization
   diagnostics: DiagnosticsConfigSchema.default({
@@ -36,7 +36,7 @@ const LspConfigSchema = z.object({
 });
 
 const ConfigFileSchema = z.object({
-  lsps: z.record(z.string(), LspConfigSchema),
+  'language-servers': z.record(z.string(), LspConfigSchema),
 });
 
 // TypeScript interfaces derived from schemas
@@ -82,7 +82,7 @@ export interface ParsedLspConfig extends Omit<LspConfig, 'symbols'> {
  * Empty default configuration - users must provide configurations via YAML files
  */
 const DEFAULT_CONFIG: ConfigFile = {
-  lsps: {},
+  'language-servers': {},
 };
 
 /**
@@ -98,10 +98,8 @@ export function loadLspConfig(
   // Try different config locations with priority: CLI > workspace > repo > cwd > home
   const workspaceConfigPaths = workspacePath
     ? [
-        path.join(workspacePath, 'symbols.yaml'),
-        path.join(workspacePath, 'symbols.yml'),
-        path.join(workspacePath, 'lsps.yaml'), // Backward compatibility
-        path.join(workspacePath, 'lsps.yml'), // Backward compatibility
+        path.join(workspacePath, 'language-servers.yaml'),
+        path.join(workspacePath, 'language-servers.yml'),
       ]
     : [];
 
@@ -129,66 +127,36 @@ export function loadLspConfig(
     })),
     // P3: Repo folder YAML files (relative to cwd)
     {
-      path: 'symbols.yaml',
+      path: 'language-servers.yaml',
       type: 'repo-cwd',
       description: 'Found in current directory',
     },
     {
-      path: 'symbols.yml',
+      path: 'language-servers.yml',
       type: 'repo-cwd',
       description: 'Found in current directory',
-    },
-    {
-      path: 'lsps.yaml',
-      type: 'repo-cwd',
-      description: 'Found in current directory (legacy)',
-    },
-    {
-      path: 'lsps.yml',
-      type: 'repo-cwd',
-      description: 'Found in current directory (legacy)',
     },
     // P4: Current working directory (explicit paths)
     {
-      path: path.join(process.cwd(), 'symbols.yaml'),
+      path: path.join(process.cwd(), 'language-servers.yaml'),
       type: 'explicit-cwd',
       description: `Found in current working directory (${process.cwd()})`,
     },
     {
-      path: path.join(process.cwd(), 'symbols.yml'),
+      path: path.join(process.cwd(), 'language-servers.yml'),
       type: 'explicit-cwd',
       description: `Found in current working directory (${process.cwd()})`,
-    },
-    {
-      path: path.join(process.cwd(), 'lsps.yaml'),
-      type: 'explicit-cwd',
-      description: `Found in current working directory (${process.cwd()}) (legacy)`,
-    },
-    {
-      path: path.join(process.cwd(), 'lsps.yml'),
-      type: 'explicit-cwd',
-      description: `Found in current working directory (${process.cwd()}) (legacy)`,
     },
     // P5: OS-specific config directory (lowest priority)
     {
-      path: path.join(paths.config, 'symbols.yaml'),
+      path: path.join(paths.config, 'language-servers.yaml'),
       type: 'shared-config',
       description: `Found in shared config directory (${paths.config})`,
     },
     {
-      path: path.join(paths.config, 'symbols.yml'),
+      path: path.join(paths.config, 'language-servers.yml'),
       type: 'shared-config',
       description: `Found in shared config directory (${paths.config})`,
-    },
-    {
-      path: path.join(paths.config, 'lsps.yaml'),
-      type: 'shared-config',
-      description: `Found in shared config directory (${paths.config}) (legacy)`,
-    },
-    {
-      path: path.join(paths.config, 'lsps.yml'),
-      type: 'shared-config',
-      description: `Found in shared config directory (${paths.config}) (legacy)`,
     },
   ];
 
@@ -264,8 +232,8 @@ export function loadLspConfig(
 function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
   return {
     ...config,
-    lsps: Object.fromEntries(
-      Object.entries(config.lsps).map(([name, lspConfig]) => [
+    'language-servers': Object.fromEntries(
+      Object.entries(config['language-servers']).map(([name, lspConfig]) => [
         name,
         {
           ...lspConfig,
@@ -332,7 +300,7 @@ export function getLspConfig(
   workspacePath?: string
 ): ParsedLspConfig | null {
   const { config } = loadLspConfig(configPath, workspacePath);
-  const lspConfig = config.lsps[lspName];
+  const lspConfig = config['language-servers'][lspName];
 
   if (!lspConfig) {
     return null;
@@ -406,8 +374,15 @@ export function getLspConfig(
     );
   }
 
+  // Merge user extensions with defaults (user extensions override defaults)
+  const extensions = {
+    ...DEFAULT_EXTENSIONS,
+    ...lspConfig.extensions,
+  };
+
   return {
     ...lspConfig,
+    extensions,
     symbols,
     name: lspName,
     commandName,
@@ -427,7 +402,7 @@ export function getLspConfigForFile(
   const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find LSP that handles this file extension
-  for (const [lspName, lspConfig] of Object.entries(config.lsps)) {
+  for (const [lspName, lspConfig] of Object.entries(config['language-servers'])) {
     if (lspConfig.extensions[extension]) {
       return getLspConfig(lspName, configPath, workspacePath);
     }
@@ -449,7 +424,7 @@ export function getLanguageId(
   const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find language ID from LSP configuration
-  for (const lspConfig of Object.values(config.lsps)) {
+  for (const lspConfig of Object.values(config['language-servers'])) {
     const languageId = lspConfig.extensions[extension];
     if (languageId) {
       return languageId;
@@ -468,7 +443,7 @@ export function listAvailableLsps(
   workspacePath?: string
 ): string[] {
   const { config } = loadLspConfig(configPath, workspacePath);
-  return Object.keys(config.lsps);
+  return Object.keys(config['language-servers']);
 }
 
 /**
@@ -485,7 +460,7 @@ export function autoDetectLsp(
     const workspaceFiles = fs.readdirSync(workspacePath);
 
     // Check each LSP configuration for matching workspace files
-    for (const [lspName, lspConfig] of Object.entries(config.lsps)) {
+    for (const [lspName, lspConfig] of Object.entries(config['language-servers'])) {
       for (const workspaceFile of lspConfig.workspace_files) {
         // Handle glob patterns (basic support for * wildcards)
         if (workspaceFile.includes('*')) {
@@ -513,7 +488,7 @@ export function autoDetectLsp(
 
 /**
  * Create a minimal ParsedLspConfig from direct command (-- mode)
- * Uses universal extension mapping - works with any LSP server
+ * Uses default extension mappings - works with any LSP server
  */
 export function createConfigFromDirectCommand(
   commandName: string,
@@ -522,14 +497,14 @@ export function createConfigFromDirectCommand(
   // Reconstruct command string from parts
   const command = [commandName, ...commandArgs].join(' ');
 
-  // Build minimal config with universal extensions
+  // Build minimal config with default extensions
   // The LSP will handle only the files it recognizes
   const config: ParsedLspConfig = {
     name: 'direct-command',
     command,
     commandName,
     commandArgs,
-    extensions: UNIVERSAL_EXTENSIONS, // Universal mapping - works for all LSPs
+    extensions: DEFAULT_EXTENSIONS, // Default mappings - works for all LSPs
     workspace_files: [], // Empty - not used in direct mode
     preload_files: [], // Empty by default - can be overridden by env var
     diagnostics: {

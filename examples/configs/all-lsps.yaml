@@ -1,6 +1,6 @@
 # Comprehensive configuration including all supported Language Servers
 # This includes TypeScript, Python, Go, Rust, C#, and Java configurations
-lsps:
+language-servers:
   # Python using Pyright
   pyright:
     command: pyright-langserver --stdio

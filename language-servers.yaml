@@ -1,0 +1,95 @@
+
+language-servers:
+
+  typescript:
+    # npm install -g typescript-language-server if you prefer to install globally
+    # command: typescript-language-server --stdio
+    command: npx -y typescript-language-server --stdio
+    # This Language Server will be launched when at least one of the following files is detected in the working directory 
+    workspace_files:
+      - 'package.json'
+      - 'tsconfig.json'
+    # In TS Language Server for the search functionality to work
+    # at least one code file in the workspace needs to always be kept open
+    # As a workaround we specify one file that would be kept open
+    # Other files will be opened/closed as needed
+    preload_files:
+      - './src/index.ts'
+      - './index.ts'
+      - './src/main.ts'
+      - './main.ts'
+    diagnostics:
+      # TS Language Server will push diagnostics once a file is updated
+      # We open a file, wait and then return the collected diagnostics so diagnostics tool duration will include wait_timeout_ms
+      # It's possible to try and decrease it for a faster response.
+      strategy: 'push'
+      wait_timeout_ms: 2000
+
+  pyright:
+    # npm install -g pyright if you prefer to install globally
+    # command: pyright-langserver --stdio
+    command: npx -y -p pyright pyright-langserver --stdio
+    workspace_files:
+      - 'pyproject.toml'
+      - 'requirements.txt'
+      - 'setup.py'
+      - 'Pipfile'
+    diagnostics:
+      strategy: 'pull'
+
+  # go:
+  #   command: gopls
+  #   workspace_files:
+  #     - 'go.mod'
+  #     - 'go.work'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+  #   environment:
+  #     # Adjust to your Go environment
+  #     GOPATH: '$HOME/go'
+  #     GOCACHE: '$HOME/.cache/go-build'
+  #     GOMODCACHE: '$HOME/go/pkg/mod'
+
+  # rust:
+  #   command: 'rust-analyzer'
+  #   workspace_files:
+  #     - 'Cargo.toml'
+  #     - 'Cargo.lock'
+  #   diagnostics:
+  #     strategy: 'pull'
+
+  # roslyn:
+  #   # Adjust command with path to LanguageServer.dll
+  #   # Don't break lines with \ like you would do in a shell
+  #   command: >
+  #     dotnet $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll
+  #       --logLevel=Information
+  #       --extensionLogDirectory=$HOME/.csharp-lsp/logs
+  #       --stdio
+  #   workspace_loader: 'csharp'
+  #   workspace_files:
+  #     - '*.sln'
+  #     - '*.csproj'
+  #   diagnostics:
+  #     strategy: 'pull'
+
+  # java:
+  #   # Adjust command with path to LanguageServer.dll
+  #   # Don't break lines with \ like you would do in a shell
+  #   # SYMBOLS_WORKSPACE_NAME is an env var containing the name of the workspace folder to create
+  #   # unique caches for each workspace
+  #   command: >
+  #     $HOME/.java-lsp/jdtls/bin/jdtls
+  #       -configuration $HOME/.cache/jdtls/config
+  #       -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
+  #       --jvm-arg=-Dlog.protocol=true
+  #       --jvm-arg=-Dlog.level=ALL
+  #   workspace_files:
+  #     - 'build.gradle'
+  #     - 'gradlew'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+

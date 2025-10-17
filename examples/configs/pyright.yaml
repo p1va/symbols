@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   pyright:
     command: pyright-langserver --stdio
     extensions:

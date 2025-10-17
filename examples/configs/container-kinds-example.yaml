@@ -4,7 +4,7 @@
 # 1. How to override which symbol kinds are treated as "containers" vs "leaves"
 # 2. How to extend default file extension mappings with custom ones
 
-lsps:
+language-servers:
   typescript:
     command: npx typescript-language-server --stdio
     # Extensions are optional - defaults cover .js, .mjs, .cjs, .jsx, .ts, .mts, .cts, .tsx, .json

@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   vscode-csharp:
     command: >
       $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.roslyn/Microsoft.CodeAnalysis.LanguageServer

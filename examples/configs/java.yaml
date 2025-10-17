@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   java:
     command: >
       $HOME/.java-lsp/jdtls/bin/jdtls

@@ -1,8 +1,0 @@
-lsps:
-  rust:
-    command: 'rust-analyzer'
-    workspace_files:
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-    diagnostics:
-      strategy: 'pull'

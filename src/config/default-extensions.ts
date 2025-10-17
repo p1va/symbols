@@ -1,17 +1,16 @@
 /**
- * Universal file extension mappings for all common LSP servers
- * Used when running in direct command mode (without YAML config)
+ * Default file extension to language ID mappings for common programming languages
  * Based on lang-identifier.md
  *
- * This single mapping works for all LSPs - the LSP will only handle
- * files it recognizes and ignore the rest.
+ * These defaults are automatically available for all LSP configurations.
+ * User-specified extensions in config files are merged with (not replacing) these defaults.
  */
 
 /**
- * Universal extension to language ID mapping
+ * Default extension to language ID mapping
  * Covers all common programming languages
  */
-export const UNIVERSAL_EXTENSIONS: Record<string, string> = {
+export const DEFAULT_EXTENSIONS: Record<string, string> = {
   // JavaScript/TypeScript
   '.js': 'javascript',
   '.mjs': 'javascript',

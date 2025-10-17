@@ -418,10 +418,10 @@ A default global one is created on first run and includes Typescript and Python.
 Config can be set globally, loaded from the current working directory or explicitly passed with a command line argument.
 
 - **Global** config file is created on the first run and includes Typescript and Python by default
-  - Linux: `~/.config/symbols-nodejs/symbols.yam`
-  - MacOS: `~/Library/Preferences/symbols-nodejs/symbols.yaml`
-  - Windows: `%APPDATA%\symbols-nodejs\Config\symbols.yaml`
-- **Workspace** level config file is searched with these names `symbols.y(a)ml` or `lsps.y(a)ml`
+  - Linux: `~/.config/symbols-nodejs/language-servers.yaml`
+  - MacOS: `~/Library/Preferences/symbols-nodejs/language-servers.yaml`
+  - Windows: `%APPDATA%\symbols-nodejs\Config\language-servers.yaml`
+- **Workspace** level config file is searched with the name `language-servers.y(a)ml`
 - **Override** via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 
 Run `npx -y @p1va/symbols@latest --show-config` to inspect the active config.

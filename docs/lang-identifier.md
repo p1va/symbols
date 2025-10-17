@@ -78,14 +78,18 @@ The following language identifiers need verification for their file extension ma
 
 ### Implementation Guidance
 
-**Default Extensions**: The symbols tool includes built-in default mappings for all common file extensions listed in this table. You typically don't need to specify `extensions` in your configuration unless you want to:
-1. Add custom file extension mappings
-2. Override a default mapping
+**Default Extensions**: The symbols tool includes built-in default mappings for all common file extensions listed in this table. These defaults are automatically merged with any extensions you specify in your configuration.
+
+**Key Points:**
+- You typically don't need to specify `extensions` in your configuration - defaults cover most cases
+- When you do specify `extensions`, they are **merged with** (not replacing) the defaults
+- Your custom extensions override defaults when there's a conflict
+- This means you only need to specify extensions that are custom or override defaults
 
 **Using Default Extensions** - Most configs don't need to specify extensions:
 
 ```yaml
-lsps:
+language-servers:
   typescript:
     command: typescript-language-server --stdio
     workspace_files:
@@ -108,10 +112,10 @@ lsps:
     # .pyi → python
 ```
 
-**Extending Default Extensions** - Only specify extensions when you need custom mappings:
+**Adding Custom Extensions** - Only specify extensions when you need custom mappings or overrides:
 
 ```yaml
-lsps:
+language-servers:
   typescript:
     command: typescript-language-server --stdio
     workspace_files:
@@ -120,16 +124,23 @@ lsps:
       # Add custom extension for your project
       '.config.ts': 'typescript'
       '.spec.ts': 'typescript'
-      # All other defaults (.ts, .js, .tsx, etc.) still apply!
+      # All other defaults (.ts, .js, .jsx, .tsx, .json, etc.) are automatically included!
 
   csharp:
     command: csharp-ls
     workspace_files:
       - '*.csproj'
     extensions:
-      # Extend C# defaults (.cs) with Razor support
+      # Add Razor support (C# default .cs is already included)
       '.razor': 'razor'
       '.cshtml': 'razor'
+
+  custom-lsp:
+    command: my-custom-lsp
+    extensions:
+      # Override default JavaScript mapping for custom LSP
+      '.js': 'my-custom-javascript'
+      # All other defaults still apply
 ```
 
 ## References

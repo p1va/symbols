@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   typescript:
     command: typescript-language-server --stdio
     extensions:
