@@ -11,15 +11,15 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 
 ## Introduction
 
-By connecting to a Language Server of choice this MCP server makes it easy and efficent for coding agents to explore and navigate the codebase.
-The server offers a minimal toolset intended to be simple to use and light on the model's context.
+By connecting to a Language Server of choice this MCP server makes it easy and efficient for coding agents to explore and navigate the codebase and its dependencies.
+The server offers a minimal toolset intended to be simple to use and light on the model's context. Language Server configuration is kept in a dedicated file to keep MCP settings clean.
 
 ### Available Tools
 
 - **`outline`**: returns a concise outline of code symbols in a given file
   - `preview: false` keeps it compact with just names and kinds
   - `preview: true` includes a code snippet with signatures, modifiers, return types...
-- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, Nuget, ... )
+- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, NuGet, ... )
   - any documentation and signature details
   - symbol declaration location with code preview
   - symbol implementation location with code preview
@@ -164,11 +164,11 @@ Install the Language Servers relevant to your codebases
 
 #### Installation
 
-✅ This Language Server is installed as a dependecy of the MCP server and does not need installation.
+✅ This Language Server is installed as a dependency of the MCP server and does not need installation.
 
 #### Configuration
 
-✅ A default configuration for this Language Server is created during startup so things *should* work out of the box.
+✅ A default configuration for this Language Server is created during startup so things *should* just work.
 
 #### Troubleshooting
 
@@ -197,15 +197,15 @@ venv = ".venv"
   (pre-installed)
 </summary>
 
-### Typescript Language Server for TS and JS
+### TypeScript Language Server for TS and JS
 
 #### Installation
 
-✅ This Language Server is installed as a dependecy of the MCP server and does not need installation.
+✅ This Language Server is installed as a dependency of the MCP server and does not need installation.
 
 #### Configuration
 
-✅ A default configuration for this Language Server is created during startup so things *should* work out of the box.
+✅ A default configuration for this Language Server is created during startup so things *should* just work.
 
 </details>
 
@@ -217,16 +217,16 @@ venv = ".venv"
     <img src="https://img.shields.io/badge/C%23-blueviolet?logo=dotnet" valign="middle">
   </picture>
   &nbsp;
-  <b>Roslyn</b> via Nuget Feed
+  <b>Roslyn</b> via NuGet Feed
 </summary>
 
 ### Roslyn Language Server
 
 #### Installation
 
-The official Csharp Language Server is distributed over the [VS IDE Nuget feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
+The official C# Language Server is distributed over the [VS IDE NuGet feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
 
-To download and extract it to an installation directory we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` having the following content:
+To download it we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` with the following content:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -259,7 +259,7 @@ To download and extract it to an installation directory we use the `dotnet` CLI 
 </Project>
 ```
 
-Then pick the platform identifier matching your machine
+We then pick the platform identifier matching the machine from:
 
 - `win-x64`
 - `win-arm64`
@@ -271,20 +271,37 @@ Then pick the platform identifier matching your machine
 - `osx-arm64`
 - `neutral`
 
-Finally restore the temporary project to trigger the download the Language Server to `RestorePackagesPath` and extract it to its final location in  `ServerPath`.
+And finally restore the temporary project to trigger the download of the Language Server.
+
+Adjust both `RestorePackagesPath` and `ServerPath` to your machine and keep track of the latter.
+
+```sh
+ServerPath=$HOME/.csharp-lsp/
+```
 
 ```sh
 dotnet restore ServerDownload.csproj \
-  /p:Platform=YOUR-PLATFORM-ID \
-  /p:RestorePackagesPath=/tmp/lsp-download \
-  /p:ServerPath=$HOME/.csharp-lsp/
+  /p:Platform=your-platform-id \
+  /p:RestorePackagesPath=/tmp/your/download/location \
+  /p:ServerPath=$ServerPath
 ```
 
-To double-check the outcome of the installation run the command below
+#### Verify Installation
+
+To verify the outcome of the installation we run the command below
 
 ```sh
-$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
+$ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
 ```
+
+#### Configuration
+
+Initialize a configuration file for the repository with
+
+```sh
+npx -y @p1va/symbols@latest template show csharp > lsps.yaml
+```
+
 </details>
 
 <details>
@@ -326,10 +343,20 @@ x
 go install golang.org/x/tools/gopls@latest
 ```
 
+#### Verify Installation
+
 To double-check the outcome of the installation run the command below
 
 ```sh
 gopls version
+```
+
+#### Configuration
+
+Initialize a config file by running this command and review paths
+
+```sh
+npx -y @p1va/symbols@latest template show go > lsps.yaml
 ```
 
 </details>
@@ -353,10 +380,20 @@ gopls version
 rustup component add rust-analyzer
 ```
 
+#### Verify Installation
+
 To double-check the outcome of the installation run the command below
 
 ```sh
 rust-analyzer --version
+```
+
+#### Configuration
+
+Initialize a configuration file for the repository by running
+
+```sh
+npx -y @p1va/symbols@latest template show rust > lsps.yaml
 ```
 
 </details>
@@ -415,7 +452,7 @@ This mode uses universal file extension mappings that work with all LSP servers.
 For production use, a YAML config file gives you full control over LSP configuration.
 A default global one is created on first run and includes Typescript and Python.
 
-Config can be set globally, loaded from the current working directory or explicitly passed with a command line argument.
+Config can also be provided at workspace level where LSPs declared in files named either `symbols.y(a)ml` or `lsps.y(a)ml` are automatically loaded.
 
 - **Global** config file is created on the first run and includes Typescript and Python by default
   - Linux: `~/.config/symbols-nodejs/language-servers.yaml`
@@ -424,7 +461,28 @@ Config can be set globally, loaded from the current working directory or explici
 - **Workspace** level config file is searched with the name `language-servers.y(a)ml`
 - **Override** via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
 
-Run `npx -y @p1va/symbols@latest --show-config` to inspect the active config.
+A workspace can be explicitly set by adding the `--workspace path/to/dir` flag when launching the MCP server.
+
+#### Argument
+
+A config flag provided when launching the MCP server allows to force a specific file name
+
+ `--config path/to/language-servers.yaml`
+
+#### Troubleshooting
+
+Active config can be seen with `npx -y @p1va/symbols@latest --show-config`.
+
+#### Language Server Resolution
+
+The MCP server launches the Language Server listing in its `workspace_files` any file detected in the current working directory. 
+e.g. pyproject.toml launches Pyright, package.json TypeScript
+
+These mappings can be updated or extended by modifying the configuration.
+
+Language Server resolution can be made explicit by providing the exact Language Server to launch with this flag `--lsp name-of-ls`
+
+</details>
 
 #### Environment Variables
 
