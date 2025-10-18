@@ -5,7 +5,7 @@
 
 import { WorkspaceLoader, WorkspaceLoaderRegistry } from './types.js';
 import { createDefaultLoader } from './loaders/default.js';
-import { createCSharpLoader } from './loaders/csharp.js';
+import { createRoslynLoader } from './loaders/roslyn.js';
 
 /**
  * Registry of workspace loader factories
@@ -13,7 +13,7 @@ import { createCSharpLoader } from './loaders/csharp.js';
  */
 const WORKSPACE_LOADERS: WorkspaceLoaderRegistry = {
   default: createDefaultLoader,
-  csharp: createCSharpLoader,
+  roslyn: createRoslynLoader,
   // Future loaders can be added here:
   // 'java': createJavaLoader,
   // 'rust': createRustLoader,

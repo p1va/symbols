@@ -18,7 +18,7 @@ export class McpTestClient {
 
   constructor(
     private command = 'node',
-    private args = ['dist/index.js'],
+    private args = ['dist/index.js', 'start'],
     private name = 'integration-test',
     private version = '1.0.0',
     private workingDirectory?: string,

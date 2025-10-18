@@ -4,7 +4,7 @@ This directory contains example configuration files for the symbols MCP server. 
 
 ## Quick Start
 
-1. Copy one of the configuration files to your project root as `symbols.yaml`
+1. Copy one of the configuration files to your project root as `language-servers.yaml`
 2. Modify paths and commands as needed for your environment
 3. Run symbols: `symbols --workspace /path/to/your/project`
 
@@ -23,10 +23,10 @@ This directory contains example configuration files for the symbols MCP server. 
 Each configuration file follows this basic structure:
 
 ```yaml
-lsps:
+language-servers:
   <lsp-name>:
     command: '<command-to-start-lsp-server>'
-    extensions:
+    extensions: # Optional - merged with built-in defaults
       '<file-extension>': '<language-id>'
     workspace_files:
       - '<project-files-that-indicate-this-language>'
@@ -41,6 +41,33 @@ lsps:
     workspace_loader: '<custom-loader>' # Optional
 ```
 
+### Extension Mappings
+
+The `extensions` field is **optional** and **merged with built-in defaults**:
+
+- **Default behavior**: All common file extensions (`.js`, `.ts`, `.py`, `.go`, `.rs`, `.cs`, etc.) are pre-mapped
+- **When to specify**: Only add `extensions` when you need custom mappings or want to override defaults
+- **Merging**: Your extensions are merged with defaults - you don't lose any defaults by specifying extensions
+- **Override**: Your custom extensions take precedence over defaults when there's a conflict
+
+**Example - No extensions needed:**
+```yaml
+language-servers:
+  typescript:
+    command: typescript-language-server --stdio
+    # No extensions field - all defaults (.ts, .js, .tsx, .jsx, etc.) work automatically!
+```
+
+**Example - Adding custom extensions:**
+```yaml
+language-servers:
+  typescript:
+    command: typescript-language-server --stdio
+    extensions:
+      '.config.ts': 'typescript'  # Add custom extension
+      # All defaults (.ts, .js, .tsx, etc.) still work!
+```
+
 The list of allowed language id can be found [here](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#:~:text=use%20those%20ids.-,Language,-Identifier)
 
 ## Environment Variable Expansion
@@ -48,7 +75,7 @@ The list of allowed language id can be found [here](https://microsoft.github.io/
 Configuration values support environment variable expansion using both `$VAR` and `${VAR}` syntax:
 
 ```yaml
-lsps:
+language-servers:
   go:
     command: 'gopls'
     environment:
@@ -86,8 +113,8 @@ Make sure you have the appropriate language servers installed:
 symbols --config examples/configs/typescript-only.yaml --workspace /path/to/project
 
 # Copy and customize
-cp examples/configs/pyright.yaml symbols.yaml
-# Edit symbols.yaml as needed
+cp examples/configs/pyright.yaml language-servers.yaml
+# Edit language-servers.yaml as needed
 symbols --workspace /path/to/project
 
 # Check what configuration is active

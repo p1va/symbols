@@ -7,6 +7,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rpc from 'vscode-jsonrpc';
+import which from 'which';
 import {
   InitializeParams,
   WorkspaceFolder,
@@ -41,7 +42,7 @@ export function createLspClient(
   workspaceLoaderStore: WorkspaceLoaderStore
 ): Result<LspClientResult> {
   try {
-    logger.info('Creating LSP client', {
+    logger.debug('Creating LSP client', {
       lspName: lspConfig.name,
       command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
       workspace: workspaceConfig.workspaceUri,
@@ -50,17 +51,13 @@ export function createLspClient(
         : 'none',
     });
 
-    // Set up environment variables if specified
-    const env = lspConfig.environment
-      ? {
-          ...process.env,
-          ...lspConfig.environment,
-          SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
-        }
-      : {
-          ...process.env,
-          SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
-        };
+    // Create expansion environment (temporary, for variable substitution in command/args)
+    // Includes all env vars + YAML overrides + SYMBOLS_WORKSPACE_NAME for substitution
+    const expansionEnv = {
+      ...process.env,
+      ...(lspConfig.environment || {}),
+      SYMBOLS_WORKSPACE_NAME: workspaceConfig.workspaceName,
+    };
 
     logger.debug('Spawning LSP server process', {
       commandName: lspConfig.commandName,
@@ -80,20 +77,30 @@ export function createLspClient(
         });
     };
 
-    // Trim and expand environment variables in command and args
+    // Expand command and args using the expansion environment
     const processedCommandName = expandEnvVarsWithCustomEnv(
       lspConfig.commandName,
-      env
+      expansionEnv
     );
     const processedCommandArgs = lspConfig.commandArgs.map((arg) =>
-      expandEnvVarsWithCustomEnv(arg, env)
+      expandEnvVarsWithCustomEnv(arg, expansionEnv)
     );
+
+    // Create clean LSP runtime environment (filters out SYMBOLS_* vars except those in YAML)
+    // This ensures SYMBOLS_* vars used by the MCP server don't leak to LSP processes
+    const filteredProcessEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([key]) => !key.startsWith('SYMBOLS_'))
+    );
+
+    const lspEnv = lspConfig.environment
+      ? { ...filteredProcessEnv, ...lspConfig.environment }
+      : filteredProcessEnv;
 
     logger.debug('Processed LSP command with environment variables', {
       originalCommand: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
       processedCommand: `${processedCommandName} ${processedCommandArgs.join(' ')}`,
       workspaceName: workspaceConfig.workspaceName,
-      symbolsWorkspaceName: env.SYMBOLS_WORKSPACE_NAME,
+      symbolsWorkspaceName: expansionEnv.SYMBOLS_WORKSPACE_NAME,
     });
 
     // Check if command exists before spawning (comprehensive validation)
@@ -111,48 +118,32 @@ export function createLspClient(
         const expandedPath = processedCommandName;
 
         if (!fs.existsSync(expandedPath)) {
-          throw new Error(
-            `LSP server binary does not exist: ${expandedPath} (original: ${lspConfig.commandName})`
-          );
+          throw new Error(`Binary not found: ${expandedPath}`);
         }
 
         // Check if it's executable
         try {
           fs.accessSync(expandedPath, fs.constants.X_OK);
         } catch {
-          throw new Error(
-            `LSP server binary is not executable: ${expandedPath} (original: ${lspConfig.commandName})`
-          );
+          throw new Error(`Binary not executable: ${expandedPath}`);
         }
       } else {
-        // Command name only - check if it exists in PATH (cross-platform)
+        // Command name only - check if it exists in PATH (cross-platform using 'which' package)
         try {
-          const isWindows = process.platform === 'win32';
-          const whichCommand = isWindows ? 'where' : 'which';
-          const result = cp.execSync(
-            `${whichCommand} "${processedCommandName}"`,
-            {
-              encoding: 'utf8',
-              stdio: ['ignore', 'pipe', 'ignore'],
-            }
-          );
-          const commandPath = result.trim();
-
-          if (!commandPath) {
-            throw new Error(
-              `LSP server command not found in PATH: ${processedCommandName}`
-            );
-          }
+          // Use the same PATH as the spawn will use to avoid false positives/negatives
+          const resolvedPath = which.sync(processedCommandName, {
+            path: lspEnv.PATH || process.env.PATH,
+            nothrow: false,
+          });
 
           logger.debug('Found LSP server in PATH', {
             commandName: processedCommandName,
-            resolvedPath: commandPath,
+            resolvedPath,
             platform: process.platform,
           });
         } catch {
           throw new Error(
-            `LSP server command not found in PATH: ${processedCommandName}. ` +
-              `Please ensure it's installed and available in your PATH.`
+            `Command '${processedCommandName}' not found in PATH`
           );
         }
       }
@@ -175,9 +166,9 @@ export function createLspClient(
       hasCustomEnv: !!lspConfig.environment,
     });
 
-    // Spawn the configured Language Server
+    // Spawn the configured Language Server with clean environment
     const serverProcess = cp.spawn(processedCommandName, processedCommandArgs, {
-      env,
+      env: lspEnv,
       // 1st stdin, 2nd stdout, 3rd stderr
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -303,7 +294,7 @@ export function createLspClient(
       process: serverProcess,
     };
 
-    logger.info('LSP client created successfully', {
+    logger.debug('LSP client created successfully', {
       lspName: lspConfig.name,
       pid: serverProcess.pid,
       hasProcessId: client.processId !== undefined,
@@ -311,10 +302,13 @@ export function createLspClient(
 
     return { ok: true, data: result };
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+
     logger.error('Failed to create LSP client', {
       lspName: lspConfig.name,
       command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
     });
 
@@ -322,7 +316,7 @@ export function createLspClient(
       ok: false,
       error: createLspError(
         ErrorCode.LSPError,
-        `Failed to create LSP client: ${error instanceof Error ? error.message : String(error)}`,
+        errorMessage,
         error instanceof Error ? error : undefined
       ),
     };
@@ -476,7 +470,7 @@ async function initializeWorkspaceLoader(
     const initialState = await loader.initialize(client, config);
     workspaceLoaderStore.setState(initialState);
 
-    logger.info('Workspace loader initialized', {
+    logger.debug('Workspace loader initialized', {
       loaderType,
       workspaceType: initialState.type,
       ready: initialState.ready,
@@ -540,7 +534,7 @@ function extractDiagnosticProvidersFromCapabilities(
       };
 
       diagnosticProviderStore.addProvider(provider);
-      logger.info('Added diagnostic provider from server capabilities', {
+      logger.debug('Added diagnostic provider from server capabilities', {
         providerId: provider.id,
         workspaceDiagnostics: provider.workspaceDiagnostics,
         interFileDependencies: provider.interFileDependencies,
@@ -625,7 +619,7 @@ function setupNotificationHandlers(
             };
 
             diagnosticProviderStore.addProvider(provider);
-            logger.info('Added diagnostic provider from registration', {
+            logger.debug('Added diagnostic provider from registration', {
               providerId: provider.id,
               method: registration.method,
               hasDocumentSelector: !!provider.documentSelector,

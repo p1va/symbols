@@ -28,13 +28,13 @@ export async function getTestCommand(): Promise<TestCommand> {
 
     return {
       command: 'node',
-      args: ['dist/index.js'],
+      args: ['dist/index.js', 'start'],
     };
   } else {
     // Local development: use tsx for faster iteration (no build required)
     return {
       command: 'pnpm',
-      args: ['exec', 'tsx', 'src/index.ts'],
+      args: ['exec', 'tsx', 'src/index.ts', 'start'],
     };
   }
 }

@@ -1,8 +1,6 @@
-lsps:
+language-servers:
   go:
     command: gopls
-    extensions:
-      '.go': 'go'
     workspace_files:
       - 'go.mod'
       - 'go.work'

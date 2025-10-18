@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   go:
     command: gopls
     extensions:

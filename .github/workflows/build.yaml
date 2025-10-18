@@ -45,6 +45,12 @@ jobs:
       - name: Setup and Install
         uses: ./.github/actions/setup-and-install
 
+      - name: Install TypeScript Language Server
+        run: pnpm install -g typescript-language-server typescript
+
+      - name: Verify typescript-language-server installation
+        run: typescript-language-server --version
+
       - name: Build project
         run: pnpm build
 
@@ -73,6 +79,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+
+      - name: Install Pyright Language Server
+        run: pnpm install -g pyright
+
+      - name: Verify pyright-langserver installation
+        run: which pyright-langserver
 
       - name: Build project
         run: pnpm build

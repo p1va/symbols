@@ -104,7 +104,7 @@ export function createWindowLogStore(): WindowLogStore {
   return {
     messages,
     addMessage(message: LogMessage) {
-      logger.info('LSP window log message', message);
+      logger.info('[LSP-LOG]', message);
       this.messages.push(message);
     },
     getMessages(): LogMessage[] {

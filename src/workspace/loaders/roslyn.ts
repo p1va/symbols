@@ -1,6 +1,6 @@
 /**
- * C# Workspace Loader - Pure Functional Implementation
- * Handles .sln/.csproj detection and workspace initialization notifications
+ * Roslyn Workspace Loader - Pure Functional Implementation
+ * Handles .sln/.csproj detection and workspace initialization notifications for C#
  */
 
 import { WorkspaceLoader, WorkspaceLoaderState } from '../types.js';
@@ -47,7 +47,7 @@ const initialize = async (
     if (!csharpWorkspace) {
       logger.debug('No C# workspace detected, defaulting to ready state');
       return {
-        type: 'csharp' as const,
+        type: 'roslyn' as const,
         ready: true,
       };
     }
@@ -66,7 +66,7 @@ const initialize = async (
 
     // Return state indicating initialization started but not ready
     return {
-      type: 'csharp' as const,
+      type: 'roslyn' as const,
       ready: false,
       data: { workspaceInfo: csharpWorkspace } satisfies CSharpWorkspaceData,
     };
@@ -78,7 +78,7 @@ const initialize = async (
 
     // On error, default to ready state to not block operations
     return {
-      type: 'csharp' as const,
+      type: 'roslyn' as const,
       ready: true,
     };
   }
@@ -106,9 +106,9 @@ const handleNotification = (
 };
 
 /**
- * Factory function to create C# workspace loader
+ * Factory function to create Roslyn workspace loader
  */
-export const createCSharpLoader = (): WorkspaceLoader => ({
+export const createRoslynLoader = (): WorkspaceLoader => ({
   initialize,
   isReady,
   handleNotification,

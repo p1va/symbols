@@ -9,7 +9,7 @@ import { LspClient, LspConfig } from '../types.js';
  * Immutable workspace loader state - holds workspace-specific information
  */
 export type WorkspaceLoaderState = {
-  readonly type: 'default' | 'csharp';
+  readonly type: 'default' | 'roslyn';
   readonly ready: boolean;
   readonly data?: unknown;
 };
