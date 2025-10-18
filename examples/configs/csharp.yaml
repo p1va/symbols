@@ -9,7 +9,7 @@ language-servers:
       .cs: csharp
       .cshtml: razor
       .razor: razor
-    workspace_loader: 'csharp'
+    workspace_loader: 'roslyn'
     workspace_files:
       - '*.sln'
       - '*.csproj'

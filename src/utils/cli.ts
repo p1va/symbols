@@ -26,14 +26,14 @@ export interface StartCommandArgs extends BaseCliArgs {
   lsp?: string;
   loglevel?: string;
   configPath?: string;
-  debug?: boolean;
+  console?: boolean;
 }
 
 export interface RunCommandArgs extends BaseCliArgs {
   command: 'run';
   workspace?: string;
   loglevel?: string;
-  debug?: boolean;
+  console?: boolean;
   directCommand: {
     commandName: string;
     commandArgs: string[];
@@ -90,6 +90,67 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
   const argv = yargs(hideBin(args))
     .scriptName('symbols')
     .usage('Usage: $0 <command> [options]')
+    .example('$0 run gopls', 'Quick start with Go LSP')
+    .example(
+      '$0 run -w /path/to/project pyright-langserver --stdio',
+      'Run Python LSP with custom workspace'
+    )
+    .example('$0 start', 'Start with auto-detected LSP from config')
+    .command('run', 'Run the Language Server command directly', (yargs) => {
+      return yargs
+        .parserConfiguration({
+          'unknown-options-as-args': true, // Treat unknown options as positional args
+          'populate--': true, // Populate argv._ with args after --
+        })
+        .option('workspace', {
+          alias: 'w',
+          type: 'string',
+          describe: 'Workspace directory (default: current directory)',
+          requiresArg: true,
+        })
+        .option('loglevel', {
+          type: 'string',
+          describe: 'Log level for the MCP server',
+          choices: ['debug', 'info', 'warn', 'error'],
+          requiresArg: true,
+        })
+        .option('console', {
+          type: 'boolean',
+          describe:
+            'Output logs to console instead of log files (for troubleshooting only - do not use when running as MCP server)',
+          default: false,
+        })
+        .example(
+          '$0 run typescript-language-server --stdio',
+          'Run TypeScript language server'
+        )
+        .example(
+          '$0 run --workspace /path/to/project pyright-langserver --stdio',
+          'Run with custom workspace'
+        )
+        .example(
+          '$0 run -w /path --loglevel debug -- typescript-language-server --stdio',
+          'Run with explicit separator (optional)'
+        )
+        .strictOptions(false) // Allow unknown options (LSP command arguments)
+        .strictCommands(false) // Allow any positional args (LSP command)
+        .check((argv) => {
+          if (argv.workspace) {
+            const workspacePath = path.resolve(argv.workspace);
+            if (!fs.existsSync(workspacePath)) {
+              throw new Error(
+                `Workspace directory does not exist: ${argv.workspace}`
+              );
+            }
+            if (!fs.statSync(workspacePath).isDirectory()) {
+              throw new Error(
+                `Workspace path is not a directory: ${argv.workspace}`
+              );
+            }
+          }
+          return true;
+        });
+    })
     .command(
       'start',
       'Start MCP server with Language Server auto-detection using configuration',
@@ -119,9 +180,10 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
             choices: ['debug', 'info', 'warn', 'error'],
             requiresArg: true,
           })
-          .option('debug', {
+          .option('console', {
             type: 'boolean',
-            describe: 'Enable debug mode for the MCP server',
+            describe:
+              'Output logs to console instead of log files (for troubleshooting only - do not use when running as MCP server)',
             default: false,
           })
           .example('$0 start', 'Start with auto-detection')
@@ -133,6 +195,7 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
             '$0 start --config ./language-servers.yaml',
             'Start with custom configuration'
           )
+          .strictOptions() // Strict validation for start command
           .check((argv) => {
             if (argv.workspace) {
               const workspacePath = path.resolve(argv.workspace);
@@ -168,50 +231,6 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
           });
       }
     )
-    .command('run', 'Run the Language Server command', (yargs) => {
-      return yargs
-        .option('workspace', {
-          alias: 'w',
-          type: 'string',
-          describe: 'Workspace directory (default: current directory)',
-          requiresArg: true,
-        })
-        .option('loglevel', {
-          type: 'string',
-          describe: 'Log level for the LSP server',
-          choices: ['debug', 'info', 'warn', 'error'],
-          requiresArg: true,
-        })
-        .option('debug', {
-          type: 'boolean',
-          describe: 'Enable debug mode',
-          default: false,
-        })
-        .example(
-          '$0 run -- typescript-language-server --stdio',
-          'Run TypeScript language server directly'
-        )
-        .example(
-          '$0 run --workspace /path/to/project -- pyright-langserver --stdio',
-          'Run with custom workspace'
-        )
-        .check((argv) => {
-          if (argv.workspace) {
-            const workspacePath = path.resolve(argv.workspace);
-            if (!fs.existsSync(workspacePath)) {
-              throw new Error(
-                `Workspace directory does not exist: ${argv.workspace}`
-              );
-            }
-            if (!fs.statSync(workspacePath).isDirectory()) {
-              throw new Error(
-                `Workspace path is not a directory: ${argv.workspace}`
-              );
-            }
-          }
-          return true;
-        });
-    })
     .command('config', 'Manage configuration files', (yargs) => {
       return yargs
         .command('init', 'Initialize a new configuration file', (yargs) => {
@@ -311,29 +330,111 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
     .help()
     .alias('help', 'h')
     .version(false)
-    .strict()
+    .strictCommands() // Validate commands but allow unknown args for 'run' command
     .parseSync();
 
   // Extract command
   const command = argv._[0] as string;
 
-  // Handle 'run' command with -- delimiter
+  // Handle 'run' command with optional -- delimiter
   if (command === 'run') {
     const rawArgs = hideBin(args);
     const dashIndex = rawArgs.indexOf('--');
 
-    if (dashIndex === -1 || dashIndex === rawArgs.length - 1) {
-      throw new Error(
-        'run command requires -- followed by the LSP command\n' +
-          'Example: symbols run -- typescript-language-server --stdio'
-      );
+    // Find where the LSP command starts
+    // It's either after '--' or the first non-flag argument after 'run'
+    let commandParts: string[];
+
+    if (dashIndex !== -1) {
+      // Explicit separator: everything after '--' is the command
+      commandParts = rawArgs.slice(dashIndex + 1);
+    } else {
+      // No separator: find first non-flag argument after 'run'
+      // Known flags: --workspace/-w, --loglevel, --console, --help/-h
+      const knownFlags = new Set([
+        '--workspace',
+        '-w',
+        '--loglevel',
+        '--console',
+        '--help',
+        '-h',
+      ]);
+
+      let commandStartIndex = -1;
+      let skipNext = false;
+
+      for (let i = 0; i < rawArgs.length; i++) {
+        const arg = rawArgs[i];
+
+        // Type guard: skip if arg is undefined
+        if (!arg) {
+          continue;
+        }
+
+        // Skip this iteration if previous flag requires an argument
+        if (skipNext) {
+          skipNext = false;
+          continue;
+        }
+
+        // Skip the 'run' command itself
+        if (arg === 'run') {
+          continue;
+        }
+
+        // Check if it's a known flag
+        if (knownFlags.has(arg)) {
+          // Flags that require arguments: --workspace, -w, --loglevel
+          if (arg === '--workspace' || arg === '-w' || arg === '--loglevel') {
+            skipNext = true;
+          }
+          continue;
+        }
+
+        // Check if it's a flag with = syntax (--workspace=/path)
+        if (arg.startsWith('--') && arg.includes('=')) {
+          const flagName = arg.split('=')[0];
+          if (flagName && knownFlags.has(flagName)) {
+            continue;
+          }
+        }
+
+        // Check if it's a boolean flag (--debug, --no-debug)
+        if (arg.startsWith('--') || arg.startsWith('-')) {
+          // Could be an unknown flag or part of the command
+          // To be safe, assume this is the start of the command
+          commandStartIndex = i;
+          break;
+        }
+
+        // Found first non-flag argument - this is the command
+        commandStartIndex = i;
+        break;
+      }
+
+      if (commandStartIndex === -1) {
+        throw new Error(
+          'run command requires a language server command\n' +
+            'Examples:\n' +
+            '  symbols run typescript-language-server --stdio\n' +
+            '  symbols run --workspace /path pyright-langserver --stdio\n' +
+            '  symbols run -- typescript-language-server --stdio'
+        );
+      }
+
+      commandParts = rawArgs.slice(commandStartIndex);
     }
 
-    const commandParts = rawArgs.slice(dashIndex + 1);
     const [commandName, ...commandArgs] = commandParts;
 
     if (!commandName) {
-      throw new Error('No command specified after --');
+      throw new Error(
+        'run command requires a language server command\n' +
+          'Examples:\n' +
+          '  symbols run typescript-language-server --stdio\n' +
+          '  symbols run --workspace /path pyright-langserver --stdio\n' +
+          '  symbols run -- typescript-language-server --stdio'
+      );
     }
 
     return {
@@ -413,7 +514,7 @@ export function resolveStartConfig(cliArgs: StartCommandArgs): {
   lsp?: string;
   loglevel: string;
   configPath?: string;
-  debug: boolean;
+  console: boolean;
 } {
   const lsp = cliArgs.lsp || process.env.SYMBOLS_LSP;
   const configPath = cliArgs.configPath || process.env.SYMBOLS_CONFIG_PATH;
@@ -423,12 +524,12 @@ export function resolveStartConfig(cliArgs: StartCommandArgs): {
     lsp?: string;
     loglevel: string;
     configPath?: string;
-    debug: boolean;
+    console: boolean;
   } = {
     workspace:
       cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),
     loglevel: cliArgs.loglevel || process.env.SYMBOLS_LOGLEVEL || 'info',
-    debug: cliArgs.debug || false,
+    console: cliArgs.console || false,
   };
 
   if (lsp) {
@@ -448,13 +549,13 @@ export function resolveStartConfig(cliArgs: StartCommandArgs): {
 export function resolveRunConfig(cliArgs: RunCommandArgs): {
   workspace: string;
   loglevel: string;
-  debug: boolean;
+  console: boolean;
 } {
   return {
     workspace:
       cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),
     loglevel: cliArgs.loglevel || process.env.SYMBOLS_LOGLEVEL || 'info',
-    debug: cliArgs.debug || false,
+    console: cliArgs.console || false,
   };
 }
 

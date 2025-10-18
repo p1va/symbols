@@ -57,7 +57,7 @@ language-servers:
         --logLevel=Information
         --extensionLogDirectory=$HOME/.csharp-lsp/logs
         --stdio
-    workspace_loader: 'csharp'
+    workspace_loader: 'roslyn'
     workspace_files:
       - '*.sln'
       - '*.csproj'
@@ -79,7 +79,7 @@ language-servers:
         --extension $HOME/.vscode/extensions/ms-dotnettools.csdevkit-1.50.20-linux-x64/components/VisualStudio.Conversations/node_modules/@microsoft/visualstudio.copilot.roslyn.languageserver/Microsoft.VisualStudio.Copilot.Roslyn.LanguageServer.dll
         --extensionLogDirectory $HOME/.config/Code/logs/2025/window1/exthost/ms-dotnettools.csharp
         --stdio
-    workspace_loader: 'csharp'
+    workspace_loader: 'roslyn'
     # This setup should also support razor although mapping needs adding
     workspace_files:
       - '*.sln'

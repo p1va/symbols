@@ -2,12 +2,12 @@
 import { main } from './main/index.js';
 import logger, { initLogger } from './utils/logger.js';
 
-// Check for --debug flag early (before full CLI parsing)
-// This allows us to initialize the logger with console output
-const debugMode = process.argv.includes('--debug');
+// Check for --console flag early (before full CLI parsing)
+// This redirects logs to console instead of log files (for troubleshooting only)
+const consoleMode = process.argv.includes('--console');
 
 // Initialize logging system first, before any other operations
-initLogger(debugMode);
+initLogger(consoleMode);
 
 logger.info('Starting...');
 
@@ -21,10 +21,8 @@ try {
   });
 
   // Also output to stderr so users can see the error even if logging fails
-  process.stderr.write(
-    'Error starting MCP server:' +
-      (error instanceof Error ? error.message : String(error))
-  );
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`Error: ${errorMessage}\n`);
 
   process.exit(1);
 }

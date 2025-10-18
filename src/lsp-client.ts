@@ -7,6 +7,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as rpc from 'vscode-jsonrpc';
+import which from 'which';
 import {
   InitializeParams,
   WorkspaceFolder,
@@ -117,48 +118,32 @@ export function createLspClient(
         const expandedPath = processedCommandName;
 
         if (!fs.existsSync(expandedPath)) {
-          throw new Error(
-            `LSP server binary does not exist: ${expandedPath} (original: ${lspConfig.commandName})`
-          );
+          throw new Error(`Binary not found: ${expandedPath}`);
         }
 
         // Check if it's executable
         try {
           fs.accessSync(expandedPath, fs.constants.X_OK);
         } catch {
-          throw new Error(
-            `LSP server binary is not executable: ${expandedPath} (original: ${lspConfig.commandName})`
-          );
+          throw new Error(`Binary not executable: ${expandedPath}`);
         }
       } else {
-        // Command name only - check if it exists in PATH (cross-platform)
+        // Command name only - check if it exists in PATH (cross-platform using 'which' package)
         try {
-          const isWindows = process.platform === 'win32';
-          const whichCommand = isWindows ? 'where' : 'which';
-          const result = cp.execSync(
-            `${whichCommand} "${processedCommandName}"`,
-            {
-              encoding: 'utf8',
-              stdio: ['ignore', 'pipe', 'ignore'],
-            }
-          );
-          const commandPath = result.trim();
-
-          if (!commandPath) {
-            throw new Error(
-              `LSP server command not found in PATH: ${processedCommandName}`
-            );
-          }
+          // Use the same PATH as the spawn will use to avoid false positives/negatives
+          const resolvedPath = which.sync(processedCommandName, {
+            path: lspEnv.PATH || process.env.PATH,
+            nothrow: false,
+          });
 
           logger.debug('Found LSP server in PATH', {
             commandName: processedCommandName,
-            resolvedPath: commandPath,
+            resolvedPath,
             platform: process.platform,
           });
         } catch {
           throw new Error(
-            `LSP server command not found in PATH: ${processedCommandName}. ` +
-              `Please ensure it's installed and available in your PATH.`
+            `Command '${processedCommandName}' not found in PATH`
           );
         }
       }
@@ -317,10 +302,13 @@ export function createLspClient(
 
     return { ok: true, data: result };
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+
     logger.error('Failed to create LSP client', {
       lspName: lspConfig.name,
       command: `${lspConfig.commandName} ${lspConfig.commandArgs.join(' ')}`,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
     });
 
@@ -328,7 +316,7 @@ export function createLspClient(
       ok: false,
       error: createLspError(
         ErrorCode.LSPError,
-        `Failed to create LSP client: ${error instanceof Error ? error.message : String(error)}`,
+        errorMessage,
         error instanceof Error ? error : undefined
       ),
     };

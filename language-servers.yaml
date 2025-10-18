@@ -67,7 +67,7 @@ language-servers:
   #       --logLevel=Information
   #       --extensionLogDirectory=$HOME/.csharp-lsp/logs
   #       --stdio
-  #   workspace_loader: 'csharp'
+  #   workspace_loader: 'roslyn'
   #   workspace_files:
   #     - '*.sln'
   #     - '*.csproj'

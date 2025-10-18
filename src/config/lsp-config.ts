@@ -32,7 +32,7 @@ const LspConfigSchema = z.object({
   }),
   symbols: SymbolsConfigSchema.default({}),
   environment: z.record(z.string(), z.string()).optional(),
-  workspace_loader: z.string().optional(), // workspace loader type ('default', 'csharp', etc.)
+  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', etc.)
 });
 
 const ConfigFileSchema = z.object({

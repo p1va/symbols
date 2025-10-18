@@ -186,9 +186,10 @@ async function initializeLspForStart(
       config.workspace
     );
   } catch (error) {
-    throw new Error(
-      `Failed to initialize LSP: ${error instanceof Error ? error.message : String(error)}`
-    );
+    // Re-throw with original message - already clear and descriptive
+    throw error instanceof Error
+      ? error
+      : new Error(String(error));
   }
 }
 
@@ -287,9 +288,10 @@ async function initializeLspForRun(cliArgs: RunCommandArgs): Promise<void> {
       config.workspace
     );
   } catch (error) {
-    throw new Error(
-      `Failed to initialize LSP: ${error instanceof Error ? error.message : String(error)}`
-    );
+    // Re-throw with original message - already clear and descriptive
+    throw error instanceof Error
+      ? error
+      : new Error(String(error));
   }
 }
 

@@ -82,8 +82,8 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Registers available workspace loaders and exposes helpers to query loader availability.
 - `src/workspace/loaders/default.ts`
   - Minimal loader that immediately reports readiness for general workspaces.
-- `src/workspace/loaders/csharp.ts`
-  - Detects `.sln`/project files, initializes C#-specific workspace metadata, and reacts to server notifications.
+- `src/workspace/loaders/roslyn.ts`
+  - Detects `.sln`/project files, initializes C#-specific workspace metadata (via Roslyn), and reacts to server notifications.
 
 ## Types & Utilities
 

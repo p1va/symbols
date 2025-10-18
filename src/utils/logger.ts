@@ -6,7 +6,7 @@ import { getAppPaths } from './app-paths.js';
 // Unified logging system - starts with session logging, upgradeable to contextual
 let currentLogger: winston.Logger | null = null;
 let currentLogFile: string = 'uninitialized';
-let debugMode: boolean = false;
+let consoleMode: boolean = false;
 
 // Create custom format for better readability
 const customFormat = winston.format.combine(
@@ -51,7 +51,7 @@ function createLogger(
       }),
     ];
 
-    // Add console transport in debug mode
+    // Add console transport in console mode
     if (enableConsole) {
       transports.push(
         new winston.transports.Console({
@@ -90,8 +90,8 @@ function createLogger(
 /**
  * Initialize with basic session logging
  */
-function initializeSessionLogger(enableDebug: boolean = false): void {
-  debugMode = enableDebug;
+function initializeSessionLogger(enableConsole: boolean = false): void {
+  consoleMode = enableConsole;
 
   try {
     // Use env-paths for cross-platform log directory
@@ -101,13 +101,13 @@ function initializeSessionLogger(enableDebug: boolean = false): void {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     currentLogFile = path.join(logDir, `session-${timestamp}.log`);
 
-    currentLogger = createLogger(currentLogFile, debugMode);
+    currentLogger = createLogger(currentLogFile, consoleMode);
 
     // Log session start
     currentLogger.debug('='.repeat(80));
     currentLogger.debug(`Session started - Log file: ${currentLogFile}`);
     currentLogger.debug(`Log level: ${currentLogger.level}`);
-    currentLogger.debug(`Debug mode: ${debugMode ? 'enabled' : 'disabled'}`);
+    currentLogger.debug(`Console mode: ${consoleMode ? 'enabled' : 'disabled'}`);
     currentLogger.debug(
       `Environment: ${process.env.NODE_ENV || 'development'}`
     );
@@ -193,15 +193,15 @@ function upgradeToContextualLogger(
       }
     }
 
-    // Create new contextual logger (preserve debug mode)
-    const newLogger = createLogger(contextualLogFile, debugMode);
+    // Create new contextual logger (preserve console mode)
+    const newLogger = createLogger(contextualLogFile, consoleMode);
 
     // Add transition marker in new file
     newLogger.debug('='.repeat(80));
     newLogger.debug('TRANSITIONED TO CONTEXTUAL LOGGING');
     newLogger.debug(`Workspace: ${workspacePath}`);
     newLogger.debug(`LSP: ${lspName || 'auto-detect'}`);
-    newLogger.debug(`Debug mode: ${debugMode ? 'enabled' : 'disabled'}`);
+    newLogger.debug(`Console mode: ${consoleMode ? 'enabled' : 'disabled'}`);
     newLogger.debug('='.repeat(80));
 
     // Save old session file path before switching
