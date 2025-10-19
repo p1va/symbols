@@ -44,7 +44,7 @@ For simplicity examples follow Claude Code configuration schema
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/PY-3670A0?&logo=python&logoColor=ffdd54" valign="middle">
+    <img src="https://img.shields.io/badge/-3670A0?&logo=python&logoColor=ffdd54" valign="middle">
   </picture>
   &nbsp;
   <b>Pyright</b>
@@ -113,9 +113,10 @@ venv = ".venv"
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/TS-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
+    <img src="https://img.shields.io/badge/-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
   </picture>
-  &nbsp;<b>TypeScript Language Server</b>
+  &nbsp;
+  <b>TypeScript Language Server</b>
 </summary>
 
 ### TypeScript Language Server
@@ -183,7 +184,7 @@ This is done by keeping at least one code file open at any time.
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/C%23-blueviolet?logo=dotnet" valign="middle">
+    <img src="https://img.shields.io/badge/-blueviolet?logo=dotnet" valign="middle">
   </picture>
   &nbsp;
   <b>Roslyn</b>
@@ -281,11 +282,52 @@ $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
 </details>
 
 <details>
+  
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-%2300599C.svg?logo=c%2B%2B&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Clang</b>
+</summary>
+
+### Clang for C/C++
+
+#### Verify Installation
+
+`clangd --help` is available
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "symbols": {
+      "command": "npx",
+      "args": [
+        "-y", "@p1va/symbols@latest", "run",
+        "-w", "optional/path/to/workspace",
+        "clangd",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
+      }
+    }
+  }
+}
+```
+
+> ℹ️ Ensure either `compile_commands.json` is found in the working directory or provide the path where to find it with  `--compile-commands-dir=path/to/dir` 
+
+</details>
+
+<details>
 
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/GO-%2300ADD8.svg?logo=go&logoColor=white" valign="middle">
+    <img src="https://img.shields.io/badge/-%2300ADD8.svg?logo=go&logoColor=white" valign="middle">
   </picture>
   &nbsp;
   <b>Gopls</b>
@@ -336,7 +378,7 @@ gopls version
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/RS-%23000000.svg?logo=rust&logoColor=white" valign="middle">
+    <img src="https://img.shields.io/badge/-%23000000.svg?logo=rust&logoColor=white" valign="middle">
   </picture>
   &nbsp;
   <b>Rust-analyzer</b>
@@ -380,7 +422,7 @@ rust-analyzer --version
 <summary>
   &nbsp;
   <picture>
-    <img src="https://img.shields.io/badge/JV-ED8B00?logo=openjdk&logoColor=white" valign="middle">
+    <img src="https://img.shields.io/badge/-ED8B00?logo=openjdk&logoColor=white" valign="middle">
   </picture>
   &nbsp;
   <b>Jdt.ls</b>
@@ -415,7 +457,6 @@ x
 ```
 
 </details>
-
 
 ### Auto-detection (`config` & `start` commands)
 

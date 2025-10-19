@@ -234,37 +234,50 @@ async function formatOutlineResults(
     `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}\nSymbol breakdown: ${typeBreakdown}`
   );
 
-  // Group by root-level symbols (no container)
+  // Group symbols by their file-level root containers
+  // A symbol is "file-level root" if:
+  // 1. It has no containerName, OR
+  // 2. Its containerName doesn't exist in this file (e.g., packages, external modules)
+  //
+  // Use two-pass approach to handle symbols in any order:
+  // Pass 1: Identify and create all file-level root container entries
+  // Pass 2: Add child symbols to their file-level root containers
   const rootContainers = new Map<string, EnrichedSymbol[]>();
-  const orphanedSymbols: EnrichedSymbol[] = [];
 
+  // Pass 1: Identify file-level root symbols
   for (const enriched of enrichedSymbols) {
-    if (!enriched.symbol.containerName) {
-      // This is a root-level symbol
+    const isFileLevelRoot =
+      !enriched.symbol.containerName ||
+      !symbolsByName.has(enriched.symbol.containerName);
+
+    if (isFileLevelRoot) {
       rootContainers.set(enriched.symbol.name, [enriched]);
-    } else {
-      // Find the root container for this symbol
-      const rootContainerName = findRootContainerName(
+    }
+  }
+
+  // Pass 2: Add child symbols to their file-level root containers
+  for (const enriched of enrichedSymbols) {
+    // Skip if this is already a root container
+    const isFileLevelRoot =
+      !enriched.symbol.containerName ||
+      !symbolsByName.has(enriched.symbol.containerName);
+
+    if (!isFileLevelRoot) {
+      // Find the file-level root container for this symbol
+      const rootContainerName = findFileLevelRootContainer(
         enriched.symbol,
         symbolsByName
       );
       if (rootContainerName && rootContainers.has(rootContainerName)) {
         rootContainers.get(rootContainerName)!.push(enriched);
-      } else {
-        orphanedSymbols.push(enriched);
       }
+      // Note: We no longer collect orphans since all symbols should have
+      // a file-level root (either themselves or an ancestor in the file)
     }
   }
 
-  // Add orphaned symbols to sections if any
-  if (orphanedSymbols.length > 0) {
-    rootContainers.set('__orphaned__', orphanedSymbols);
-  }
-
   // Format each root container and its children
-  for (const [containerName, containerSymbols] of rootContainers) {
-    if (containerName === '__orphaned__') continue; // Skip orphaned marker
-
+  for (const [, containerSymbols] of rootContainers) {
     // Sort by line number within each container
     const sortedSymbols = containerSymbols.sort((a, b) => {
       const lineA = a.symbol.range.start.line;
@@ -273,6 +286,7 @@ async function formatOutlineResults(
     });
 
     let containerContent = '';
+
     for (const enriched of sortedSymbols) {
       const { symbol, signaturePreview, error } = enriched;
 
@@ -284,8 +298,15 @@ async function formatOutlineResults(
       const char = symbol.range.start.character + 1; // Convert to 1-based
       const kind = getSymbolKindName(symbol.kind);
 
+      // Check if this symbol has an external container (not in this file)
+      const hasExternalContainer =
+        symbol.containerName && !symbolsByName.has(symbol.containerName);
+      const containerSuffix = hasExternalContainer
+        ? ` (${symbol.containerName})`
+        : '';
+
       // Base symbol line
-      const symbolLine = `${indent}@${line}:${char} ${kind} - ${symbol.name}`;
+      const symbolLine = `${indent}@${line}:${char} ${kind} - ${symbol.name}${containerSuffix}`;
       containerContent += symbolLine + '\n';
 
       // Add signature preview on new line with backticks if available
@@ -303,9 +324,17 @@ async function formatOutlineResults(
 }
 
 /**
- * Finds the root container name for a symbol by walking up the container chain
+ * Finds the file-level root container for a symbol by walking up the container chain.
+ * Returns the first ancestor container that exists in this file, or null if none found.
+ *
+ * Example hierarchy:
+ * - package "org.example" (not in file)
+ *   - class "App" (in file) <- file-level root
+ *     - method "main" (in file)
+ *
+ * For "main", this returns "App" (the first ancestor in the file)
  */
-function findRootContainerName(
+function findFileLevelRootContainer(
   symbol: FlattenedSymbol,
   symbolsByName: Map<string, FlattenedSymbol>
 ): string | null {
@@ -314,13 +343,26 @@ function findRootContainerName(
 
   while (currentContainer && depth < MAX_CONTAINER_DEPTH) {
     const parentSymbol = symbolsByName.get(currentContainer);
-    if (!parentSymbol || !parentSymbol.containerName) {
-      // Found the root
+
+    if (!parentSymbol) {
+      // Container doesn't exist in this file - we've gone too far
+      return null;
+    }
+
+    // Check if this parent is a file-level root
+    const parentIsFileLevelRoot =
+      !parentSymbol.containerName ||
+      !symbolsByName.has(parentSymbol.containerName);
+
+    if (parentIsFileLevelRoot) {
+      // Found the file-level root
       return currentContainer;
     }
+
+    // Keep walking up
     currentContainer = parentSymbol.containerName;
     depth++;
   }
 
-  return currentContainer ?? null;
+  return null;
 }

@@ -18,8 +18,8 @@ You are both working in the codebase where these tools source code is and using 
 The MCP server provides the following tools:
 
 - Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
-- When discovering prefer **`mcp__symbols__read`** first and start with previewMode: `none` to get a sense of what is in there then if needed increase to `signature` or `expanded` symbols in a given file with different level of details.
-- Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__read`
+- Prefer **`mcp__symbols__outline`** over the Read tool when doing discovery.
+- Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__outline`
 - **`mcp__symbols__completion`**: suggests a list of completions
 - Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
 - Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase
@@ -51,7 +51,7 @@ The MCP server provides the following tools:
 
 ## The 8 MCP Tools (✅ Implemented)
 
-1. **`read`** - Get document symbols with 3-tier preview system (none/signature/expanded)
+1. **`outline`** - Get an outline of document symbols
 2. **`inspect`** - Comprehensive symbol info (hover + all navigation)
 3. **`references`** - Find all uses of a symbol across the codebase
 4. **`completion`** - Code completion suggestions at cursor position
