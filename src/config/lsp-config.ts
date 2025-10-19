@@ -7,9 +7,11 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
+import which from 'which';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
 import { DEFAULT_EXTENSIONS } from './default-extensions.js';
+import { expandEnvVars } from '../utils/env-expansion.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -237,12 +239,12 @@ function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
         name,
         {
           ...lspConfig,
-          command: expandString(lspConfig.command),
+          command: expandEnvVars(lspConfig.command),
           environment: lspConfig.environment
             ? Object.fromEntries(
                 Object.entries(lspConfig.environment).map(([key, value]) => [
                   key,
-                  expandString(value),
+                  expandEnvVars(value),
                 ])
               )
             : undefined,
@@ -270,25 +272,6 @@ function describeShellToken(token: ShellQuoteToken): string {
   }
 
   return String(token);
-}
-
-/**
- * Expand environment variables in a string
- * Supports both $VAR and ${VAR} syntax
- * @param str - String to expand
- */
-function expandString(str: string): string {
-  // Handle regular environment variable expansion
-  return str.replace(
-    /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
-    (match: string, braced: string, simple: string) => {
-      const varName = braced || simple;
-
-      // Handle regular environment variables
-      const value = process.env[varName];
-      return value !== undefined ? value : match;
-    }
-  );
 }
 
 /**
@@ -494,6 +477,17 @@ export function createConfigFromDirectCommand(
   commandName: string,
   commandArgs: string[]
 ): ParsedLspConfig {
+  // Validate that the command exists and is executable
+  try {
+    which.sync(commandName);
+  } catch {
+    throw new Error(
+      `Command not found: ${commandName}\n` +
+        `Please ensure the language server is installed and available in your PATH.\n` +
+        `You can verify this by running: which ${commandName}`
+    );
+  }
+
   // Reconstruct command string from parts
   const command = [commandName, ...commandArgs].join(' ');
 

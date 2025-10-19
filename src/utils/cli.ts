@@ -221,6 +221,11 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
             }
             if (argv.lsp) {
               const availableLsps = listAvailableLsps(argv.config);
+              if (availableLsps.length === 0) {
+                throw new Error(
+                  `No LSP servers configured. Run "symbols config init" to create a configuration file.`
+                );
+              }
               if (!availableLsps.includes(argv.lsp)) {
                 throw new Error(
                   `Unknown LSP server: ${argv.lsp}\nAvailable: ${availableLsps.join(', ')}`
@@ -425,9 +430,7 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
       commandParts = rawArgs.slice(commandStartIndex);
     }
 
-    const [commandName, ...commandArgs] = commandParts;
-
-    if (!commandName) {
+    if (commandParts.length === 0) {
       throw new Error(
         'run command requires a language server command\n' +
           'Examples:\n' +
@@ -437,11 +440,13 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
       );
     }
 
+    const [commandName, ...commandArgs] = commandParts;
+
     return {
       command: 'run',
       workspace: argv.workspace,
       loglevel: argv.loglevel,
-      debug: Boolean(argv.debug),
+      console: Boolean(argv.console),
       directCommand: { commandName, commandArgs },
     } as RunCommandArgs;
   }
@@ -454,7 +459,7 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
       lsp: argv.lsp,
       loglevel: argv.loglevel,
       configPath: argv.config,
-      debug: Boolean(argv.debug),
+      console: Boolean(argv.console),
     } as StartCommandArgs;
   }
 

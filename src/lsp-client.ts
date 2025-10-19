@@ -32,6 +32,7 @@ import { ParsedLspConfig } from './config/lsp-config.js';
 import logger from './utils/logger.js';
 import { createWorkspaceLoader } from './workspace/registry.js';
 import { WorkspaceLoaderStore } from './types.js';
+import { expandEnvVars } from './utils/env-expansion.js';
 
 export function createLspClient(
   workspaceConfig: LspConfig,
@@ -65,25 +66,13 @@ export function createLspClient(
       hasCustomEnv: !!lspConfig.environment,
     });
 
-    // Centralized environment variable substitution and trimming
-    const expandEnvVarsWithCustomEnv = (
-      str: string,
-      environment: NodeJS.ProcessEnv
-    ): string => {
-      return str
-        .trim()
-        .replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, varName: string) => {
-          return environment[varName] || `$${varName}`;
-        });
-    };
-
     // Expand command and args using the expansion environment
-    const processedCommandName = expandEnvVarsWithCustomEnv(
-      lspConfig.commandName,
+    const processedCommandName = expandEnvVars(
+      lspConfig.commandName.trim(),
       expansionEnv
     );
     const processedCommandArgs = lspConfig.commandArgs.map((arg) =>
-      expandEnvVarsWithCustomEnv(arg, expansionEnv)
+      expandEnvVars(arg.trim(), expansionEnv)
     );
 
     // Create clean LSP runtime environment (filters out SYMBOLS_* vars except those in YAML)

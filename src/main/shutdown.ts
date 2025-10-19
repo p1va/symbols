@@ -81,9 +81,7 @@ export function setupShutdown(
         // Exit notification is fire-and-forget, don't wait for it
         // Wrap in try/catch since connection might already be closed
         try {
-          lspClient.connection.sendNotification('exit', null).catch(() => {
-            // Ignore errors
-          });
+          void lspClient.connection.sendNotification('exit', null);
         } catch {
           // Connection already closed, that's fine
           logger.debug('Exit notification failed (connection already closed)');
