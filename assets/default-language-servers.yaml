@@ -62,24 +62,27 @@ language-servers:
   #   # Adjust command with path to LanguageServer.dll
   #   # Don't break lines with \ like you would do in a shell
   #   command: >
-  #     dotnet $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll
+  #     dotnet $SYMBOLS_ROSLYN_PATH/Microsoft.CodeAnalysis.LanguageServer.dll
   #       --logLevel=Information
-  #       --extensionLogDirectory=$HOME/.csharp-lsp/logs
+  #       --extensionLogDirectory=$SYMBOLS_ROSLYN_PATH/logs
   #       --stdio
   #   workspace_loader: 'roslyn'
   #   workspace_files:
   #     - '*.sln'
   #     - '*.csproj'
+  #   environment:
+  #     # Adjust these to your machine
+  #     # Env vars with the SYMBOLS_ prefix aren't propagated to LSP
+  #     SYMBOLS_ROSLYN_PATH: $HOME/.csharp-lsp
   #   diagnostics:
   #     strategy: 'pull'
 
   # java:
-  #   # Adjust command with path to LanguageServer.dll
   #   # Don't break lines with \ like you would do in a shell
   #   # SYMBOLS_WORKSPACE_NAME is an env var containing the name of the workspace folder to create
   #   # unique caches for each workspace
   #   command: >
-  #     $HOME/.java-lsp/jdtls/bin/jdtls
+  #     SYMBOLS_JDTLS_PATHs/bin/jdtls
   #       -configuration $HOME/.cache/jdtls/config
   #       -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
   #       --jvm-arg=-Dlog.protocol=true
@@ -87,6 +90,10 @@ language-servers:
   #   workspace_files:
   #     - 'build.gradle'
   #     - 'gradlew'
+  #   environment:
+  #     # Adjust these to your machine
+  #     # Env vars with the SYMBOLS_ prefix aren't propagated to LSP
+  #     SYMBOLS_JDTLS_PATH: $HOME/.java-lsp/jdtls
   #   diagnostics:
   #     strategy: 'push'
   #     wait_timeout_ms: 2000
@@ -113,6 +120,7 @@ language-servers:
   #   environment:
   #     # Adjust these to your machine
   #     VS_CODE_EXTENSIONS: $HOME/.vscode/extensions
+  #     # VS Code C# Dev Kit updates will remove previous versions
   #     MS_DOTNET_TOOLS_VERSION: '2.93.22-linux-x64'
   #     ROSLYN_LOGS: $HOME/.config/Code/logs/symbols-nodejs
 

