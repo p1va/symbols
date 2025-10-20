@@ -19,8 +19,7 @@ export function registerSearchTool(
     'search',
     {
       title: 'Search',
-      description:
-        'Searches workspace symbols by name or pattern. Not a text search.',
+      description: 'Searches workspace symbols by name',
       inputSchema: searchSchema,
     },
     async (request) => {

@@ -18,7 +18,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Defines CLI schema, workspace/path validation, and log-level parsing.
   - Resolves combined CLI/env configuration and reports available LSPs.
 - `src/config/lsp-config.ts`
-  - Loads `symbols.yaml`, merges workspace overrides, and expands environment variables.
+  - Loads `language-servers.yaml`, merges workspace overrides, and expands environment variables.
   - Exposes helpers for selecting/configuring LSPs per workspace or file extension.
 - `src/utils/first-run.ts`
   - Detects first-run scenarios and scaffolds a default configuration file when needed.
@@ -82,8 +82,8 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Registers available workspace loaders and exposes helpers to query loader availability.
 - `src/workspace/loaders/default.ts`
   - Minimal loader that immediately reports readiness for general workspaces.
-- `src/workspace/loaders/csharp.ts`
-  - Detects `.sln`/project files, initializes C#-specific workspace metadata, and reacts to server notifications.
+- `src/workspace/loaders/roslyn.ts`
+  - Detects `.sln`/project files, initializes C#-specific workspace metadata (via Roslyn), and reacts to server notifications.
 
 ## Types & Utilities
 

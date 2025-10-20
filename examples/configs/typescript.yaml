@@ -1,16 +1,17 @@
-lsps:
+language-servers:
   typescript:
-    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
+    command: npx -y typescript-language-server --stdio
     extensions:
-      '.js': 'javascript'
-      '.mjs': 'javascript'
-      '.cjs': 'javascript'
-      '.jsx': 'javascriptreact'
-      '.ts': 'typescript'
-      '.mts': 'typescript'
-      '.cts': 'typescript'
-      '.tsx': 'typescriptreact'
-      '.json': 'json'
+      .js: javascript
+      .mjs: javascript
+      .cjs: javascript
+      .jsx: javascriptreact
+      .ts: typescript
+      .mts: typescript
+      .cts: typescript
+      .tsx: typescriptreact
+      .json: json
+      .jsonc: json
     workspace_files:
       - 'package.json'
       - 'tsconfig.json'

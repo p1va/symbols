@@ -2,11 +2,15 @@
   "mcpServers": {
     "symbols": {
       "command": "node",
-      "args": ["dist/index.js"]
-    },
-    "symbols-prod": {
-      "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest"]
+      "args": [
+        "dist/index.js",
+        "run",
+        "npx","-y", "typescript-language-server","--stdio"
+      ],
+      "env": { 
+        "SYMBOLS_PRELOAD_FILES": "src/index.ts;",
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
+      }
     }
   }
 }

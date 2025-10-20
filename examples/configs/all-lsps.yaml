@@ -1,9 +1,9 @@
-lsps:
+# Comprehensive configuration including all supported Language Servers
+# This includes TypeScript, Python, Go, Rust, C#, and Java configurations
+language-servers:
   # Python using Pyright
   pyright:
-    command: ${LOCAL_NODE_MODULE}/pyright:pyright-langserver --stdio
-    extensions:
-      '.py': 'python'
+    command: pyright-langserver --stdio
     workspace_files:
       - 'pyproject.toml'
       - 'requirements.txt'
@@ -14,17 +14,7 @@ lsps:
 
   # TypeScript/JavaScript
   typescript:
-    command: ${LOCAL_NODE_MODULE}/typescript-language-server --stdio
-    extensions:
-      '.js': 'javascript'
-      '.mjs': 'javascript'
-      '.cjs': 'javascript'
-      '.jsx': 'javascriptreact'
-      '.ts': 'typescript'
-      '.mts': 'typescript'
-      '.cts': 'typescript'
-      '.tsx': 'typescriptreact'
-      '.json': 'json'
+    command: typescript-language-server --stdio
     workspace_files:
       - 'package.json'
       - 'tsconfig.json'
@@ -40,8 +30,6 @@ lsps:
   # Go
   go:
     command: gopls
-    extensions:
-      '.go': 'go'
     workspace_files:
       - 'go.mod'
       - 'go.work'
@@ -56,8 +44,6 @@ lsps:
   # Rust
   rust:
     command: 'rust-analyzer'
-    extensions:
-      '.rs': 'rust'
     workspace_files:
       - 'Cargo.toml'
       - 'Cargo.lock'
@@ -71,9 +57,7 @@ lsps:
         --logLevel=Information
         --extensionLogDirectory=$HOME/.csharp-lsp/logs
         --stdio
-    workspace_loader: 'csharp'
-    extensions:
-      '.cs': 'csharp'
+    workspace_loader: 'roslyn'
     workspace_files:
       - '*.sln'
       - '*.csproj'
@@ -95,10 +79,8 @@ lsps:
         --extension $HOME/.vscode/extensions/ms-dotnettools.csdevkit-1.50.20-linux-x64/components/VisualStudio.Conversations/node_modules/@microsoft/visualstudio.copilot.roslyn.languageserver/Microsoft.VisualStudio.Copilot.Roslyn.LanguageServer.dll
         --extensionLogDirectory $HOME/.config/Code/logs/2025/window1/exthost/ms-dotnettools.csharp
         --stdio
-    workspace_loader: 'csharp'
+    workspace_loader: 'roslyn'
     # This setup should also support razor although mapping needs adding
-    extensions:
-      '.cs': 'csharp'
     workspace_files:
       - '*.sln'
       - '*.csproj'
@@ -113,8 +95,6 @@ lsps:
         -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
         --jvm-arg=-Dlog.protocol=true
         --jvm-arg=-Dlog.level=ALL
-    extensions:
-      '.java': 'java'
     workspace_files:
       - 'build.gradle'
       - 'gradlew'

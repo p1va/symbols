@@ -49,7 +49,7 @@ export abstract class LanguageTestSuite {
     const absoluteWorkspacePath = path.resolve(this.config.testProjectPath);
     const configPath = path.resolve(
       path.dirname(this.config.testProjectPath),
-      'symbols.yaml'
+      'language-servers.yaml'
     );
 
     // Get environment-appropriate command (tsx for local dev, node dist/ for CI)

@@ -6,10 +6,12 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { z } from 'zod';
-import { resolveBinCommand } from '../utils/bin-resolver.js';
 import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
+import which from 'which';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
+import { DEFAULT_EXTENSIONS } from './default-extensions.js';
+import { expandEnvVars } from '../utils/env-expansion.js';
 
 // Zod schemas for validation
 const DiagnosticsConfigSchema = z.object({
@@ -23,7 +25,7 @@ const SymbolsConfigSchema = z.object({
 
 const LspConfigSchema = z.object({
   command: z.string(),
-  extensions: z.record(z.string(), z.string()), // file extension -> language ID
+  extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID, merged with DEFAULT_EXTENSIONS
   workspace_files: z.array(z.string()).default([]),
   preload_files: z.array(z.string()).default([]), // files to open during initialization
   diagnostics: DiagnosticsConfigSchema.default({
@@ -32,11 +34,11 @@ const LspConfigSchema = z.object({
   }),
   symbols: SymbolsConfigSchema.default({}),
   environment: z.record(z.string(), z.string()).optional(),
-  workspace_loader: z.string().optional(), // workspace loader type ('default', 'csharp', etc.)
+  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', etc.)
 });
 
 const ConfigFileSchema = z.object({
-  lsps: z.record(z.string(), LspConfigSchema),
+  'language-servers': z.record(z.string(), LspConfigSchema),
 });
 
 // TypeScript interfaces derived from schemas
@@ -82,7 +84,7 @@ export interface ParsedLspConfig extends Omit<LspConfig, 'symbols'> {
  * Empty default configuration - users must provide configurations via YAML files
  */
 const DEFAULT_CONFIG: ConfigFile = {
-  lsps: {},
+  'language-servers': {},
 };
 
 /**
@@ -98,10 +100,8 @@ export function loadLspConfig(
   // Try different config locations with priority: CLI > workspace > repo > cwd > home
   const workspaceConfigPaths = workspacePath
     ? [
-        path.join(workspacePath, 'symbols.yaml'),
-        path.join(workspacePath, 'symbols.yml'),
-        path.join(workspacePath, 'lsps.yaml'), // Backward compatibility
-        path.join(workspacePath, 'lsps.yml'), // Backward compatibility
+        path.join(workspacePath, 'language-servers.yaml'),
+        path.join(workspacePath, 'language-servers.yml'),
       ]
     : [];
 
@@ -129,66 +129,36 @@ export function loadLspConfig(
     })),
     // P3: Repo folder YAML files (relative to cwd)
     {
-      path: 'symbols.yaml',
+      path: 'language-servers.yaml',
       type: 'repo-cwd',
       description: 'Found in current directory',
     },
     {
-      path: 'symbols.yml',
+      path: 'language-servers.yml',
       type: 'repo-cwd',
       description: 'Found in current directory',
-    },
-    {
-      path: 'lsps.yaml',
-      type: 'repo-cwd',
-      description: 'Found in current directory (legacy)',
-    },
-    {
-      path: 'lsps.yml',
-      type: 'repo-cwd',
-      description: 'Found in current directory (legacy)',
     },
     // P4: Current working directory (explicit paths)
     {
-      path: path.join(process.cwd(), 'symbols.yaml'),
+      path: path.join(process.cwd(), 'language-servers.yaml'),
       type: 'explicit-cwd',
       description: `Found in current working directory (${process.cwd()})`,
     },
     {
-      path: path.join(process.cwd(), 'symbols.yml'),
+      path: path.join(process.cwd(), 'language-servers.yml'),
       type: 'explicit-cwd',
       description: `Found in current working directory (${process.cwd()})`,
-    },
-    {
-      path: path.join(process.cwd(), 'lsps.yaml'),
-      type: 'explicit-cwd',
-      description: `Found in current working directory (${process.cwd()}) (legacy)`,
-    },
-    {
-      path: path.join(process.cwd(), 'lsps.yml'),
-      type: 'explicit-cwd',
-      description: `Found in current working directory (${process.cwd()}) (legacy)`,
     },
     // P5: OS-specific config directory (lowest priority)
     {
-      path: path.join(paths.config, 'symbols.yaml'),
+      path: path.join(paths.config, 'language-servers.yaml'),
       type: 'shared-config',
       description: `Found in shared config directory (${paths.config})`,
     },
     {
-      path: path.join(paths.config, 'symbols.yml'),
+      path: path.join(paths.config, 'language-servers.yml'),
       type: 'shared-config',
       description: `Found in shared config directory (${paths.config})`,
-    },
-    {
-      path: path.join(paths.config, 'lsps.yaml'),
-      type: 'shared-config',
-      description: `Found in shared config directory (${paths.config}) (legacy)`,
-    },
-    {
-      path: path.join(paths.config, 'lsps.yml'),
-      type: 'shared-config',
-      description: `Found in shared config directory (${paths.config}) (legacy)`,
     },
   ];
 
@@ -260,26 +230,46 @@ export function loadLspConfig(
  * Expand environment variables in configuration values
  * Supports $VAR and ${VAR} syntax
  * @param config - Configuration to expand
+ *
+ * Expansion order:
+ * 1. Expand environment values using process.env
+ * 2. Merge expanded environment with process.env
+ * 3. Expand command using merged environment
+ *
+ * This allows command to reference both system env vars AND YAML environment vars
  */
 function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
   return {
     ...config,
-    lsps: Object.fromEntries(
-      Object.entries(config.lsps).map(([name, lspConfig]) => [
-        name,
-        {
-          ...lspConfig,
-          command: expandString(lspConfig.command),
-          environment: lspConfig.environment
-            ? Object.fromEntries(
-                Object.entries(lspConfig.environment).map(([key, value]) => [
-                  key,
-                  expandString(value),
-                ])
-              )
-            : undefined,
-        },
-      ])
+    'language-servers': Object.fromEntries(
+      Object.entries(config['language-servers']).map(([name, lspConfig]) => {
+        // Step 1: Expand environment values using system env vars
+        const expandedEnvironment = lspConfig.environment
+          ? Object.fromEntries(
+              Object.entries(lspConfig.environment).map(([key, value]) => [
+                key,
+                expandEnvVars(value, process.env),
+              ])
+            )
+          : undefined;
+
+        // Step 2: Create merged environment for command expansion
+        const mergedEnv = expandedEnvironment
+          ? { ...process.env, ...expandedEnvironment }
+          : process.env;
+
+        // Step 3: Expand command using merged environment
+        const expandedCommand = expandEnvVars(lspConfig.command, mergedEnv);
+
+        return [
+          name,
+          {
+            ...lspConfig,
+            command: expandedCommand,
+            environment: expandedEnvironment,
+          },
+        ];
+      })
     ),
   };
 }
@@ -305,45 +295,6 @@ function describeShellToken(token: ShellQuoteToken): string {
 }
 
 /**
- * Expand environment variables in a string
- * Supports both $VAR and ${VAR} syntax
- * @param str - String to expand
- */
-function expandString(str: string): string {
-  // Handle LOCAL_NODE_MODULE expansion with syntax ${LOCAL_NODE_MODULE}/package-name
-  // This resolves from the CLI's own node_modules, not the workspace
-  str = str.replace(
-    /\$\{LOCAL_NODE_MODULE\}\/([^}\s]+)/g,
-    (match: string, packageSpec: string) => {
-      const [pkg, executable] = packageSpec.includes(':')
-        ? packageSpec.split(':', 2)
-        : [packageSpec, undefined];
-
-      try {
-        const { commandName, commandArgs } = resolveBinCommand(pkg, executable);
-        return [commandName, ...commandArgs].join(' ');
-      } catch (error) {
-        throw new Error(
-          `Failed to resolve local node module ${packageSpec}: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-    }
-  );
-
-  // Handle regular environment variable expansion
-  return str.replace(
-    /\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
-    (match: string, braced: string, simple: string) => {
-      const varName = braced || simple;
-
-      // Handle regular environment variables
-      const value = process.env[varName];
-      return value !== undefined ? value : match;
-    }
-  );
-}
-
-/**
  * Get LSP configuration for a specific language server
  */
 export function getLspConfig(
@@ -352,13 +303,56 @@ export function getLspConfig(
   workspacePath?: string
 ): ParsedLspConfig | null {
   const { config } = loadLspConfig(configPath, workspacePath);
-  const lspConfig = config.lsps[lspName];
+  const lspConfig = config['language-servers'][lspName];
 
   if (!lspConfig) {
     return null;
   }
 
+  // Apply environment variable overrides (SYMBOLS_* prefix)
+  // Precedence: ENV vars > YAML config > Zod defaults
+
+  // Override workspace_loader if SYMBOLS_WORKSPACE_LOADER is set
+  if (process.env.SYMBOLS_WORKSPACE_LOADER) {
+    lspConfig.workspace_loader = process.env.SYMBOLS_WORKSPACE_LOADER;
+  }
+
+  // Override diagnostics.strategy if SYMBOLS_DIAGNOSTICS_STRATEGY is set
+  if (process.env.SYMBOLS_DIAGNOSTICS_STRATEGY) {
+    const strategy = process.env.SYMBOLS_DIAGNOSTICS_STRATEGY;
+    if (strategy !== 'push' && strategy !== 'pull') {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_STRATEGY: ${strategy}. Must be 'push' or 'pull'.`
+      );
+    }
+    lspConfig.diagnostics.strategy = strategy;
+  }
+
+  // Override diagnostics.wait_timeout_ms if SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT is set
+  if (process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT) {
+    const timeout = parseInt(process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT, 10);
+    if (isNaN(timeout) || timeout < 100 || timeout > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT: ${process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT}. Must be a number between 100 and 30000.`
+      );
+    }
+    lspConfig.diagnostics.wait_timeout_ms = timeout;
+  }
+
+  // Override preload_files if SYMBOLS_PRELOAD_FILES is set
+  // Uses OS-specific path delimiter (: on Unix, ; on Windows)
+  if (process.env.SYMBOLS_PRELOAD_FILES) {
+    const preloadFiles = process.env.SYMBOLS_PRELOAD_FILES.split(
+      path.delimiter
+    ).filter((file) => file.trim().length > 0);
+
+    lspConfig.preload_files = preloadFiles;
+  }
+
   // Parse command into name and args (respecting quoted segments and spaces)
+  // SECURITY NOTE: Commands are parsed from configuration files using shell-quote.
+  // Only load configuration files from trusted sources, as malicious configs could
+  // execute arbitrary commands. Never load configs from untrusted or user-uploaded sources.
   const parsedParts: ShellQuoteToken[] = shellParse(lspConfig.command.trim());
   const commandSegments: string[] = [];
 
@@ -386,8 +380,15 @@ export function getLspConfig(
     );
   }
 
+  // Merge user extensions with defaults (user extensions override defaults)
+  const extensions = {
+    ...DEFAULT_EXTENSIONS,
+    ...lspConfig.extensions,
+  };
+
   return {
     ...lspConfig,
+    extensions,
     symbols,
     name: lspName,
     commandName,
@@ -407,7 +408,9 @@ export function getLspConfigForFile(
   const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find LSP that handles this file extension
-  for (const [lspName, lspConfig] of Object.entries(config.lsps)) {
+  for (const [lspName, lspConfig] of Object.entries(
+    config['language-servers']
+  )) {
     if (lspConfig.extensions[extension]) {
       return getLspConfig(lspName, configPath, workspacePath);
     }
@@ -418,24 +421,26 @@ export function getLspConfigForFile(
 
 /**
  * Get language ID for a file based on its extension
+ * Returns 'plaintext' if no match is found
  */
 export function getLanguageId(
   filePath: string,
   configPath?: string,
   workspacePath?: string
-): string | null {
+): string {
   const extension = path.extname(filePath);
   const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find language ID from LSP configuration
-  for (const lspConfig of Object.values(config.lsps)) {
+  for (const lspConfig of Object.values(config['language-servers'])) {
     const languageId = lspConfig.extensions[extension];
     if (languageId) {
       return languageId;
     }
   }
 
-  return null;
+  // Default to plaintext if no match found
+  return 'plaintext';
 }
 
 /**
@@ -446,7 +451,7 @@ export function listAvailableLsps(
   workspacePath?: string
 ): string[] {
   const { config } = loadLspConfig(configPath, workspacePath);
-  return Object.keys(config.lsps);
+  return Object.keys(config['language-servers']);
 }
 
 /**
@@ -463,7 +468,9 @@ export function autoDetectLsp(
     const workspaceFiles = fs.readdirSync(workspacePath);
 
     // Check each LSP configuration for matching workspace files
-    for (const [lspName, lspConfig] of Object.entries(config.lsps)) {
+    for (const [lspName, lspConfig] of Object.entries(
+      config['language-servers']
+    )) {
       for (const workspaceFile of lspConfig.workspace_files) {
         // Handle glob patterns (basic support for * wildcards)
         if (workspaceFile.includes('*')) {
@@ -487,4 +494,80 @@ export function autoDetectLsp(
     // If we can't read the directory, return null
     return null;
   }
+}
+
+/**
+ * Create a minimal ParsedLspConfig from direct command (-- mode)
+ * Uses default extension mappings - works with any LSP server
+ */
+export function createConfigFromDirectCommand(
+  commandName: string,
+  commandArgs: string[]
+): ParsedLspConfig {
+  // Validate that the command exists and is executable
+  try {
+    which.sync(commandName);
+  } catch {
+    throw new Error(
+      `Command not found: ${commandName}\n` +
+        `Please ensure the language server is installed and available in your PATH.\n` +
+        `You can verify this by running: which ${commandName}`
+    );
+  }
+
+  // Reconstruct command string from parts
+  const command = [commandName, ...commandArgs].join(' ');
+
+  // Build minimal config with default extensions
+  // The LSP will handle only the files it recognizes
+  const config: ParsedLspConfig = {
+    name: 'direct-command',
+    command,
+    commandName,
+    commandArgs,
+    extensions: DEFAULT_EXTENSIONS, // Default mappings - works for all LSPs
+    workspace_files: [], // Empty - not used in direct mode
+    preload_files: [], // Empty by default - can be overridden by env var
+    diagnostics: {
+      strategy: 'push',
+      wait_timeout_ms: 2000,
+    },
+    symbols: {},
+    workspace_loader: undefined,
+    environment: undefined,
+  };
+
+  // Apply environment variable overrides (same as regular mode)
+  if (process.env.SYMBOLS_WORKSPACE_LOADER) {
+    config.workspace_loader = process.env.SYMBOLS_WORKSPACE_LOADER;
+  }
+
+  if (process.env.SYMBOLS_DIAGNOSTICS_STRATEGY) {
+    const strategy = process.env.SYMBOLS_DIAGNOSTICS_STRATEGY;
+    if (strategy !== 'push' && strategy !== 'pull') {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_STRATEGY: ${strategy}. Must be 'push' or 'pull'.`
+      );
+    }
+    config.diagnostics.strategy = strategy;
+  }
+
+  if (process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT) {
+    const timeout = parseInt(process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT, 10);
+    if (isNaN(timeout) || timeout < 100 || timeout > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT: ${process.env.SYMBOLS_DIAGNOSTICS_WAIT_TIMEOUT}. Must be a number between 100 and 30000.`
+      );
+    }
+    config.diagnostics.wait_timeout_ms = timeout;
+  }
+
+  if (process.env.SYMBOLS_PRELOAD_FILES) {
+    const preloadFiles = process.env.SYMBOLS_PRELOAD_FILES.split(
+      path.delimiter
+    ).filter((file) => file.trim().length > 0);
+    config.preload_files = preloadFiles;
+  }
+
+  return config;
 }

@@ -1,4 +1,4 @@
-lsps:
+language-servers:
   java:
     command: >
       $HOME/.java-lsp/jdtls/bin/jdtls
@@ -6,8 +6,6 @@ lsps:
         -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
         --jvm-arg=-Dlog.protocol=true
         --jvm-arg=-Dlog.level=ALL
-    extensions:
-      '.java': 'java'
     workspace_files:
       - 'build.gradle'
       - 'gradlew'

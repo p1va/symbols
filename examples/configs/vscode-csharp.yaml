@@ -1,24 +1,24 @@
-lsps:
-  vscode-csharp:
+language-servers:
+  vscode-roslyn:
     command: >
-      $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.roslyn/Microsoft.CodeAnalysis.LanguageServer
+      $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.roslyn/Microsoft.CodeAnalysis.LanguageServer
         --logLevel Information
-        --razorSourceGenerator $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.razor/Microsoft.CodeAnalysis.Razor.Compiler.dll
-        --razorDesignTimePath $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.razor/Targets/Microsoft.NET.Sdk.Razor.DesignTime.targets
-        --starredCompletionComponentPath $HOME/.vscode/extensions/ms-dotnettools.vscodeintellicode-csharp-2.2.3-linux-x64/components/starred-suggestions/platforms/linux-x64/node_modules/@vsintellicode/starred-suggestions-csharp.linux-x64
-        --devKitDependencyPath $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.roslynDevKit/Microsoft.VisualStudio.LanguageServices.DevKit.dll
-        --extension $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.razorExtension/Microsoft.VisualStudioCode.RazorExtension.dll
-        --extension $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.xamlTools/Microsoft.VisualStudio.DesignTools.CodeAnalysis.dll
-        --extension $HOME/.vscode/extensions/ms-dotnettools.csharp-2.87.31-linux-x64/.xamlTools/Microsoft.VisualStudio.DesignTools.CodeAnalysis.Diagnostics.dll
-        --extension $HOME/.vscode/extensions/ms-dotnettools.csdevkit-1.50.20-linux-x64/components/VisualStudio.Conversations/node_modules/@microsoft/visualstudio.copilot.roslyn.languageserver/Microsoft.VisualStudio.Copilot.Roslyn.LanguageServer.dll
-        --extensionLogDirectory $HOME/.config/Code/logs/2025/window1/exthost/ms-dotnettools.csharp
+        --razorSourceGenerator $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.razor/Microsoft.CodeAnalysis.Razor.Compiler.dll
+        --razorDesignTimePath $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.razor/Targets/Microsoft.NET.Sdk.Razor.DesignTime.targets
+        --starredCompletionComponentPath $VS_CODE_EXTENSIONS/ms-dotnettools.vscodeintellicode-csharp-2.2.3-linux-x64/components/starred-suggestions/platforms/linux-x64/node_modules/@vsintellicode/starred-suggestions-csharp.linux-x64
+        --devKitDependencyPath $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.roslynDevKit/Microsoft.VisualStudio.LanguageServices.DevKit.dll
+        --extension $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.razorExtension/Microsoft.VisualStudioCode.RazorExtension.dll
+        --extension $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.xamlTools/Microsoft.VisualStudio.DesignTools.CodeAnalysis.dll
+        --extension $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.xamlTools/Microsoft.VisualStudio.DesignTools.CodeAnalysis.Diagnostics.dll
+        --extensionLogDirectory $ROSLYN_LOGS
         --stdio
-    workspace_loader: 'csharp'
-    # This setup should also support razor although mapping needs adding
-    extensions:
-      '.cs': 'csharp'
+    workspace_loader: 'roslyn'
     workspace_files:
       - '*.sln'
       - '*.csproj'
     diagnostics:
       strategy: 'pull'
+    environment:
+      VS_CODE_EXTENSIONS: $HOME/.vscode/extensions
+      MS_DOTNET_TOOLS_VERSION: '2.93.22-linux-x64'
+      ROSLYN_LOGS: $HOME/.config/Code/logs/symbols-nodejs

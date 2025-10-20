@@ -22,7 +22,7 @@ export function registerInspectTool(
     {
       title: 'Inspect',
       description:
-        'Inspects a symbol (either defined in the codebase or imported from a library or framework) and returns documentation (often including signature info), code locations like definition, implementation, type declaration. IMPORTANT: As a follow-up use the read tool present on this MCP server on the locations to quickly get a sense of their outline',
+        'Inspects a symbol (either defined in the codebase or imported from a library or framework) and returns documentation, signature info, code locations like definition, implementation, type declaration. IMPORTANT: As a follow-up consider using the inspect tool present on this MCP server for further discovery',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {
