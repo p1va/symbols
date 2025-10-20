@@ -24,7 +24,7 @@ export function registerOutlineTool(
     {
       title: 'Outline',
       description:
-        "Get hierarchical symbol outline of a file's structure. Shows symbol names, types, and locations. Use preview: true to include code snippets from declarations.",
+        'Get hierarchical outline of code symbols in a file. Shows names, types, and locations and a code snippet when preview: true',
       inputSchema: fileSchema,
     },
     async (request) => {
