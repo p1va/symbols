@@ -387,7 +387,7 @@ export async function main(): Promise<void> {
   if (cliArgs.command === 'config') {
     const configArgs = cliArgs as ConfigCommandArgs;
     if (configArgs.subcommandArgs.subcommand === 'init') {
-      await handleConfigInit(configArgs.subcommandArgs);
+      handleConfigInit(configArgs.subcommandArgs);
       process.exit(0);
     } else if (configArgs.subcommandArgs.subcommand === 'show') {
       handleConfigShow(configArgs.subcommandArgs);

@@ -6,6 +6,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 import * as yaml from 'js-yaml';
 import logger from './logger.js';
 import { listAvailableLsps, loadLspConfig } from '../config/lsp-config.js';
@@ -567,10 +568,7 @@ export function resolveRunConfig(cliArgs: RunCommandArgs): {
 /**
  * Initialize a new configuration file (config init subcommand)
  */
-export async function handleConfigInit(args: ConfigInitArgs): Promise<void> {
-  const { createRequire } = await import('node:module');
-  const req = createRequire(import.meta.url);
-
+export function handleConfigInit(args: ConfigInitArgs): void {
   try {
     let configPath: string;
     let configDir: string;
@@ -600,8 +598,11 @@ export async function handleConfigInit(args: ConfigInitArgs): Promise<void> {
     }
 
     // Read the default language servers configuration
-    const defaultConfigPath = req.resolve(
-      '@p1va/symbols/assets/default-language-servers.yaml'
+    // Use relative path from current module for better reliability across different installation contexts
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const defaultConfigPath = path.join(
+      path.dirname(currentFilePath),
+      '../../assets/default-language-servers.yaml'
     );
     const templateContent = fs.readFileSync(defaultConfigPath, 'utf8');
 
