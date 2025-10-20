@@ -82,7 +82,7 @@ language-servers:
   #   # SYMBOLS_WORKSPACE_NAME is an env var containing the name of the workspace folder to create
   #   # unique caches for each workspace
   #   command: >
-  #     SYMBOLS_JDTLS_PATHs/bin/jdtls
+  #     SYMBOLS_JDTLS_PATH/bin/jdtls
   #       -configuration $HOME/.cache/jdtls/config
   #       -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
   #       --jvm-arg=-Dlog.protocol=true
