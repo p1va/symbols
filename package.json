@@ -2,7 +2,7 @@
   "author": "p1va",
   "name": "@p1va/symbols",
   "mcpName": "io.github.p1va/symbols",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "MCP server to read, inspect and troubleshoot codebase symbols",
   "keywords": [
     "mcp",
