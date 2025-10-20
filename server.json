@@ -1,17 +1,16 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.github.p1va/symbols",
-  "description": "MCP server to read, inspect and troubleshoot codebase symbols",
-  "status": "active",
+  "title": "Symbols MCP",
+  "description": "Read, inspect and navigate codebase symbols by connecting to a Language Server",
+  "version": "{{VERSION}}",
   "repository": {
     "url": "https://github.com/p1va/symbols",
     "source": "github"
   },
-  "version": "{{VERSION}}",
   "packages": [
     {
-      "registry_type": "npm",
-      "registry_base_url": "https://registry.npmjs.org",
+      "registryType": "npm",
       "identifier": "@p1va/symbols",
       "version": "{{VERSION}}",
       "transport": {
