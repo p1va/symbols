@@ -36,8 +36,8 @@ Introduce three top-level subcommands with clear responsibilities:
 
 ### Configuration Resolution Order
 1. Command-line specified config (`--config`)
-2. Local workspace config (`./symbols.yaml` or `symbols.yaml` in `--workspace`)
-3. Global config (`~/.config/symbols/config.yaml`)
+2. Local workspace config (`./language-servers.yaml` or `language-servers.yaml` in `--workspace`)
+3. Global config (`~/.config/symbols/language-servers.yaml`)
 4. Built-in defaults with auto-detection
 
 ### Flag Organization
@@ -67,8 +67,8 @@ symbols
 - No separate templates (minimal, typescript, python, etc.)
 
 ### Options
-- `--local`: Create `./symbols.yaml` in current directory (default)
-- `--global`: Create `~/.config/symbols/config.yaml`
+- `--local`: Create `./language-servers.yaml` in current directory (default)
+- `--global`: Create `~/.config/symbols/language-servers.yaml`
 - `--workspace <path>`: Target directory for local config
 - `--force`: Overwrite existing config file
 

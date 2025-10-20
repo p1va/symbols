@@ -144,7 +144,7 @@ jobs:
         run: pnpm build
 
       #- name: Try running CLI
-      #  run: node dist/index.js --config test/integration/languages/csharp/symbols.yaml --workspace test/integration/languages/csharp/test-project
+      #  run: node dist/index.js --config test/integration/languages/csharp/language-servers.yaml --workspace test/integration/languages/csharp/test-project
       #  timeout-minutes: 1
 
       - name: 🟦 Run C# integration tests

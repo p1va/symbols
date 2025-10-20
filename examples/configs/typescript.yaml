@@ -1,6 +1,6 @@
 language-servers:
   typescript:
-    command: typescript-language-server --stdio
+    command: npx -y typescript-language-server --stdio
     extensions:
       .js: javascript
       .mjs: javascript

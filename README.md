@@ -16,11 +16,8 @@ The server offers a minimal toolset intended to be simple to use and light on th
 
 ### Available Tools
 
-- **`outline`**: returns a concise outline of code symbols in a given file. Either compact or with a small preview
-- **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, NuGet, ... )
-  - any documentation and signature details
-  - symbol declaration location with code preview
-  - symbol implementation location with code preview
+- **`outline`**: returns an outline of code symbols in a file. Either compact or with a small code snippet
+- **`inspect`**: returns docs, signature, declaration and implementation locations for a symbol. For local and third-party ones (e.g. npm, NuGet, ... )
 - **`search`**: returns matching symbols across the codebase
 - **`references`**: finds all references of a symbol across the codebase
 - **`rename`**: renames all references of a symbol across the codebase
@@ -264,14 +261,14 @@ $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
       "args": [
         "-y", "@p1va/symbols@latest", "run",
         "-w", "optional/path/to/workspace",
-        "dotnet", "$SYMBOLS_CSHARP_LSP/Microsoft.CodeAnalysis.LanguageServer.dll",
+        "dotnet", "$SYMBOLS_ROSLYN_PATH/Microsoft.CodeAnalysis.LanguageServer.dll",
         "--logLevel=Information",
-        "--extensionLogDirectory=$SYMBOLS_CSHARP_LSP/logs",
+        "--extensionLogDirectory=$SYMBOLS_ROSLYN_PATH/logs",
         "--stdio"
       ],
       "env": {
         "SYMBOLS_WORKSPACE_LOADER": "roslyn",
-        "SYMBOLS_CSHARP_LSP": "$HOME/.csharp-lsp",
+        "SYMBOLS_ROSLYN_PATH": "$HOME/.csharp-lsp",
       }
     }
   }
@@ -450,14 +447,20 @@ rust-analyzer --version
     <img src="https://img.shields.io/badge/-ED8B00?logo=openjdk&logoColor=white" valign="middle">
   </picture>
   &nbsp;
-  <b>Jdt.ls</b>
+  <b>Eclipse JDT</b>
 </summary>
 
-### jdt.ls
+### Eclipse JDT Language Server
 
 #### Installation
 
-x
+Follow installation instructions on the [Project's GitHub README](https://github.com/eclipse-jdtls/eclipse.jdt.ls?tab=readme-ov-file#installation)
+
+#### Verify Installation
+
+```sh
+$SYMBOLS_JDTLS_PATH/bin/jdtls --help
+```
 
 #### Configuration
 
@@ -469,13 +472,13 @@ x
       "args": [
         "-y", "@p1va/symbols@latest", "run",
         "-w", "optional/path/to/workspace",
-        "$SYMBOLS_JAVA_LSP/jdtls/bin/jdtls",
+        "$SYMBOLS_JDTLS_PATH/bin/jdtls",
         "-configuration", "$HOME/.cache/jdtls/config",
-        "-data", "$HOME/.cache/jdtls/workspace/<<unique workspace name>>"
+        "-data", "$HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME"
       ],
       "env": {
         "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
-        "SYMBOLS_JAVA_LSP": "$HOME/.java-lsp"
+        "SYMBOLS_JDTLS_PATH": "$HOME/.java-lsp/jdtls",
       }
     }
   }

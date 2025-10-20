@@ -18,7 +18,7 @@ This document summarizes the overall structure of the Symbols MCP server codebas
   - Defines CLI schema, workspace/path validation, and log-level parsing.
   - Resolves combined CLI/env configuration and reports available LSPs.
 - `src/config/lsp-config.ts`
-  - Loads `symbols.yaml`, merges workspace overrides, and expands environment variables.
+  - Loads `language-servers.yaml`, merges workspace overrides, and expands environment variables.
   - Exposes helpers for selecting/configuring LSPs per workspace or file extension.
 - `src/utils/first-run.ts`
   - Detects first-run scenarios and scaffolds a default configuration file when needed.
