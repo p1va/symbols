@@ -5,11 +5,7 @@
       "args": [
         "dist/index.js",
         "run",
-        "--",
-        "npx",
-        "-y",
-        "typescript-language-server",
-        "--stdio"
+        "npx","-y", "typescript-language-server","--stdio"
       ],
       "env": { 
         "SYMBOLS_PRELOAD_FILES": "src/index.ts;",

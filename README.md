@@ -16,9 +16,7 @@ The server offers a minimal toolset intended to be simple to use and light on th
 
 ### Available Tools
 
-- **`outline`**: returns a concise outline of code symbols in a given file
-  - `preview: false` keeps it compact with just names and kinds
-  - `preview: true` includes a code snippet with signatures, modifiers, return types...
+- **`outline`**: returns a concise outline of code symbols in a given file. Either compact or with a small preview
 - **`inspect`**: returns context for a given symbol. Works for both local and third-party ones (e.g. installed from npm, NuGet, ... )
   - any documentation and signature details
   - symbol declaration location with code preview
@@ -266,18 +264,37 @@ $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
       "args": [
         "-y", "@p1va/symbols@latest", "run",
         "-w", "optional/path/to/workspace",
-        "dotnet", "<<PATH-TO-LSP>>/Microsoft.CodeAnalysis.LanguageServer.dll",
+        "dotnet", "$SYMBOLS_CSHARP_LSP/Microsoft.CodeAnalysis.LanguageServer.dll",
         "--logLevel=Information",
-        "--extensionLogDirectory=<<PATH-TO-LSP>>/logs",
+        "--extensionLogDirectory=$SYMBOLS_CSHARP_LSP/logs",
         "--stdio"
       ],
       "env": {
-        "SYMBOLS_WORKSPACE_LOADER": "roslyn"
+        "SYMBOLS_WORKSPACE_LOADER": "roslyn",
+        "SYMBOLS_CSHARP_LSP": "$HOME/.csharp-lsp",
       }
     }
   }
 }
 ```
+
+#### Troubleshooting
+
+**Search: No Results Found**
+
+If `search` doesn't find results it's possible to warm up by pre-loading a few files 
+
+`"SYMBOLS_PRELOAD_FILES": "src/Project/Program.cs"`
+
+**Linux: Max Number of Inotify Instances Reached**
+
+If on Linux LSP logs suggest that the maximum number of inotify per user instances has been reached it's possible to increase it with a value greater than the actual
+
+`sudo sysctl fs.inotify.max_user_instances=512`
+
+This allows the Language Server to keep monitoring files in the Solution/Project
+
+Additionally JetBrains has more details on [this issue](https://youtrack.jetbrains.com/articles/SUPPORT-A-1715/Inotify-Watches-Limit-Linux)
 
 </details>
 
@@ -311,14 +328,22 @@ $ServerPath/Microsoft.CodeAnalysis.LanguageServer --version
         "clangd",
       ],
       "env": {
-        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+        "SYMBOLS_PRELOAD_FILES": "path/to/file.cpp"
       }
     }
   }
 }
 ```
 
+#### Troubleshooting
+
 > ℹ️ Ensure either `compile_commands.json` is found in the working directory or provide the path where to find it with  `--compile-commands-dir=path/to/dir` 
+
+**Search: No Results Found**
+
+To warm up index generation is possible to pre load and keep a few files opened by providing a list in ` SYMBOLS_PRELOAD_FILES` 
+
 
 </details>
 
@@ -444,12 +469,13 @@ x
       "args": [
         "-y", "@p1va/symbols@latest", "run",
         "-w", "optional/path/to/workspace",
-        "<<PATH-TO-LSP>>/jdtls/bin/jdtls",
+        "$SYMBOLS_JAVA_LSP/jdtls/bin/jdtls",
         "-configuration", "$HOME/.cache/jdtls/config",
         "-data", "$HOME/.cache/jdtls/workspace/<<unique workspace name>>"
       ],
       "env": {
-        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+        "SYMBOLS_JAVA_LSP": "$HOME/.java-lsp"
       }
     }
   }

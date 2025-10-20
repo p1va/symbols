@@ -230,26 +230,46 @@ export function loadLspConfig(
  * Expand environment variables in configuration values
  * Supports $VAR and ${VAR} syntax
  * @param config - Configuration to expand
+ *
+ * Expansion order:
+ * 1. Expand environment values using process.env
+ * 2. Merge expanded environment with process.env
+ * 3. Expand command using merged environment
+ *
+ * This allows command to reference both system env vars AND YAML environment vars
  */
 function expandEnvironmentVariables(config: ConfigFile): ConfigFile {
   return {
     ...config,
     'language-servers': Object.fromEntries(
-      Object.entries(config['language-servers']).map(([name, lspConfig]) => [
-        name,
-        {
-          ...lspConfig,
-          command: expandEnvVars(lspConfig.command),
-          environment: lspConfig.environment
-            ? Object.fromEntries(
-                Object.entries(lspConfig.environment).map(([key, value]) => [
-                  key,
-                  expandEnvVars(value),
-                ])
-              )
-            : undefined,
-        },
-      ])
+      Object.entries(config['language-servers']).map(([name, lspConfig]) => {
+        // Step 1: Expand environment values using system env vars
+        const expandedEnvironment = lspConfig.environment
+          ? Object.fromEntries(
+              Object.entries(lspConfig.environment).map(([key, value]) => [
+                key,
+                expandEnvVars(value, process.env),
+              ])
+            )
+          : undefined;
+
+        // Step 2: Create merged environment for command expansion
+        const mergedEnv = expandedEnvironment
+          ? { ...process.env, ...expandedEnvironment }
+          : process.env;
+
+        // Step 3: Expand command using merged environment
+        const expandedCommand = expandEnvVars(lspConfig.command, mergedEnv);
+
+        return [
+          name,
+          {
+            ...lspConfig,
+            command: expandedCommand,
+            environment: expandedEnvironment,
+          },
+        ];
+      })
     ),
   };
 }
