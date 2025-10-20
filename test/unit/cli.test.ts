@@ -565,19 +565,22 @@ describe('CLI Argument Parsing', () => {
         }
       });
 
-      it('should reject --global due to conflict with --local default', () => {
-        // NOTE: There's a CLI configuration issue where --local defaults to true
-        // and --global conflicts with --local, causing this combination to fail.
-        // This test documents the current behavior.
-        expect(() => {
-          parseCliArgs([
-            'node',
-            'symbols',
-            'config',
-            'init',
-            '--global',
-          ]);
-        }).toThrow('process.exit(1)');
+      it('should parse config init --global', () => {
+        const result = parseCliArgs([
+          'node',
+          'symbols',
+          'config',
+          'init',
+          '--global',
+        ]);
+
+        if (result.command === 'config') {
+          const subArgs = result.subcommandArgs;
+          if (subArgs.subcommand === 'init') {
+            expect(subArgs.global).toBe(true);
+            expect(subArgs.local).toBe(false);
+          }
+        }
       });
 
       it('should parse config init --local', () => {
@@ -632,21 +635,21 @@ describe('CLI Argument Parsing', () => {
         }
       });
 
-      it('should parse config init with --local and --force', () => {
-        // Using --local (default) with --force works fine
+      it('should parse config init with --global and --force', () => {
         const result = parseCliArgs([
           'node',
           'symbols',
           'config',
           'init',
-          '--local',
+          '--global',
           '--force',
         ]);
 
         if (result.command === 'config') {
           const subArgs = result.subcommandArgs;
           if (subArgs.subcommand === 'init') {
-            expect(subArgs.local).toBe(true);
+            expect(subArgs.global).toBe(true);
+            expect(subArgs.local).toBe(false);
             expect(subArgs.force).toBe(true);
           }
         }

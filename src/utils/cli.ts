@@ -245,7 +245,6 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
               type: 'boolean',
               describe:
                 'Create local config in current directory (default: ./language-servers.yaml)',
-              default: true,
             })
             .option('global', {
               type: 'boolean',
@@ -469,12 +468,16 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
     const subcommand = argv._[1] as string;
 
     if (subcommand === 'init') {
+      // Default to local mode if neither --global nor --local is specified
+      const isGlobal = Boolean(argv.global);
+      const isLocal = argv.local !== undefined ? Boolean(argv.local) : !isGlobal;
+
       return {
         command: 'config',
         subcommandArgs: {
           subcommand: 'init',
-          global: Boolean(argv.global),
-          local: Boolean(argv.local !== false), // default to true
+          global: isGlobal,
+          local: isLocal,
           workspace: argv.workspace,
           force: Boolean(argv.force),
         },

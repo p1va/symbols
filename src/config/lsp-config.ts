@@ -350,6 +350,9 @@ export function getLspConfig(
   }
 
   // Parse command into name and args (respecting quoted segments and spaces)
+  // SECURITY NOTE: Commands are parsed from configuration files using shell-quote.
+  // Only load configuration files from trusted sources, as malicious configs could
+  // execute arbitrary commands. Never load configs from untrusted or user-uploaded sources.
   const parsedParts: ShellQuoteToken[] = shellParse(lspConfig.command.trim());
   const commandSegments: string[] = [];
 
@@ -405,7 +408,9 @@ export function getLspConfigForFile(
   const { config } = loadLspConfig(configPath, workspacePath);
 
   // Find LSP that handles this file extension
-  for (const [lspName, lspConfig] of Object.entries(config['language-servers'])) {
+  for (const [lspName, lspConfig] of Object.entries(
+    config['language-servers']
+  )) {
     if (lspConfig.extensions[extension]) {
       return getLspConfig(lspName, configPath, workspacePath);
     }
@@ -463,7 +468,9 @@ export function autoDetectLsp(
     const workspaceFiles = fs.readdirSync(workspacePath);
 
     // Check each LSP configuration for matching workspace files
-    for (const [lspName, lspConfig] of Object.entries(config['language-servers'])) {
+    for (const [lspName, lspConfig] of Object.entries(
+      config['language-servers']
+    )) {
       for (const workspaceFile of lspConfig.workspace_files) {
         // Handle glob patterns (basic support for * wildcards)
         if (workspaceFile.includes('*')) {

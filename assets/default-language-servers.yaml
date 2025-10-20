@@ -1,4 +1,3 @@
-
 language-servers:
 
   typescript:
@@ -116,5 +115,17 @@ language-servers:
   #     VS_CODE_EXTENSIONS: $HOME/.vscode/extensions
   #     MS_DOTNET_TOOLS_VERSION: '2.93.22-linux-x64'
   #     ROSLYN_LOGS: $HOME/.config/Code/logs/symbols-nodejs
+
+  # clangd:
+  #   command: clangd
+  #   workspace_files:
+  #     - 'Makefile'
+  #     - 'CMakeLists.txt'
+  #   # Try to preload a file to trigger index creation and have search working
+  #   preload_files:
+  #     - './src/file.cpp'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
 
 
