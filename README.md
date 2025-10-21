@@ -64,6 +64,7 @@ See below configurations for the Language Servers tested. Other stdio Language S
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
         "pyright-langserver", "--stdio"
       ]
@@ -120,12 +121,13 @@ venv = ".venv"
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
         "typescript-language-server", "--stdio"
       ],
       "env": {
         // Keep at least one code file open for search to work
-        "SYMBOLS_PRELOAD_FILES": "src/index.ts;",
+        "SYMBOLS_PRELOAD_FILES": "src/index.ts",
         "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
       }
     }
@@ -203,14 +205,10 @@ And finally restore the temporary project to trigger the download of the Languag
 Adjust both `RestorePackagesPath` and `ServerPath` to work on your machine and keep track of the latter.
 
 ```sh
-SYMBOLS_ROSLYN_PATH=$HOME/.csharp-lsp
-```
-
-```sh
 dotnet restore ServerDownload.csproj \
   /p:Platform=your-platform-id \
   /p:RestorePackagesPath=/tmp/your/download/location \
-  /p:ServerPath=$SYMBOLS_ROSLYN_PATH
+  /p:ServerPath=$HOME/.csharp-lsp
 ```
 
 #### Verify Installation
@@ -218,7 +216,7 @@ dotnet restore ServerDownload.csproj \
 To verify the outcome of the installation we run the command below
 
 ```sh
-$SYMBOLS_ROSLYN_PATH/Microsoft.CodeAnalysis.LanguageServer --version
+$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 ```
 
 #### Configuration
@@ -230,16 +228,16 @@ $SYMBOLS_ROSLYN_PATH/Microsoft.CodeAnalysis.LanguageServer --version
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
-        "dotnet", "$SYMBOLS_ROSLYN_PATH/Microsoft.CodeAnalysis.LanguageServer.dll",
+        // Adjust this to your installation path
+        "dotnet", "$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll",
         "--logLevel=Information",
-        "--extensionLogDirectory=$SYMBOLS_ROSLYN_PATH/logs",
+        "--extensionLogDirectory=$HOME/.csharp-lsp/logs",
         "--stdio"
       ],
       "env": {
         "SYMBOLS_WORKSPACE_LOADER": "roslyn",
-        // Adjust this to your installation path
-        "SYMBOLS_ROSLYN_PATH": "$HOME/.csharp-lsp",
       }
     }
   }
@@ -293,8 +291,11 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
         "clangd",
+        // Provide here more clangd args if needed
+        // e.g. --compile-commands-dir path/to/dir
       ],
       "env": {
         "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
@@ -352,6 +353,7 @@ gopls version
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
         "gopls"
       ],
@@ -403,6 +405,7 @@ rust-analyzer --version
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
         "rust-analyzer"
       ]
@@ -432,8 +435,10 @@ Follow installation instructions on the [Project's GitHub README](https://github
 
 #### Verify Installation
 
+Adjust to your installation path and test
+
 ```sh
-$SYMBOLS_JDTLS_PATH/bin/jdtls --help
+$HOME/.java-lsp/jdtls/bin/jdtls --help
 ```
 
 #### Configuration
@@ -445,14 +450,14 @@ $SYMBOLS_JDTLS_PATH/bin/jdtls --help
       "command": "npx",
       "args": [
         "-y", "@p1va/symbols@latest", "run",
+        // Adjust this or remove it (defaults to current directory)
         "-w", "optional/path/to/workspace",
-        "$SYMBOLS_JDTLS_PATH/bin/jdtls",
+        "$HOME/.java-lsp/jdtls/bin/jdtls",
         "-configuration", "$HOME/.cache/jdtls/config",
         "-data", "$HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME"
       ],
       "env": {
-        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
-        "SYMBOLS_JDTLS_PATH": "$HOME/.java-lsp/jdtls",
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
       }
     }
   }

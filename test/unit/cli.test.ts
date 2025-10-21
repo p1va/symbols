@@ -427,6 +427,71 @@ describe('CLI Argument Parsing', () => {
         }
       });
     });
+
+    describe('environment variable handling', () => {
+      it('should parse command with environment variables in command name', () => {
+        const result = parseCliArgs([
+          'node',
+          'symbols',
+          'run',
+          '$HOME/bin/lsp',
+          '--stdio',
+        ]);
+
+        expect(result.command).toBe('run');
+        if (result.command === 'run') {
+          const runResult = result as RunCommandArgs;
+          expect(runResult.directCommand.commandName).toBe('$HOME/bin/lsp');
+          expect(runResult.directCommand.commandArgs).toEqual(['--stdio']);
+        }
+      });
+
+      it('should parse command with environment variables in arguments', () => {
+        const result = parseCliArgs([
+          'node',
+          'symbols',
+          'run',
+          'jdtls',
+          '-configuration',
+          '$HOME/.cache/jdtls/config',
+          '-data',
+          '$HOME/.cache/jdtls/workspace',
+        ]);
+
+        expect(result.command).toBe('run');
+        if (result.command === 'run') {
+          const runResult = result as RunCommandArgs;
+          expect(runResult.directCommand.commandName).toBe('jdtls');
+          expect(runResult.directCommand.commandArgs).toEqual([
+            '-configuration',
+            '$HOME/.cache/jdtls/config',
+            '-data',
+            '$HOME/.cache/jdtls/workspace',
+          ]);
+        }
+      });
+
+      it('should parse command with ${VAR} syntax', () => {
+        const result = parseCliArgs([
+          'node',
+          'symbols',
+          'run',
+          '${HOME}/bin/lsp',
+          '--config',
+          '${USER}/config.json',
+        ]);
+
+        expect(result.command).toBe('run');
+        if (result.command === 'run') {
+          const runResult = result as RunCommandArgs;
+          expect(runResult.directCommand.commandName).toBe('${HOME}/bin/lsp');
+          expect(runResult.directCommand.commandArgs).toEqual([
+            '--config',
+            '${USER}/config.json',
+          ]);
+        }
+      });
+    });
   });
 
   describe('start command', () => {

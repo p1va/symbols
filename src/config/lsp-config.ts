@@ -504,32 +504,86 @@ export function createConfigFromDirectCommand(
   commandName: string,
   commandArgs: string[]
 ): ParsedLspConfig {
+  // Expand environment variables in command name (e.g., $HOME/bin/lsp)
+  const expandedCommandName = expandEnvVars(commandName);
+
   // Validate that the command exists and is executable
-  try {
-    which.sync(commandName);
-  } catch {
-    throw new Error(
-      `Command not found: ${commandName}\n` +
-        `Please ensure the language server is installed and available in your PATH.\n` +
-        `You can verify this by running: which ${commandName}`
-    );
+  // Check if it's a path (absolute, relative, or contains path separators)
+  // Covers Unix (/path, ./path, ~/path) and Windows (C:\path, .\path, path\to\file)
+  const isPath = path.isAbsolute(expandedCommandName) ||
+                 expandedCommandName.includes('/') ||
+                 expandedCommandName.includes('\\') ||
+                 expandedCommandName.startsWith('.') ||
+                 expandedCommandName.startsWith('~');
+
+  if (isPath) {
+    // For paths, resolve and check if file exists and is executable
+    // Handle ~ expansion: use HOME on Unix, USERPROFILE on Windows
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
+    const resolvedPath = path.resolve(expandedCommandName.replace(/^~/, homeDir));
+
+    if (!fs.existsSync(resolvedPath)) {
+      throw new Error(
+        `Command not found: ${commandName}\n` +
+          `Expanded path: ${resolvedPath}\n` +
+          `Please ensure the language server is installed at this location.`
+      );
+    }
+
+    // Check if it's a file (not a directory)
+    const stats = fs.statSync(resolvedPath);
+    if (!stats.isFile()) {
+      throw new Error(
+        `Command path is not a file: ${commandName}\n` +
+          `Expanded path: ${resolvedPath}\n` +
+          `Please provide a path to an executable file.`
+      );
+    }
+
+    // On Unix, check execute permissions. On Windows, this check is less meaningful
+    // since executability is determined by file extension (.exe, .bat, .cmd, etc.)
+    if (process.platform !== 'win32') {
+      try {
+        fs.accessSync(resolvedPath, fs.constants.X_OK);
+      } catch {
+        throw new Error(
+          `Command is not executable: ${commandName}\n` +
+            `Expanded path: ${resolvedPath}\n` +
+            `Please ensure the file has execute permissions (chmod +x).`
+        );
+      }
+    }
+  } else {
+    // For commands in PATH, use which
+    try {
+      which.sync(expandedCommandName);
+    } catch {
+      throw new Error(
+        `Command not found: ${commandName}\n` +
+          `Please ensure the language server is installed and available in your PATH.\n` +
+          `You can verify this by running: which ${commandName}`
+      );
+    }
   }
 
-  // Reconstruct command string from parts
-  const command = [commandName, ...commandArgs].join(' ');
+  // Expand environment variables in command arguments as well
+  const expandedCommandArgs = commandArgs.map(arg => expandEnvVars(arg));
+
+  // Reconstruct command string from expanded parts
+  const command = [expandedCommandName, ...expandedCommandArgs].join(' ');
 
   // Build minimal config with default extensions
   // The LSP will handle only the files it recognizes
   const config: ParsedLspConfig = {
     name: 'direct-command',
     command,
-    commandName,
-    commandArgs,
+    commandName: expandedCommandName,
+    commandArgs: expandedCommandArgs,
     extensions: DEFAULT_EXTENSIONS, // Default mappings - works for all LSPs
     workspace_files: [], // Empty - not used in direct mode
     preload_files: [], // Empty by default - can be overridden by env var
     diagnostics: {
-      strategy: 'push',
+      strategy: 'pull',
       wait_timeout_ms: 2000,
     },
     symbols: {},

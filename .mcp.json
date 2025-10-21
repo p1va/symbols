@@ -1,14 +1,13 @@
 {
   "mcpServers": {
     "symbols": {
-      "command": "node",
+      "command": "npx",
       "args": [
-        "dist/index.js",
-        "run",
-        "npx","-y", "typescript-language-server","--stdio"
+        "-y", "@p1va/symbols@latest", "run",
+        "npx", "-y", "typescript-language-server", "--stdio"
       ],
-      "env": { 
-        "SYMBOLS_PRELOAD_FILES": "src/index.ts;",
+      "env": {
+        "SYMBOLS_PRELOAD_FILES": "src/index.ts",
         "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
       }
     }
