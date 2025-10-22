@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__symbols__search",
+      "mcp__symbols__inspect",
+      "mcp__symbols__outline",
+      "mcp__symbols__completion",
+      "mcp__symbols__references",
+      "mcp__symbols__rename",
+      "mcp__symbols__diagnostics",
+      "mcp__symbols__logs"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "symbols"
+  ]
+}
