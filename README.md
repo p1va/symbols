@@ -106,11 +106,11 @@ venv = ".venv"
 
 #### Installation
 
-`npm install -g typescipt-language-server`
+`npm install -g typescript-language-server`
 
 #### Verify Installation
 
-`typescipt-language-server --version`
+`typescript-language-server --version`
 
 #### Configuration
 
