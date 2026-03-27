@@ -123,6 +123,9 @@ jobs:
       - name: Print runtimes
         run: dotnet --list-runtimes
 
+      - name: Print SDKs
+        run: dotnet --list-sdks
+
       - name: Install C# Language Server (Roslyn)
         run: |
           dotnet restore scripts/ServerDownload.csproj \
@@ -152,7 +155,14 @@ jobs:
         timeout-minutes: 10
 
       - name: Print logs
-        run: tail $HOME/.local/state/symbols-nodejs/*.log
+        run: |
+          shopt -s nullglob
+          logs=("$HOME"/.local/state/symbols-nodejs/*.log)
+          if [ ${#logs[@]} -gt 0 ]; then
+            tail "${logs[@]}"
+          else
+            echo "No symbols logs found"
+          fi
         if: always()
 
       - name: 📊 Upload C# integration test report

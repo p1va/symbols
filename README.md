@@ -175,9 +175,7 @@ To facilitate download and extraction we use the `dotnet` CLI with a temporary p
     <TargetFramework>net9.0</TargetFramework>
     <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
     <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
-    <RestoreSources>
-      https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json
-    </RestoreSources>
+    <RestoreSources>https://api.nuget.org/v3/index.json;https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json</RestoreSources>
   </PropertyGroup>
   <ItemGroup>
     <PackageDownload Include="$(PackageNameBase).$(Platform)" version="[$(PackageVersion)]" />
