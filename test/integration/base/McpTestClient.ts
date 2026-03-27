@@ -12,6 +12,46 @@ export interface SymbolPosition {
   character: number;
 }
 
+const TOOL_RETRY_TIMEOUT_MS = 15000;
+const TOOL_RETRY_POLL_MS = 250;
+
+function isTextItem(item: unknown): item is { text: string } {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  const record = item as Record<string, unknown>;
+  return typeof record.text === 'string';
+}
+
+function extractToolText(content: unknown): string {
+  if (!Array.isArray(content)) {
+    return typeof content === 'string' ? content : JSON.stringify(content);
+  }
+
+  return content
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item;
+      }
+
+      if (isTextItem(item)) {
+        return item.text;
+      }
+
+      return JSON.stringify(item);
+    })
+    .join('\n');
+}
+
+function shouldRetryForWorkspaceLoading(result: ToolCallResult): boolean {
+  if (!result.isError) {
+    return false;
+  }
+
+  return extractToolText(result.content).includes('Workspace is still loading');
+}
+
 export class McpTestClient {
   private client: Client;
   private transport: StdioClientTransport;
@@ -188,43 +228,57 @@ export class McpTestClient {
     args: Record<string, unknown>,
     debug = false
   ): Promise<ToolCallResult> {
-    try {
-      if (debug) {
-        console.log(
-          `[DEBUG] Calling tool '${name}' with args:`,
-          JSON.stringify(args, null, 2)
-        );
-      }
+    const startedAt = Date.now();
 
-      const result = await this.client.callTool({
-        name,
-        arguments: args,
-      });
+    while (true) {
+      try {
+        if (debug) {
+          console.log(
+            `[DEBUG] Calling tool '${name}' with args:`,
+            JSON.stringify(args, null, 2)
+          );
+        }
 
-      if (debug) {
-        console.log(`[DEBUG] Tool '${name}' result:`, {
-          isError: Boolean(result.isError),
-          contentType: typeof result.content,
-          contentLength: Array.isArray(result.content)
-            ? result.content.length
-            : 'not array',
-          content: result.content,
+        const result = await this.client.callTool({
+          name,
+          arguments: args,
         });
-      }
 
-      return {
-        content: result.content,
-        isError: Boolean(result.isError),
-      };
-    } catch (error) {
-      if (debug) {
-        console.error(`[DEBUG] Tool '${name}' threw error:`, error);
-      }
+        const toolResult = {
+          content: result.content,
+          isError: Boolean(result.isError),
+        };
 
-      return {
-        content: error,
-        isError: true,
-      };
+        if (debug) {
+          console.log(`[DEBUG] Tool '${name}' result:`, {
+            isError: toolResult.isError,
+            contentType: typeof toolResult.content,
+            contentLength: Array.isArray(toolResult.content)
+              ? toolResult.content.length
+              : 'not array',
+            content: toolResult.content,
+          });
+        }
+
+        const timedOut = Date.now() - startedAt >= TOOL_RETRY_TIMEOUT_MS;
+        if (!timedOut && shouldRetryForWorkspaceLoading(toolResult)) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, TOOL_RETRY_POLL_MS)
+          );
+          continue;
+        }
+
+        return toolResult;
+      } catch (error) {
+        if (debug) {
+          console.error(`[DEBUG] Tool '${name}' threw error:`, error);
+        }
+
+        return {
+          content: error,
+          isError: true,
+        };
+      }
     }
   }
 

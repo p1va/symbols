@@ -19,9 +19,20 @@ import {
  * Validates that the workspace is ready for operations
  */
 export function validateWorkspaceReady(ctx: LspContext): ValidationResult {
-  const { workspaceState } = ctx;
+  const { workspaceState, workspaceLoaderStore } = ctx;
 
   if (workspaceState.isLoading) {
+    return {
+      valid: false,
+      error: {
+        errorCode: ValidationErrorCode.WorkspaceNotReady,
+        message: `Workspace is still loading (started ${workspaceState.loadingStartedAt?.toISOString()}). Please wait for initialization to complete.`,
+      },
+    };
+  }
+
+  const workspaceLoaderState = workspaceLoaderStore.getState();
+  if (workspaceLoaderState && !workspaceLoaderStore.isReady()) {
     return {
       valid: false,
       error: {

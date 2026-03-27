@@ -48,6 +48,16 @@ function createMockContext(overrides: Partial<LspContext> = {}): LspContext {
     diagnosticsStore: {} as LspContext['diagnosticsStore'],
     diagnosticProviderStore: {} as LspContext['diagnosticProviderStore'],
     windowLogStore: {} as LspContext['windowLogStore'],
+    workspaceLoaderStore: {
+      state: { type: 'default', ready: true },
+      loader: null,
+      setState: vi.fn(),
+      setLoader: vi.fn(),
+      getState: vi.fn(() => ({ type: 'default', ready: true })),
+      getLoader: vi.fn(() => null),
+      updateState: vi.fn(),
+      isReady: vi.fn(() => true),
+    } as LspContext['workspaceLoaderStore'],
     workspaceState: {
       isReady: true,
       isLoading: false,
@@ -98,6 +108,35 @@ describe('Validation Utilities', () => {
         );
         expect(result.error.message).toContain('still loading');
         expect(result.error.message).toContain('2024-01-01T10:00:00.000Z');
+      }
+    });
+
+    it('should return invalid when workspace loader is still loading', () => {
+      const ctx = createMockContext({
+        workspaceLoaderStore: {
+          state: { type: 'roslyn', ready: false },
+          loader: null,
+          setState: vi.fn(),
+          setLoader: vi.fn(),
+          getState: vi.fn(() => ({ type: 'roslyn', ready: false })),
+          getLoader: vi.fn(() => null),
+          updateState: vi.fn(),
+          isReady: vi.fn(() => false),
+        } as LspContext['workspaceLoaderStore'],
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          loadingStartedAt: new Date('2024-01-01T10:00:00Z'),
+        },
+      });
+
+      const result = validateWorkspaceReady(ctx);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.error.errorCode).toBe(
+          ValidationErrorCode.WorkspaceNotReady
+        );
+        expect(result.error.message).toContain('still loading');
       }
     });
 
