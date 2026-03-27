@@ -137,7 +137,31 @@ describe('Validation Utilities', () => {
           ValidationErrorCode.WorkspaceNotReady
         );
         expect(result.error.message).toContain('still loading');
+        expect(result.error.message).not.toContain('2024-01-01T10:00:00.000Z');
       }
+    });
+
+    it('should ignore loader readiness when no workspace loader state exists', () => {
+      const ctx = createMockContext({
+        workspaceLoaderStore: {
+          state: null,
+          loader: null,
+          setState: vi.fn(),
+          setLoader: vi.fn(),
+          getState: vi.fn(() => null),
+          getLoader: vi.fn(() => null),
+          updateState: vi.fn(),
+          isReady: vi.fn(() => false),
+        } as LspContext['workspaceLoaderStore'],
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          loadingStartedAt: undefined,
+        },
+      });
+
+      const result = validateWorkspaceReady(ctx);
+      expect(result.valid).toBe(true);
     });
 
     it('should return invalid when workspace is not ready', () => {

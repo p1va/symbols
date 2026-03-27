@@ -1,5 +1,6 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { isWorkspaceLoadingMessage } from '../../../src/validation.js';
 
 export interface ToolCallResult {
   content: unknown;
@@ -24,9 +25,30 @@ function isTextItem(item: unknown): item is { text: string } {
   return typeof record.text === 'string';
 }
 
+function isMessageItem(item: unknown): item is { message: string } {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  const record = item as Record<string, unknown>;
+  return typeof record.message === 'string';
+}
+
 function extractToolText(content: unknown): string {
+  if (content instanceof Error) {
+    return content.message;
+  }
+
   if (!Array.isArray(content)) {
-    return typeof content === 'string' ? content : JSON.stringify(content);
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (isMessageItem(content)) {
+      return content.message;
+    }
+
+    return JSON.stringify(content);
   }
 
   return content
@@ -49,7 +71,7 @@ function shouldRetryForWorkspaceLoading(result: ToolCallResult): boolean {
     return false;
   }
 
-  return extractToolText(result.content).includes('Workspace is still loading');
+  return isWorkspaceLoadingMessage(extractToolText(result.content));
 }
 
 export class McpTestClient {
@@ -270,14 +292,24 @@ export class McpTestClient {
 
         return toolResult;
       } catch (error) {
+        const toolResult = {
+          content: error,
+          isError: true,
+        };
+
+        const timedOut = Date.now() - startedAt >= TOOL_RETRY_TIMEOUT_MS;
+        if (!timedOut && shouldRetryForWorkspaceLoading(toolResult)) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, TOOL_RETRY_POLL_MS)
+          );
+          continue;
+        }
+
         if (debug) {
           console.error(`[DEBUG] Tool '${name}' threw error:`, error);
         }
 
-        return {
-          content: error,
-          isError: true,
-        };
+        return toolResult;
       }
     }
   }
