@@ -1,5 +1,6 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { isWorkspaceLoadingMessage } from '../../../src/validation.js';
 
 export interface ToolCallResult {
   content: unknown;
@@ -10,6 +11,67 @@ export interface SymbolPosition {
   file: string;
   line: number;
   character: number;
+}
+
+const TOOL_RETRY_TIMEOUT_MS = 15000;
+const TOOL_RETRY_POLL_MS = 250;
+
+function isTextItem(item: unknown): item is { text: string } {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  const record = item as Record<string, unknown>;
+  return typeof record.text === 'string';
+}
+
+function isMessageItem(item: unknown): item is { message: string } {
+  if (!item || typeof item !== 'object') {
+    return false;
+  }
+
+  const record = item as Record<string, unknown>;
+  return typeof record.message === 'string';
+}
+
+function extractToolText(content: unknown): string {
+  if (content instanceof Error) {
+    return content.message;
+  }
+
+  if (!Array.isArray(content)) {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    if (isMessageItem(content)) {
+      return content.message;
+    }
+
+    return JSON.stringify(content);
+  }
+
+  return content
+    .map((item) => {
+      if (typeof item === 'string') {
+        return item;
+      }
+
+      if (isTextItem(item)) {
+        return item.text;
+      }
+
+      return JSON.stringify(item);
+    })
+    .join('\n');
+}
+
+function shouldRetryForWorkspaceLoading(result: ToolCallResult): boolean {
+  if (!result.isError) {
+    return false;
+  }
+
+  return isWorkspaceLoadingMessage(extractToolText(result.content));
 }
 
 export class McpTestClient {
@@ -188,43 +250,67 @@ export class McpTestClient {
     args: Record<string, unknown>,
     debug = false
   ): Promise<ToolCallResult> {
-    try {
-      if (debug) {
-        console.log(
-          `[DEBUG] Calling tool '${name}' with args:`,
-          JSON.stringify(args, null, 2)
-        );
-      }
+    const startedAt = Date.now();
 
-      const result = await this.client.callTool({
-        name,
-        arguments: args,
-      });
+    while (true) {
+      try {
+        if (debug) {
+          console.log(
+            `[DEBUG] Calling tool '${name}' with args:`,
+            JSON.stringify(args, null, 2)
+          );
+        }
 
-      if (debug) {
-        console.log(`[DEBUG] Tool '${name}' result:`, {
-          isError: Boolean(result.isError),
-          contentType: typeof result.content,
-          contentLength: Array.isArray(result.content)
-            ? result.content.length
-            : 'not array',
-          content: result.content,
+        const result = await this.client.callTool({
+          name,
+          arguments: args,
         });
-      }
 
-      return {
-        content: result.content,
-        isError: Boolean(result.isError),
-      };
-    } catch (error) {
-      if (debug) {
-        console.error(`[DEBUG] Tool '${name}' threw error:`, error);
-      }
+        const toolResult = {
+          content: result.content,
+          isError: Boolean(result.isError),
+        };
 
-      return {
-        content: error,
-        isError: true,
-      };
+        if (debug) {
+          console.log(`[DEBUG] Tool '${name}' result:`, {
+            isError: toolResult.isError,
+            contentType: typeof toolResult.content,
+            contentLength: Array.isArray(toolResult.content)
+              ? toolResult.content.length
+              : 'not array',
+            content: toolResult.content,
+          });
+        }
+
+        const timedOut = Date.now() - startedAt >= TOOL_RETRY_TIMEOUT_MS;
+        if (!timedOut && shouldRetryForWorkspaceLoading(toolResult)) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, TOOL_RETRY_POLL_MS)
+          );
+          continue;
+        }
+
+        return toolResult;
+      } catch (error) {
+        const toolResult = {
+          content: error,
+          isError: true,
+        };
+
+        const timedOut = Date.now() - startedAt >= TOOL_RETRY_TIMEOUT_MS;
+        if (!timedOut && shouldRetryForWorkspaceLoading(toolResult)) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, TOOL_RETRY_POLL_MS)
+          );
+          continue;
+        }
+
+        if (debug) {
+          console.error(`[DEBUG] Tool '${name}' threw error:`, error);
+        }
+
+        return toolResult;
+      }
     }
   }
 

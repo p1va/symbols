@@ -257,6 +257,7 @@ export interface LspContext {
   readonly diagnosticsStore: DiagnosticsStore;
   readonly diagnosticProviderStore: DiagnosticProviderStore;
   readonly windowLogStore: WindowLogStore;
+  readonly workspaceLoaderStore: WorkspaceLoaderStore;
   readonly workspaceState: WorkspaceState;
   readonly workspaceUri: string;
   readonly workspacePath: string;

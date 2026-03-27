@@ -15,18 +15,45 @@ import {
   toZeroBased,
 } from './types.js';
 
+export const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
+
+export function createWorkspaceLoadingMessage(startedAt?: Date): string {
+  const startedAtSuffix = startedAt
+    ? ` (started ${startedAt.toISOString()})`
+    : '';
+
+  return `${WORKSPACE_LOADING_MESSAGE_PREFIX}${startedAtSuffix}. Please wait for initialization to complete.`;
+}
+
+export function isWorkspaceLoadingMessage(message: string): boolean {
+  return message.startsWith(WORKSPACE_LOADING_MESSAGE_PREFIX);
+}
+
 /**
  * Validates that the workspace is ready for operations
  */
 export function validateWorkspaceReady(ctx: LspContext): ValidationResult {
-  const { workspaceState } = ctx;
+  const { workspaceState, workspaceLoaderStore } = ctx;
 
   if (workspaceState.isLoading) {
     return {
       valid: false,
       error: {
         errorCode: ValidationErrorCode.WorkspaceNotReady,
-        message: `Workspace is still loading (started ${workspaceState.loadingStartedAt?.toISOString()}). Please wait for initialization to complete.`,
+        message: createWorkspaceLoadingMessage(
+          workspaceState.loadingStartedAt
+        ),
+      },
+    };
+  }
+
+  const hasWorkspaceLoaderState = workspaceLoaderStore.getState() !== null;
+  if (hasWorkspaceLoaderState && !workspaceLoaderStore.isReady()) {
+    return {
+      valid: false,
+      error: {
+        errorCode: ValidationErrorCode.WorkspaceNotReady,
+        message: createWorkspaceLoadingMessage(),
       },
     };
   }

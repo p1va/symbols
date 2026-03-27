@@ -106,6 +106,16 @@ function createMockContext(overrides: Partial<LspContext> = {}): LspContext {
     diagnosticsStore: {} as LspContext['diagnosticsStore'],
     diagnosticProviderStore: {} as LspContext['diagnosticProviderStore'],
     windowLogStore: { getMessages: vi.fn() } as LspContext['windowLogStore'],
+    workspaceLoaderStore: {
+      state: { type: 'default', ready: true },
+      loader: null,
+      setState: vi.fn(),
+      setLoader: vi.fn(),
+      getState: vi.fn(() => ({ type: 'default', ready: true })),
+      getLoader: vi.fn(() => null),
+      updateState: vi.fn(),
+      isReady: vi.fn(() => true),
+    } as LspContext['workspaceLoaderStore'],
     workspaceState: {
       isReady: true,
       isLoading: false,

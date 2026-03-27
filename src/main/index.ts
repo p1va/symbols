@@ -345,6 +345,7 @@ async function initializeWorkspace(
     // Workspace initialized with ${filesToOpen.length} preloaded files
   } catch (error) {
     workspaceState.isLoading = false;
+    workspaceState.isReady = false;
     throw new Error(
       `Failed to initialize workspace: ${error instanceof Error ? error.message : String(error)}`
     );
@@ -365,6 +366,7 @@ function createContext(): LspContext {
     diagnosticsStore,
     diagnosticProviderStore,
     windowLogStore,
+    workspaceLoaderStore,
     workspaceState,
     workspaceUri,
     workspacePath,
