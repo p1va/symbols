@@ -18,11 +18,11 @@ import {
 } from '../../src/validation.js';
 import {
   ValidationErrorCode,
-  type LspContext,
   type SymbolPositionRequest,
   type FileRequest,
 } from '../../src/types.js';
 import { createOneBasedPosition } from '../../src/types/position.js';
+import type { LspSession } from '../../src/runtime/lsp-session.js';
 
 // Mock the fs module
 vi.mock('fs', () => ({
@@ -40,25 +40,76 @@ const mockReadFile = fs.promises.readFile as MockedFunction<
   typeof fs.promises.readFile
 >;
 
-// Helper to create a basic mock LspContext
-function createMockContext(overrides: Partial<LspContext> = {}): LspContext {
-  return {
-    client: {} as LspContext['client'],
-    preloadedFiles: new Map(),
-    diagnosticsStore: {} as LspContext['diagnosticsStore'],
-    diagnosticProviderStore: {} as LspContext['diagnosticProviderStore'],
-    windowLogStore: {} as LspContext['windowLogStore'],
-    workspaceState: {
-      isReady: true,
-      isLoading: false,
-      loadingStartedAt: undefined,
+type MockSessionOverrides = Partial<LspSession> & {
+  workspaceState?: {
+    isReady: boolean;
+    isLoading: boolean;
+    loadingStartedAt?: Date;
+  };
+  workspacePath?: string;
+};
+
+function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
+  const workspaceState = overrides.workspaceState ?? {
+    isReady: true,
+    isLoading: false,
+    loadingStartedAt: undefined,
+  };
+  const workspacePath = overrides.workspacePath ?? '/test/workspace';
+  const profile = {
+    name: 'typescript',
+    workspacePath,
+    workspaceUri: `file://${workspacePath}`,
+    workspaceName: 'workspace',
+    configPath: null,
+    config: {
+      commandName: 'typescript-language-server',
+      commandArgs: ['--stdio'],
+      extensions: { '.ts': 'typescript' },
+      diagnostics: { strategy: 'push' as const },
+      symbols: {},
     },
-    workspaceUri: 'file:///test/workspace',
-    workspacePath: '/test/workspace',
-    lspName: 'typescript',
-    lspConfig: null,
+  };
+
+  return {
+    sessionKey: 'typescript::/test/workspace',
+    getProfile: vi.fn(() => profile),
+    setProfile: vi.fn(),
+    canHandleFile: vi.fn(() => true),
+    isReady: vi.fn(() => true),
+    isActive: vi.fn(() => true),
+    start: vi.fn(() => Promise.resolve()),
+    stop: vi.fn(() => Promise.resolve()),
+    restart: vi.fn(() => Promise.resolve()),
+    request: vi.fn(),
+    getWorkspaceState: vi.fn(() => workspaceState),
+    getDiagnosticsStore: vi.fn(() => ({})),
+    getDiagnosticProviderStore: vi.fn(() => ({})),
+    getWindowLogStore: vi.fn(() => ({ getMessages: vi.fn() })),
+    executeWithCursorContext: vi.fn(),
+    executeWithDocumentLifecycle: vi.fn(),
+    claimDocument: vi.fn((filePath: string) => filePath),
+    releaseDocument: vi.fn(() => null),
+    listOwnedDocuments: vi.fn(() => []),
+    clearOwnedDocuments: vi.fn(() => []),
+    getStatusSnapshot: vi.fn(() => ({
+      sessionKey: 'typescript::/test/workspace',
+      profileName: 'typescript',
+      state: 'ready' as const,
+      command: 'typescript-language-server --stdio',
+      workspacePath: '/test/workspace',
+      lastError: null,
+      pid: 1234,
+      extensions: ['.ts'],
+      preloadFiles: [],
+      diagnosticsStrategy: 'push' as const,
+      workspaceLoader: null,
+      workspaceReady: true,
+      workspaceLoading: false,
+      windowLogCount: 0,
+    })),
     ...overrides,
-  } as LspContext;
+  } as LspSession;
 }
 
 describe('Validation Utilities', () => {

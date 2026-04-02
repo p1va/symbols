@@ -3,31 +3,27 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext } from '../types.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { getLogLevelName } from '../utils/log-level.js';
+import { logsSchema } from './schemas.js';
+import { validateLogs } from './validation.js';
+import type { LspManager } from '../runtime/lsp-manager.js';
 
-/**
- * Get symbol for log level severity (using subtle ASCII symbols like diagnostics)
- */
 function getLogLevelSymbol(type: number): string {
   switch (type) {
     case 1:
-      return '✘'; // Error
+      return '✘';
     case 2:
-      return '⚠'; // Warning
+      return '⚠';
     case 3:
-      return 'ℹ'; // Info
+      return 'ℹ';
     case 4:
-      return '•'; // Log
+      return '•';
     default:
-      return '?'; // Unknown
+      return '?';
   }
 }
 
-/**
- * Format log messages into a compact, scannable format
- */
 function formatLogMessages(
   messages: Array<{ type: number; message: string }>
 ): string {
@@ -35,12 +31,9 @@ function formatLogMessages(
     return 'No window log messages available';
   }
 
-  // Group consecutive messages by context (e.g., same operation)
   const formattedMessages = messages.map((msg) => {
     const symbol = getLogLevelSymbol(msg.type);
     const level = getLogLevelName(msg.type);
-
-    // Extract context from message for better organization
     const message = msg.message.trim();
     const contextMatch = message.match(/^\[([^\]]+)\]/);
     const context = contextMatch ? contextMatch[1] : '';
@@ -50,40 +43,73 @@ function formatLogMessages(
 
     if (context) {
       return `${symbol} [${level}] [${context}] ${content}`;
-    } else {
-      return `${symbol} [${level}] ${content}`;
     }
+    return `${symbol} [${level}] ${content}`;
   });
 
   return formattedMessages.join('\n');
 }
 
-export function registerWindowLogsTool(
-  server: McpServer,
-  createContext: () => LspContext
-) {
+export function registerWindowLogsTool(server: McpServer, manager: LspManager) {
   server.registerTool(
     'logs',
     {
       title: 'Logs',
       description: 'Retrieve logs from the Language Server for troubleshooting',
-      inputSchema: {} as const,
+      inputSchema: logsSchema,
     },
-    () => {
-      const ctx = createContext();
-      if (!ctx.client) throw new Error('LSP client not initialized');
+    (request) => {
+      const validatedRequest = validateLogs(request);
+      const sessions = manager.getStartedSessions(validatedRequest.profile);
 
-      const result = LspOperations.logs(ctx);
-      if (!result.ok) throw new Error(result.error.message);
+      if (sessions.length === 0) {
+        if (validatedRequest.profile) {
+          const profile = manager.getProfileStatus(validatedRequest.profile);
+          if (!profile) {
+            throw new Error(
+              `Unknown LSP profile '${validatedRequest.profile}'.`
+            );
+          }
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Profile '${validatedRequest.profile}' is not running. Use setup start or setup restart first.`,
+              },
+            ],
+          };
+        }
 
-      // Format all log messages into a single compact text block
-      const formattedLogs = formatLogMessages(result.data);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'No running LSP sessions. Use setup start or call a file-based tool first.',
+            },
+          ],
+        };
+      }
+
+      const sections: string[] = [];
+
+      for (const session of sessions) {
+        const result = LspOperations.logs(session);
+        const profileName = session.getProfile().name;
+        if (!result.ok) {
+          sections.push(`Profile: ${profileName}\n${result.error.message}`);
+          continue;
+        }
+
+        sections.push(
+          `Profile: ${profileName}\n${formatLogMessages(result.data)}`
+        );
+      }
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: formattedLogs,
+            text: sections.join('\n\n'),
           },
         ],
       };

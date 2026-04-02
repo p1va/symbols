@@ -11,8 +11,8 @@ language-servers:
     # Only specify extensions if you need to add custom mappings or override defaults
     extensions:
       # Example: Add a custom extension mapping
-      .mts: typescript  # Already in defaults, shown for illustration
-      .custom.ts: typescript  # Custom extension example
+      .mts: typescript # Already in defaults, shown for illustration
+      .custom.ts: typescript # Custom extension example
     workspace_files:
       - package.json
       - tsconfig.json

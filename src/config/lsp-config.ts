@@ -510,17 +510,20 @@ export function createConfigFromDirectCommand(
   // Validate that the command exists and is executable
   // Check if it's a path (absolute, relative, or contains path separators)
   // Covers Unix (/path, ./path, ~/path) and Windows (C:\path, .\path, path\to\file)
-  const isPath = path.isAbsolute(expandedCommandName) ||
-                 expandedCommandName.includes('/') ||
-                 expandedCommandName.includes('\\') ||
-                 expandedCommandName.startsWith('.') ||
-                 expandedCommandName.startsWith('~');
+  const isPath =
+    path.isAbsolute(expandedCommandName) ||
+    expandedCommandName.includes('/') ||
+    expandedCommandName.includes('\\') ||
+    expandedCommandName.startsWith('.') ||
+    expandedCommandName.startsWith('~');
 
   if (isPath) {
     // For paths, resolve and check if file exists and is executable
     // Handle ~ expansion: use HOME on Unix, USERPROFILE on Windows
     const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
-    const resolvedPath = path.resolve(expandedCommandName.replace(/^~/, homeDir));
+    const resolvedPath = path.resolve(
+      expandedCommandName.replace(/^~/, homeDir)
+    );
 
     if (!fs.existsSync(resolvedPath)) {
       throw new Error(
@@ -567,7 +570,7 @@ export function createConfigFromDirectCommand(
   }
 
   // Expand environment variables in command arguments as well
-  const expandedCommandArgs = commandArgs.map(arg => expandEnvVars(arg));
+  const expandedCommandArgs = commandArgs.map((arg) => expandEnvVars(arg));
 
   // Reconstruct command string from expanded parts
   const command = [expandedCommandName, ...expandedCommandArgs].join(' ');

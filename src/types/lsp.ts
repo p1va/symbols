@@ -57,7 +57,12 @@ import type {
   SemanticTokens,
 } from 'vscode-languageserver-protocol';
 import logger from '../utils/logger.js';
-import { LspClient } from '../types.js';
+import type { LspClient } from '../types.js';
+
+export type SendLspRequest = <TResult, TParams = unknown>(
+  method: string,
+  params: TParams
+) => Promise<TResult>;
 
 // Re-export the official types
 export type {
@@ -250,7 +255,7 @@ export interface FlattenedSymbol {
 
 // Utility function to get and flatten document symbols with proper typing
 export async function getDocumentSymbols(
-  client: LspClient,
+  request: SendLspRequest,
   uri: string
 ): Promise<FlattenedSymbol[]> {
   logger.info(`getDocumentSymbols called for ${uri}`);
@@ -258,8 +263,10 @@ export async function getDocumentSymbols(
     textDocument: { uri },
   };
 
-  const rawSymbols: DocumentSymbol[] | SymbolInformation[] =
-    await client.connection.sendRequest('textDocument/documentSymbol', params);
+  const rawSymbols: DocumentSymbol[] | SymbolInformation[] = await request(
+    'textDocument/documentSymbol',
+    params
+  );
 
   const symbolResult = parseDocumentSymbolResponse(rawSymbols);
 

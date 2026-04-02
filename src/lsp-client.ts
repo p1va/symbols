@@ -291,8 +291,7 @@ export function createLspClient(
 
     return { ok: true, data: result };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
     logger.error('Failed to create LSP client', {
       lspName: lspConfig.name,

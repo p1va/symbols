@@ -1,18 +1,17 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext } from '../types.js';
+import type { LspManager } from '../runtime/lsp-manager.js';
 import { registerAllTools } from '../tools/index.js';
 
 /**
  * Creates and configures an MCP server with all LSP tools registered
  */
-export function createServer(createContext: () => LspContext): McpServer {
+export function createServer(manager: LspManager): McpServer {
   const server = new McpServer({
     name: 'symbols',
     version: '1.0.0',
   });
 
-  // Register all MCP tools
-  registerAllTools(server, createContext);
+  registerAllTools(server, manager);
 
   return server;
 }

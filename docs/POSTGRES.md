@@ -41,8 +41,8 @@ Edit this by updating the `db` section with your PostgreSQL connection details:
     "password": "your-password",
     "database": "postgres",
     "connTimeoutSecs": 10,
-    "disableConnection": false
-  }
+    "disableConnection": false,
+  },
 }
 ```
 
@@ -68,8 +68,12 @@ Assuming a Claude Code-style configuration add this to `.mcp.json`:
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
-        "npx", "postgres-language-server", "lsp-proxy"
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "npx",
+        "postgres-language-server",
+        "lsp-proxy"
       ]
     }
   }
@@ -81,6 +85,7 @@ Assuming a Claude Code-style configuration add this to `.mcp.json`:
 ## Examples
 
 ### `completion`
+
 Use this tool to discover available schema
 
 <details>
@@ -98,6 +103,7 @@ An agent that needs to query data but doesn't know what tables exist can use com
 **Input**: `SELECT * FROM |;` (cursor at position after `FROM `)
 
 **Tool Response**
+
 ```
 Completion on test.sql:3:15
     Snippet: `...CT * FROM |;`
@@ -125,7 +131,6 @@ Propertys (48)
 
 The agent now knows the database has a `photobooks` table in the `public` schema, along with tables in `auth`, `storage`, `vault`, and other schemas.
 
-
 </details>
 
 <details>
@@ -143,6 +148,7 @@ An agent that knows the table but not its columns can use completion between `SE
 **Input**: `SELECT | FROM photobooks WHERE ;` (cursor at position after `SELECT `)
 
 **Tool Response**:
+
 ```
 Completion on test.sql:1:8
     Snippet: `SELECT | FROM phot...`
@@ -179,6 +185,7 @@ An agent building a filter clause can use completion after `WHERE` to see which 
 **Input**: `SELECT  FROM photobooks WHERE |;` (cursor at position after `WHERE `)
 
 **Tool Response**:
+
 ```
 Completion on test.sql:1:31
     Snippet: `...oks WHERE |;`
@@ -198,6 +205,7 @@ The agent sees the same column list and can construct a valid `WHERE` clause, e.
 </details>
 
 ### `inspect`
+
 Use this tool to get full table schemas
 
 <details>
@@ -215,6 +223,7 @@ An agent can hover over a table name to get detailed schema information includin
 **Input**: Inspect on `photobooks` in `SELECT FROM photobooks WHERE ;`
 
 **Tool Response**:
+
 ```
 Inspect on test.sql:1:15
     Snippet: `...CT  FROM p|hotobooks ...`
@@ -232,6 +241,7 @@ Documentation
 ```
 
 The agent now knows:
+
 - The table has RLS enabled
 - Column types and nullability (e.g., `id` is `int8 not null`, `author` is `varchar nullable`)
 - The table contains ~91 rows
@@ -242,6 +252,7 @@ This is enough for the agent to write type-safe queries and understand the data 
 </details>
 
 ### `diagnostics`
+
 Use this tool to validate SQL syntax
 
 <details>
@@ -257,6 +268,7 @@ Use this tool to validate SQL syntax
 An agent can use diagnostics to validate SQL after writing it, catching syntax errors before execution.
 
 **Input**: A file containing invalid SQL:
+
 ```sql
 SELEC broken query here;
 
@@ -264,21 +276,25 @@ INSERT INTO photobooks (id, name VALUES (1, 'test');
 ```
 
 **Tool Response**:
+
 ```
 ✘ @1:1 [Error][syntax] Invalid statement: syntax error at or near "SELEC" (pg)
 ✘ @3:1 [Error][syntax] Invalid statement: syntax error at or near "VALUES" (pg)
 ```
 
 The agent sees two errors:
+
 - Line 1: `SELEC` is not a valid keyword (should be `SELECT`)
 - Line 3: missing `)` before `VALUES` in the `INSERT` statement
 
 After fixing the SQL:
+
 ```sql
 SELECT id, title, author FROM photobooks WHERE id = 1;
 ```
 
 **Tool Response**:
+
 ```
 No diagnostics found for this file.
 ```

@@ -470,7 +470,8 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
     if (subcommand === 'init') {
       // Default to local mode if neither --global nor --local is specified
       const isGlobal = Boolean(argv.global);
-      const isLocal = argv.local !== undefined ? Boolean(argv.local) : !isGlobal;
+      const isLocal =
+        argv.local !== undefined ? Boolean(argv.local) : !isGlobal;
 
       return {
         command: 'config',

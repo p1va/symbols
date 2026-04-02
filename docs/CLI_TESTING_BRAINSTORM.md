@@ -3,6 +3,7 @@
 ## Current State
 
 The CLI parsing logic in `src/utils/cli.ts` has ~700 lines of complex argument parsing with:
+
 - 3 main commands: `start`, `run`, `config`
 - Complex `run` command logic that handles LSP commands with/without `--` delimiter
 - Flag parsing with `=` syntax, boolean flags, and value flags
@@ -15,9 +16,11 @@ The CLI parsing logic in `src/utils/cli.ts` has ~700 lines of complex argument p
 ### ✅ YES - Here's why:
 
 1. **Accepts args parameter**: The main function signature is:
+
    ```typescript
-   export function parseCliArgs(args: string[] = process.argv): CliArgs
+   export function parseCliArgs(args: string[] = process.argv): CliArgs;
    ```
+
    This means we can pass in mock arguments instead of relying on `process.argv`!
 
 2. **Pure parsing logic**: Most of the function is pure - it takes strings and returns objects
@@ -33,6 +36,7 @@ The CLI parsing logic in `src/utils/cli.ts` has ~700 lines of complex argument p
 **Solutions**:
 
 #### Option A: Mock the dependency (easiest, test current code as-is)
+
 ```typescript
 import { vi, describe, it, expect } from 'vitest';
 import * as lspConfig from '../../src/config/lsp-config.js';
@@ -44,6 +48,7 @@ vi.mock('../../src/config/lsp-config.js', () => ({
 ```
 
 #### Option B: Make dependencies injectable (more refactoring)
+
 ```typescript
 export function parseCliArgs(
   args: string[] = process.argv,
@@ -54,6 +59,7 @@ export function parseCliArgs(
 ```
 
 #### Option C: Extract validation logic (functional approach, aligns with CLAUDE.md)
+
 ```typescript
 // Pure parsing - no I/O
 export function parseCliArgs(args: string[]): CliArgs {
@@ -73,6 +79,7 @@ export function validateCliArgs(args: CliArgs): Result<CliArgs, Error> {
 **Problem**: Line 85 calls `logger.debug()`
 
 **Solution**: Mock the logger
+
 ```typescript
 vi.mock('../../src/utils/logger.js', () => ({
   default: {
@@ -88,6 +95,7 @@ vi.mock('../../src/utils/logger.js', () => ({
 ### High Priority Tests (Core Parsing Logic)
 
 #### 1. `run` Command Parsing (Most Complex)
+
 ```typescript
 describe('run command', () => {
   it('should parse basic run command', () => {
@@ -98,31 +106,63 @@ describe('run command', () => {
   });
 
   it('should parse run command with args', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', 'typescript-language-server', '--stdio']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      'typescript-language-server',
+      '--stdio',
+    ]);
     expect(result.directCommand.commandName).toBe('typescript-language-server');
     expect(result.directCommand.commandArgs).toEqual(['--stdio']);
   });
 
   it('should parse run command with -- delimiter', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '--', 'typescript-language-server', '--stdio']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '--',
+      'typescript-language-server',
+      '--stdio',
+    ]);
     expect(result.directCommand.commandName).toBe('typescript-language-server');
     expect(result.directCommand.commandArgs).toEqual(['--stdio']);
   });
 
   it('should parse run with workspace flag before command', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '--workspace', '/path', 'gopls']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '--workspace',
+      '/path',
+      'gopls',
+    ]);
     expect(result.workspace).toBe('/path');
     expect(result.directCommand.commandName).toBe('gopls');
   });
 
   it('should parse run with workspace flag using = syntax', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '--workspace=/path/with spaces', 'gopls']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '--workspace=/path/with spaces',
+      'gopls',
+    ]);
     expect(result.workspace).toBe('/path/with spaces');
     expect(result.directCommand.commandName).toBe('gopls');
   });
 
   it('should handle workspace with equals sign in path', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '--workspace=/path/with=equals', 'gopls']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '--workspace=/path/with=equals',
+      'gopls',
+    ]);
     expect(result.workspace).toBe('/path/with=equals');
   });
 
@@ -133,7 +173,13 @@ describe('run command', () => {
   });
 
   it('should handle unknown flags as part of command', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '--unknown-flag', 'value']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '--unknown-flag',
+      'value',
+    ]);
     expect(result.directCommand.commandName).toBe('--unknown-flag');
     expect(result.directCommand.commandArgs).toEqual(['value']);
   });
@@ -141,6 +187,7 @@ describe('run command', () => {
 ```
 
 #### 2. `start` Command Parsing
+
 ```typescript
 describe('start command', () => {
   it('should parse basic start command', () => {
@@ -149,16 +196,26 @@ describe('start command', () => {
   });
 
   it('should parse start with lsp flag', () => {
-    const result = parseCliArgs(['node', 'symbols', 'start', '--lsp', 'typescript']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'start',
+      '--lsp',
+      'typescript',
+    ]);
     expect(result.command).toBe('start');
     expect(result.lsp).toBe('typescript');
   });
 
   it('should parse start with workspace and config', () => {
     const result = parseCliArgs([
-      'node', 'symbols', 'start',
-      '--workspace', '/path',
-      '--config', '/config.yaml'
+      'node',
+      'symbols',
+      'start',
+      '--workspace',
+      '/path',
+      '--config',
+      '/config.yaml',
     ]);
     expect(result.workspace).toBe('/path');
     expect(result.configPath).toBe('/config.yaml');
@@ -167,6 +224,7 @@ describe('start command', () => {
 ```
 
 #### 3. `config` Command Parsing
+
 ```typescript
 describe('config command', () => {
   it('should parse config init', () => {
@@ -176,13 +234,25 @@ describe('config command', () => {
   });
 
   it('should parse config init --global', () => {
-    const result = parseCliArgs(['node', 'symbols', 'config', 'init', '--global']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'config',
+      'init',
+      '--global',
+    ]);
     expect(result.subcommandArgs.subcommand).toBe('init');
     expect(result.subcommandArgs.global).toBe(true);
   });
 
   it('should parse config init --force', () => {
-    const result = parseCliArgs(['node', 'symbols', 'config', 'init', '--force']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'config',
+      'init',
+      '--force',
+    ]);
     expect(result.subcommandArgs.subcommand).toBe('init');
     expect(result.subcommandArgs.force).toBe(true);
   });
@@ -194,7 +264,14 @@ describe('config command', () => {
   });
 
   it('should parse config show --format json', () => {
-    const result = parseCliArgs(['node', 'symbols', 'config', 'show', '--format', 'json']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'config',
+      'show',
+      '--format',
+      'json',
+    ]);
     expect(result.subcommandArgs.subcommand).toBe('show');
     expect(result.subcommandArgs.format).toBe('json');
   });
@@ -210,6 +287,7 @@ describe('config command', () => {
 ### Medium Priority Tests (Edge Cases)
 
 #### 4. Edge Cases & Error Handling
+
 ```typescript
 describe('edge cases', () => {
   it('should handle no command', () => {
@@ -219,10 +297,13 @@ describe('edge cases', () => {
 
   it('should handle multiple flags with different syntaxes', () => {
     const result = parseCliArgs([
-      'node', 'symbols', 'run',
+      'node',
+      'symbols',
+      'run',
       '--workspace=/path',
-      '--loglevel', 'debug',
-      'gopls'
+      '--loglevel',
+      'debug',
+      'gopls',
     ]);
     expect(result.workspace).toBe('/path');
     expect(result.loglevel).toBe('debug');
@@ -230,12 +311,25 @@ describe('edge cases', () => {
   });
 
   it('should handle console flag', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '--console', 'gopls']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '--console',
+      'gopls',
+    ]);
     expect(result.console).toBe(true);
   });
 
   it('should handle short flag -w for workspace', () => {
-    const result = parseCliArgs(['node', 'symbols', 'run', '-w', '/path', 'gopls']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'run',
+      '-w',
+      '/path',
+      'gopls',
+    ]);
     expect(result.workspace).toBe('/path');
   });
 });
@@ -244,6 +338,7 @@ describe('edge cases', () => {
 ### Low Priority Tests (Type Safety)
 
 #### 5. Type Narrowing & Discriminated Unions
+
 ```typescript
 describe('type discrimination', () => {
   it('should allow type narrowing for run command', () => {
@@ -258,7 +353,13 @@ describe('type discrimination', () => {
   });
 
   it('should allow type narrowing for start command', () => {
-    const result = parseCliArgs(['node', 'symbols', 'start', '--lsp', 'typescript']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'start',
+      '--lsp',
+      'typescript',
+    ]);
 
     if (result.command === 'start') {
       // TypeScript should know result is StartCommandArgs here
@@ -289,17 +390,20 @@ test/unit/
 ## Implementation Approach
 
 ### Phase 1: Quick Wins (2-3 hours)
+
 1. Create `test/unit/cli.test.ts` with basic mocking
 2. Add 10-15 core tests for `run`, `start`, `config` commands
 3. Focus on the complex `run` command logic (lines 346-453)
 
 ### Phase 2: Comprehensive Coverage (4-6 hours)
+
 4. Add edge case tests
 5. Test error messages
 6. Test flag combination scenarios
 7. Add tests for validation logic
 
 ### Phase 3: Refactoring (Optional, 2-4 hours)
+
 8. Extract validation into separate functions
 9. Make dependencies injectable
 10. Consider splitting large parseCliArgs function
@@ -324,7 +428,7 @@ vi.mock('../../src/config/lsp-config.js', () => ({
   listAvailableLsps: vi.fn(() => ['typescript', 'python', 'go']),
   loadLspConfig: vi.fn(() => ({
     config: { languageServers: {} },
-    source: 'test'
+    source: 'test',
   })),
 }));
 
@@ -350,12 +454,18 @@ describe('CLI Argument Parsing', () => {
 
     it('should parse run command with -- delimiter', () => {
       const result = parseCliArgs([
-        'node', 'symbols', 'run', '--',
-        'typescript-language-server', '--stdio'
+        'node',
+        'symbols',
+        'run',
+        '--',
+        'typescript-language-server',
+        '--stdio',
       ]);
 
       if (result.command === 'run') {
-        expect(result.directCommand.commandName).toBe('typescript-language-server');
+        expect(result.directCommand.commandName).toBe(
+          'typescript-language-server'
+        );
         expect(result.directCommand.commandArgs).toEqual(['--stdio']);
       }
     });
@@ -369,7 +479,13 @@ describe('CLI Argument Parsing', () => {
 
   describe('start command', () => {
     it('should parse start command with lsp flag', () => {
-      const result = parseCliArgs(['node', 'symbols', 'start', '--lsp', 'typescript']);
+      const result = parseCliArgs([
+        'node',
+        'symbols',
+        'start',
+        '--lsp',
+        'typescript',
+      ]);
 
       expect(result.command).toBe('start');
       if (result.command === 'start') {
@@ -396,6 +512,7 @@ describe('CLI Argument Parsing', () => {
 **✅ Yes, unit testing is definitely possible and recommended!**
 
 **Best approach**:
+
 1. Start with Option A (mocking) - quick to implement
 2. Write 15-20 core tests covering the complex `run` command logic
 3. Add tests for `start` and `config` commands

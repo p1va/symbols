@@ -60,6 +60,33 @@ export const renameSchema = {
   newName: z.string().describe('New name for the symbol'),
 } as const;
 
+export const logsSchema = {
+  profile: z
+    .string()
+    .optional()
+    .describe('Optional LSP profile name to restrict logs to a single session'),
+} as const;
+
+export const setupSchema = {
+  action: z
+    .enum([
+      'status',
+      'detect',
+      'start',
+      'stop',
+      'restart',
+      'list_profiles',
+      'show_profile',
+    ])
+    .optional()
+    .default('status')
+    .describe('Runtime control action to perform'),
+  profile: z
+    .string()
+    .optional()
+    .describe('Optional LSP profile name to target'),
+} as const;
+
 // Schema that transforms to OneBasedPosition for rename
 export const renameWithTransformSchema = z
   .object({

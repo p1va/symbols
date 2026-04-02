@@ -6,7 +6,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  LspContext,
   ValidationResult,
   SymbolPositionRequest,
   FileRequest,
@@ -14,12 +13,13 @@ import {
   OneBasedPosition,
   toZeroBased,
 } from './types.js';
+import type { LspSession } from './runtime/lsp-session.js';
 
 /**
  * Validates that the workspace is ready for operations
  */
-export function validateWorkspaceReady(ctx: LspContext): ValidationResult {
-  const { workspaceState } = ctx;
+export function validateWorkspaceReady(session: LspSession): ValidationResult {
+  const workspaceState = session.getWorkspaceState();
 
   if (workspaceState.isLoading) {
     return {
@@ -158,11 +158,11 @@ export async function validatePosition(
  * Comprehensive validation for file-based requests
  */
 export function validateFileRequest(
-  ctx: LspContext,
+  session: LspSession,
   request: FileRequest
 ): ValidationResult & { absolutePath?: string } {
   // Check workspace readiness
-  const workspaceCheck = validateWorkspaceReady(ctx);
+  const workspaceCheck = validateWorkspaceReady(session);
   if (!workspaceCheck.valid) {
     return workspaceCheck;
   }
@@ -170,7 +170,7 @@ export function validateFileRequest(
   // Validate and normalize file path using workspace context
   const pathCheck = validateAndNormalizeFilePath(
     request.file,
-    ctx.workspacePath
+    session.getProfile().workspacePath
   );
   if (!pathCheck.valid) {
     return pathCheck;
@@ -185,11 +185,11 @@ export function validateFileRequest(
  * Comprehensive validation for symbol position requests
  */
 export async function validateSymbolPositionRequest(
-  ctx: LspContext,
+  session: LspSession,
   request: SymbolPositionRequest
 ): Promise<ValidationResult & { absolutePath?: string }> {
   // Check workspace readiness
-  const workspaceCheck = validateWorkspaceReady(ctx);
+  const workspaceCheck = validateWorkspaceReady(session);
   if (!workspaceCheck.valid) {
     return workspaceCheck;
   }
@@ -197,7 +197,7 @@ export async function validateSymbolPositionRequest(
   // Validate and normalize file path using workspace context
   const pathCheck = validateAndNormalizeFilePath(
     request.file,
-    ctx.workspacePath
+    session.getProfile().workspacePath
   );
   if (!pathCheck.valid) {
     return pathCheck;
@@ -220,6 +220,8 @@ export async function validateSymbolPositionRequest(
 /**
  * Simple workspace validation for search operations (no file required)
  */
-export function validateWorkspaceOperation(ctx: LspContext): ValidationResult {
-  return validateWorkspaceReady(ctx);
+export function validateWorkspaceOperation(
+  session: LspSession
+): ValidationResult {
+  return validateWorkspaceReady(session);
 }

@@ -1,10 +1,9 @@
 language-servers:
-
   typescript:
     # npm install -g typescript-language-server if you prefer to install globally
     # command: typescript-language-server --stdio
     command: npx -y typescript-language-server --stdio
-    # This Language Server will be launched when at least one of the following files is detected in the working directory 
+    # This Language Server will be launched when at least one of the following files is detected in the working directory
     workspace_files:
       - 'package.json'
       - 'tsconfig.json'
@@ -135,5 +134,3 @@ language-servers:
   #   diagnostics:
   #     strategy: 'push'
   #     wait_timeout_ms: 2000
-
-

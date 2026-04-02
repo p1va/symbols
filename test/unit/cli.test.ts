@@ -33,7 +33,8 @@ vi.mock('fs', async () => {
     existsSync: vi.fn(() => true), // All paths "exist"
     statSync: vi.fn((filePath: string) => {
       // Config files (*.yaml, *.yml) are files, everything else is a directory
-      const isConfigFile = typeof filePath === 'string' &&
+      const isConfigFile =
+        typeof filePath === 'string' &&
         (filePath.endsWith('.yaml') || filePath.endsWith('.yml'));
       return {
         isDirectory: () => !isConfigFile,
@@ -559,12 +560,7 @@ describe('CLI Argument Parsing', () => {
     });
 
     it('should parse start with --console flag', () => {
-      const result = parseCliArgs([
-        'node',
-        'symbols',
-        'start',
-        '--console',
-      ]);
+      const result = parseCliArgs(['node', 'symbols', 'start', '--console']);
 
       if (result.command === 'start') {
         expect(result.console).toBe(true);
@@ -597,13 +593,7 @@ describe('CLI Argument Parsing', () => {
     });
 
     it('should parse start with -w short flag', () => {
-      const result = parseCliArgs([
-        'node',
-        'symbols',
-        'start',
-        '-w',
-        '/path',
-      ]);
+      const result = parseCliArgs(['node', 'symbols', 'start', '-w', '/path']);
 
       if (result.command === 'start') {
         expect(result.workspace).toBe('/path');

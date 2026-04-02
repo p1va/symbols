@@ -3,7 +3,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext } from '../types.js';
+import type { LspManager } from '../runtime/lsp-manager.js';
 
 import { registerInspectTool } from './inspect.js';
 import { registerReferencesTool } from './references.js';
@@ -13,20 +13,19 @@ import { registerRenameTool } from './rename.js';
 import { registerSearchTool } from './search.js';
 import { registerOutlineTool } from './outline.js';
 import { registerDiagnosticsTool } from './diagnostics.js';
+import { registerSetupTool } from './setup.js';
 
 /**
  * Register all MCP tools with the server
  */
-export function registerAllTools(
-  server: McpServer,
-  createContext: () => LspContext
-) {
-  registerInspectTool(server, createContext);
-  registerReferencesTool(server, createContext);
-  registerCompletionTool(server, createContext);
-  registerWindowLogsTool(server, createContext);
-  registerRenameTool(server, createContext);
-  registerSearchTool(server, createContext);
-  registerOutlineTool(server, createContext);
-  registerDiagnosticsTool(server, createContext);
+export function registerAllTools(server: McpServer, manager: LspManager) {
+  registerSetupTool(server, manager);
+  registerInspectTool(server, manager);
+  registerReferencesTool(server, manager);
+  registerCompletionTool(server, manager);
+  registerWindowLogsTool(server, manager);
+  registerRenameTool(server, manager);
+  registerSearchTool(server, manager);
+  registerOutlineTool(server, manager);
+  registerDiagnosticsTool(server, manager);
 }

@@ -6,7 +6,6 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 
 ![NPM Version](https://img.shields.io/npm/v/%40p1va%2Fsymbols?style=flat)
 
-
 </div>
 
 ## Introduction
@@ -33,7 +32,7 @@ Use the `run` command to start the MCP server with the desired Language Server c
 
 `npx -y "@p1va/symbols" run [run options] <lsp-cmd> [lsp args]`
 
-See below configurations for the Language Servers tested. Other stdio Language Servers *should* work too. For simplicity examples follow Claude Code schema.
+See below configurations for the Language Servers tested. Other stdio Language Servers _should_ work too. For simplicity examples follow Claude Code schema.
 
 <details>
 <summary>
@@ -63,13 +62,17 @@ See below configurations for the Language Servers tested. Other stdio Language S
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
-        "pyright-langserver", "--stdio"
-      ]
-    }
-  }
+        "-w",
+        "optional/path/to/workspace",
+        "pyright-langserver",
+        "--stdio",
+      ],
+    },
+  },
 }
 ```
 
@@ -120,18 +123,22 @@ venv = ".venv"
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
-        "typescript-language-server", "--stdio"
+        "-w",
+        "optional/path/to/workspace",
+        "typescript-language-server",
+        "--stdio",
       ],
       "env": {
         // Keep at least one code file open for search to work
         "SYMBOLS_PRELOAD_FILES": "src/index.ts",
-        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
-      }
-    }
-  }
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
 }
 ```
 
@@ -225,24 +232,28 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
+        "-w",
+        "optional/path/to/workspace",
         // Adjust this to your installation path
-        "dotnet", "$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll",
+        "dotnet",
+        "$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll",
         "--logLevel=Information",
         "--extensionLogDirectory=$HOME/.csharp-lsp/logs",
-        "--stdio"
+        "--stdio",
       ],
       "env": {
         "SYMBOLS_WORKSPACE_LOADER": "roslyn",
-      }
-    }
-  }
+      },
+    },
+  },
 }
 ```
 
-> ℹ️ Roslyn Language Server is also provided with the C# Dev Kit extension for VS Code however the launch command is a bit more complicated and changes each time the extension is updated. If wanting to try it i suggest trying the other modality (`config init` * `start`) which brings a template for the launch command
+> ℹ️ Roslyn Language Server is also provided with the C# Dev Kit extension for VS Code however the launch command is a bit more complicated and changes each time the extension is updated. If wanting to try it i suggest trying the other modality (`config init` \* `start`) which brings a template for the launch command
 
 #### Troubleshooting
 
@@ -288,19 +299,22 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
+        "-w",
+        "optional/path/to/workspace",
         "clangd",
         // Provide here more clangd args if needed
         // e.g. --compile-commands-dir path/to/dir
       ],
       "env": {
         "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
-        "SYMBOLS_PRELOAD_FILES": "path/to/file.cpp"
-      }
-    }
-  }
+        "SYMBOLS_PRELOAD_FILES": "path/to/file.cpp",
+      },
+    },
+  },
 }
 ```
 
@@ -308,12 +322,11 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
 
 **General Errors**
 
-Ensure either `compile_commands.json` is found in the working directory or provide its directory path with  `--compile-commands-dir=path/to/dir` 
+Ensure either `compile_commands.json` is found in the working directory or provide its directory path with `--compile-commands-dir=path/to/dir`
 
 **Search: No Results Found**
 
-Index is generate when the first file is opened. To warm up is possible to pre load and keep a one or more files opened by providing a list in ` SYMBOLS_PRELOAD_FILES` 
-
+Index is generate when the first file is opened. To warm up is possible to pre load and keep a one or more files opened by providing a list in ` SYMBOLS_PRELOAD_FILES`
 
 </details>
 
@@ -350,20 +363,23 @@ gopls version
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
-        "gopls"
+        "-w",
+        "optional/path/to/workspace",
+        "gopls",
       ],
       "env": {
         "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
         // Adjust these to your machine
-        "GOPATH" : "$HOME/go",
+        "GOPATH": "$HOME/go",
         "GOCACHE": "$HOME/.cache/go-build",
-        "GOMODCACHE": "$HOME/go/pkg/mod"
-      }
-    }
-  }
+        "GOMODCACHE": "$HOME/go/pkg/mod",
+      },
+    },
+  },
 }
 ```
 
@@ -402,13 +418,16 @@ rust-analyzer --version
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
-        "rust-analyzer"
-      ]
-    }
-  }
+        "-w",
+        "optional/path/to/workspace",
+        "rust-analyzer",
+      ],
+    },
+  },
 }
 ```
 
@@ -447,18 +466,23 @@ $HOME/.java-lsp/jdtls/bin/jdtls --help
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
         // Adjust this or remove it (defaults to current directory)
-        "-w", "optional/path/to/workspace",
+        "-w",
+        "optional/path/to/workspace",
         "$HOME/.java-lsp/jdtls/bin/jdtls",
-        "-configuration", "$HOME/.cache/jdtls/config",
-        "-data", "$HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME"
+        "-configuration",
+        "$HOME/.cache/jdtls/config",
+        "-data",
+        "$HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME",
       ],
       "env": {
-        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push"
-      }
-    }
-  }
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
 }
 ```
 
@@ -499,7 +523,7 @@ To create a workspace config file run this instead
 
 - Will initialize `path/to/workspace/language-servers.yaml`
 
-`npx -y "@p1va/symbols@latest" config init` 
+`npx -y "@p1va/symbols@latest" config init`
 
 - Will initialize `./language-servers.yaml`
 
@@ -549,14 +573,18 @@ Update your MCP configuration with this MCP server. The first Language Server ha
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "start",
+        "-y",
+        "@p1va/symbols@latest",
+        "start",
         // Defaults to current directory
-        "-w", "optional/path/to/workspace",
+        "-w",
+        "optional/path/to/workspace",
         // Defaults to language-servers.yaml in current workspace
-        "-c", "optional/path/to/config.yaml",
-      ]
-    }
-  }
+        "-c",
+        "optional/path/to/config.yaml",
+      ],
+    },
+  },
 }
 ```
 

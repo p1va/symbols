@@ -11,6 +11,8 @@
  * Covers all common programming languages
  */
 export const DEFAULT_EXTENSIONS: Record<string, string> = {
+  //TODO: Check Claude Code
+
   // JavaScript/TypeScript
   '.js': 'javascript',
   '.mjs': 'javascript',

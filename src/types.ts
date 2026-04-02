@@ -159,15 +159,15 @@ export interface LspConfig {
   preloadFiles?: string[]; // Array of file paths to open during initialization
 }
 
-// File lifecycle management
-export interface PreloadedFile {
+// Session-scoped document state for documents currently known to the LSP session.
+export interface SessionDocument {
   uri: string;
   content: string;
   version: number;
   isOpen: boolean;
 }
 
-export type PreloadedFiles = Map<string, PreloadedFile>;
+export type SessionDocuments = Map<string, SessionDocument>;
 
 // Diagnostic provider information
 export interface DiagnosticProvider {
@@ -248,20 +248,6 @@ export interface RenameRequest {
   file: string;
   position: OneBasedPosition;
   newName: string;
-}
-
-// Context object that bundles cross-cutting services
-export interface LspContext {
-  readonly client: LspClient;
-  readonly preloadedFiles: PreloadedFiles;
-  readonly diagnosticsStore: DiagnosticsStore;
-  readonly diagnosticProviderStore: DiagnosticProviderStore;
-  readonly windowLogStore: WindowLogStore;
-  readonly workspaceState: WorkspaceState;
-  readonly workspaceUri: string;
-  readonly workspacePath: string;
-  readonly lspName?: string;
-  readonly lspConfig?: import('./config/lsp-config.js').ParsedLspConfig | null;
 }
 
 // Additional error codes for validation (extending the main ErrorCode enum)
