@@ -21,7 +21,6 @@ interface MockSessionOptions {
   providers?: Array<{ id: string }>;
   logMessages?: LogMessage[];
 }
-
 function createMockSession(options: MockSessionOptions = {}): {
   session: LspSession;
   request: ReturnType<typeof vi.fn>;

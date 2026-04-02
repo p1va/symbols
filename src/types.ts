@@ -249,7 +249,6 @@ export interface RenameRequest {
   position: OneBasedPosition;
   newName: string;
 }
-
 // Additional error codes for validation (extending the main ErrorCode enum)
 export enum ValidationErrorCode {
   InvalidPath = 'INVALID_PATH',

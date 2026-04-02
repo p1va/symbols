@@ -39,7 +39,6 @@ const mockStatSync = fs.statSync as MockedFunction<typeof fs.statSync>;
 const mockReadFile = fs.promises.readFile as MockedFunction<
   typeof fs.promises.readFile
 >;
-
 type MockSessionOverrides = Partial<LspSession> & {
   workspaceState?: {
     isReady: boolean;
