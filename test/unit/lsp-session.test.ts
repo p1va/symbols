@@ -25,7 +25,7 @@ vi.mock('../../src/lsp-client.js', () => ({
 }));
 
 vi.mock('../../src/config/lsp-config.js', () => ({
-  getLanguageId: vi.fn(() => 'typescript'),
+  getLanguageIdForExtensions: vi.fn(() => 'typescript'),
 }));
 
 const mockReadFile = vi.mocked(fs.promises.readFile);
@@ -71,11 +71,62 @@ function createProfile(preloadFiles: string[] = []): LspSessionProfile {
   };
 }
 
+function mockSuccessfulStart(): void {
+  const sendNotification = vi.fn().mockResolvedValue(undefined);
+  mockCreateLspClient.mockReturnValue({
+    ok: true,
+    data: {
+      client: {
+        connection: {
+          sendNotification,
+        } as never,
+        isInitialized: true,
+      },
+      process: createMockProcess(),
+    },
+  });
+  mockInitializeLspClient.mockResolvedValue({
+    ok: true,
+    data: undefined,
+  });
+}
+
 describe('LspSession document lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockReadFile.mockResolvedValue('content');
+  });
+
+  it('reports not_started before the session has ever been launched', () => {
+    const session = createLspSession(
+      'typescript::/workspace',
+      createProfile(['anchor.ts'])
+    );
+
+    expect(session.getStatusSnapshot()).toMatchObject({
+      state: 'not_started',
+      workspaceReady: null,
+      workspaceLoading: null,
+    });
+  });
+
+  it('reports stopped after an explicit stop', async () => {
+    mockSuccessfulStart();
+
+    const session = createLspSession(
+      'typescript::/workspace',
+      createProfile(['anchor.ts'])
+    );
+
+    await session.start();
+    await session.stop();
+
+    expect(session.getStatusSnapshot()).toMatchObject({
+      state: 'stopped',
+      workspaceReady: null,
+      workspaceLoading: null,
+    });
   });
 
   it('keeps anchor files open while transient operation files are opened and closed', async () => {

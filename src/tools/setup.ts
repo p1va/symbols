@@ -1,13 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type {
-  LspManager,
-  LspManagerProfileStatus,
-  LspManagerStatus,
-} from '../runtime/lsp-manager.js';
+import type { LspManager, LspManagerProfileStatus, LspManagerStatus } from '../runtime/lsp-manager.js';
 import { setupSchema } from './schemas.js';
 import { validateSetup } from './validation.js';
 
 function formatProfileSummary(profile: LspManagerProfileStatus): string {
+  const workspaceReadyText =
+    profile.workspaceReady === null
+      ? 'n/a'
+      : profile.workspaceReady
+        ? 'yes'
+        : 'no';
   const lines = [
     `${profile.name} [${profile.state}]${profile.isDefault ? ' default' : ''}`,
     `  session key: ${profile.sessionKey}`,
@@ -19,7 +21,7 @@ function formatProfileSummary(profile: LspManagerProfileStatus): string {
     `  preload files: ${profile.preloadFiles.length > 0 ? profile.preloadFiles.join(', ') : 'none'}`,
     `  extensions: ${profile.extensions.length > 0 ? profile.extensions.join(', ') : 'none'}`,
     `  pid: ${profile.pid ?? 'not running'}`,
-    `  workspace ready: ${profile.workspaceReady ? 'yes' : 'no'}`,
+    `  workspace ready: ${workspaceReadyText}`,
     `  window logs: ${profile.windowLogCount}`,
     `  owned documents: ${profile.ownedDocumentCount}`,
   ];
@@ -68,95 +70,17 @@ export function registerSetupTool(
   server.registerTool(
     'setup',
     {
-      title: 'Setup',
+      title: 'Reload',
       description:
-        'Inspect and control LSP manager state. Supports status, detect, start, stop, restart, list_profiles, and show_profile.',
+        'Reload the effective config and reapply it to currently running LSP sessions.',
       inputSchema: setupSchema,
     },
     async (request) => {
-      const validatedRequest = validateSetup(request);
-
-      switch (validatedRequest.action) {
-        case 'detect': {
-          const status = await manager.detect();
-          return {
-            content: [{ type: 'text' as const, text: formatStatus(status) }],
-          };
-        }
-        case 'start': {
-          await manager.start(validatedRequest.profile);
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: formatStatus(manager.getStatus()),
-              },
-            ],
-          };
-        }
-        case 'stop': {
-          await manager.stop(validatedRequest.profile);
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: formatStatus(manager.getStatus()),
-              },
-            ],
-          };
-        }
-        case 'restart': {
-          await manager.restart(validatedRequest.profile);
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: formatStatus(manager.getStatus()),
-              },
-            ],
-          };
-        }
-        case 'list_profiles': {
-          const profiles = manager.listProfiles();
-          const text =
-            profiles.length === 0
-              ? 'No LSP profiles are currently known to the manager.'
-              : profiles
-                  .map((profile) => formatProfileSummary(profile))
-                  .join('\n\n');
-          return {
-            content: [{ type: 'text' as const, text }],
-          };
-        }
-        case 'show_profile': {
-          if (!validatedRequest.profile) {
-            throw new Error('setup show_profile requires a profile name.');
-          }
-
-          const profile = manager.getProfileStatus(validatedRequest.profile);
-          if (!profile) {
-            throw new Error(
-              `Unknown LSP profile '${validatedRequest.profile}'.`
-            );
-          }
-
-          return {
-            content: [
-              { type: 'text' as const, text: formatProfileSummary(profile) },
-            ],
-          };
-        }
-        case 'status':
-        default:
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: formatStatus(manager.getStatus()),
-              },
-            ],
-          };
-      }
+      validateSetup(request);
+      const status = await manager.reload();
+      return {
+        content: [{ type: 'text' as const, text: formatStatus(status) }],
+      };
     }
   );
 }

@@ -34,6 +34,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
+    "sync:agent-surfaces": "node scripts/sync-agent-surfaces.mjs",
     "check:unused": "knip",
     "test": "vitest run",
     "test:watch": "vitest",

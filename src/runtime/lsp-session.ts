@@ -34,7 +34,10 @@ import {
   createLspError,
   tryResultAsync,
 } from '../types.js';
-import { ParsedLspConfig, getLanguageId } from '../config/lsp-config.js';
+import {
+  ParsedLspConfig,
+  getLanguageIdForExtensions,
+} from '../config/lsp-config.js';
 import {
   CursorContext,
   generateCursorContext,
@@ -43,10 +46,10 @@ import { getDefaultPreloadFiles } from '../utils/log-level.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
 
 export type SessionState =
+  | 'not_started'
   | 'stopped'
   | 'starting'
   | 'ready'
-  | 'stopping'
   | 'error';
 
 export interface LspSessionProfile {
@@ -70,8 +73,8 @@ export interface LspSessionStatusSnapshot {
   preloadFiles: string[];
   diagnosticsStrategy: 'push' | 'pull';
   workspaceLoader: string | null;
-  workspaceReady: boolean;
-  workspaceLoading: boolean;
+  workspaceReady: boolean | null;
+  workspaceLoading: boolean | null;
   windowLogCount: number;
 }
 
@@ -237,13 +240,18 @@ export function createLspSession(
   ownershipSink: LspSessionOwnershipSink = {}
 ): LspSession {
   let profile = initialProfile;
-  let state: SessionState = 'stopped';
+  let state: SessionState = 'not_started';
   let client: LspClient | null = null;
   let process: ChildProcessWithoutNullStreams | null = null;
   let lastError: string | null = null;
   let startPromise: Promise<void> | null = null;
+  let hasStartAttempt = false;
   let stores = createStores();
   const ownedDocuments = new Set<string>();
+
+  function getInactiveState(): SessionState {
+    return hasStartAttempt ? 'stopped' : 'not_started';
+  }
 
   function setProfile(nextProfile: LspSessionProfile): void {
     profile = nextProfile;
@@ -292,7 +300,11 @@ export function createLspSession(
       throw new Error(`LSP session '${profile.name}' is not initialized`);
     }
 
-    if (state === 'stopped' || state === 'stopping' || state === 'error') {
+    if (
+      state === 'not_started' ||
+      state === 'stopped' ||
+      state === 'error'
+    ) {
       throw new Error(`LSP session '${profile.name}' is not available`);
     }
 
@@ -416,10 +428,9 @@ export function createLspSession(
           notifyDocumentReleased(normalizedPath, uri);
         }
 
-        const languageId = getLanguageId(
+        const languageId = getLanguageIdForExtensions(
           normalizedPath,
-          profile.configPath || undefined,
-          profile.workspacePath
+          profile.config.extensions
         );
         const openResult = await openFile(
           activeClient,
@@ -665,6 +676,7 @@ export function createLspSession(
     }
 
     startPromise = (async () => {
+      hasStartAttempt = true;
       state = 'starting';
       lastError = null;
       stores = createStores();
@@ -703,11 +715,6 @@ export function createLspSession(
         startPromise = null;
         stores.workspaceState.isLoading = false;
         stores.workspaceState.isReady = false;
-
-        if (state === 'stopping') {
-          state = 'stopped';
-          return;
-        }
 
         state = 'error';
         lastError =
@@ -761,10 +768,16 @@ export function createLspSession(
       }
     }
 
+    if (!client && !process) {
+      stores = createStores();
+      state = getInactiveState();
+      lastError = null;
+      return;
+    }
+
     const currentClient = client;
     const currentProcess = process;
 
-    state = 'stopping';
     client = null;
     process = null;
     stores.workspaceState.isLoading = false;
@@ -773,7 +786,7 @@ export function createLspSession(
     await terminateClientProcess(currentClient, currentProcess);
 
     stores = createStores();
-    state = 'stopped';
+    state = getInactiveState();
     lastError = null;
   }
 
@@ -798,6 +811,9 @@ export function createLspSession(
   }
 
   function getStatusSnapshot(): LspSessionStatusSnapshot {
+    const hasRuntimeWorkspaceState =
+      state !== 'not_started' && state !== 'stopped';
+
     return {
       sessionKey,
       profileName: profile.name,
@@ -812,8 +828,12 @@ export function createLspSession(
       preloadFiles: [...(profile.config.preload_files || [])],
       diagnosticsStrategy: profile.config.diagnostics.strategy,
       workspaceLoader: profile.config.workspace_loader || null,
-      workspaceReady: stores.workspaceState.isReady,
-      workspaceLoading: stores.workspaceState.isLoading,
+      workspaceReady: hasRuntimeWorkspaceState
+        ? stores.workspaceState.isReady
+        : null,
+      workspaceLoading: hasRuntimeWorkspaceState
+        ? stores.workspaceState.isLoading
+        : null,
       windowLogCount: stores.windowLogStore.getMessages().length,
     };
   }

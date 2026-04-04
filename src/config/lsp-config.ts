@@ -10,7 +10,10 @@ import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
 import which from 'which';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
-import { DEFAULT_EXTENSIONS } from './default-extensions.js';
+import {
+  DEFAULT_EXTENSIONS,
+  DEFAULT_PROFILE_EXTENSIONS,
+} from './default-extensions.js';
 import { expandEnvVars } from '../utils/env-expansion.js';
 
 // Zod schemas for validation
@@ -25,7 +28,7 @@ const SymbolsConfigSchema = z.object({
 
 const LspConfigSchema = z.object({
   command: z.string(),
-  extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID, merged with DEFAULT_EXTENSIONS
+  extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID handled by this profile
   workspace_files: z.array(z.string()).default([]),
   preload_files: z.array(z.string()).default([]), // files to open during initialization
   diagnostics: DiagnosticsConfigSchema.default({
@@ -309,6 +312,13 @@ export function getLspConfig(
     return null;
   }
 
+  const configuredExtensions = lspConfig.extensions;
+  const fallbackProfileExtensions = DEFAULT_PROFILE_EXTENSIONS[lspName] || {};
+  const effectiveExtensions =
+    Object.keys(configuredExtensions).length > 0
+      ? configuredExtensions
+      : fallbackProfileExtensions;
+
   // Apply environment variable overrides (SYMBOLS_* prefix)
   // Precedence: ENV vars > YAML config > Zod defaults
 
@@ -380,15 +390,9 @@ export function getLspConfig(
     );
   }
 
-  // Merge user extensions with defaults (user extensions override defaults)
-  const extensions = {
-    ...DEFAULT_EXTENSIONS,
-    ...lspConfig.extensions,
-  };
-
   return {
     ...lspConfig,
-    extensions,
+    extensions: effectiveExtensions,
     symbols,
     name: lspName,
     commandName,
@@ -411,7 +415,11 @@ export function getLspConfigForFile(
   for (const [lspName, lspConfig] of Object.entries(
     config['language-servers']
   )) {
-    if (lspConfig.extensions[extension]) {
+    const configuredExtensions =
+      Object.keys(lspConfig.extensions).length > 0
+        ? lspConfig.extensions
+        : DEFAULT_PROFILE_EXTENSIONS[lspName] || {};
+    if (configuredExtensions[extension]) {
       return getLspConfig(lspName, configPath, workspacePath);
     }
   }
@@ -439,8 +447,15 @@ export function getLanguageId(
     }
   }
 
-  // Default to plaintext if no match found
-  return 'plaintext';
+  return DEFAULT_EXTENSIONS[extension] || 'plaintext';
+}
+
+export function getLanguageIdForExtensions(
+  filePath: string,
+  extensions: Record<string, string>
+): string {
+  const extension = path.extname(filePath);
+  return extensions[extension] || DEFAULT_EXTENSIONS[extension] || 'plaintext';
 }
 
 /**

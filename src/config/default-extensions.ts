@@ -2,8 +2,10 @@
  * Default file extension to language ID mappings for common programming languages
  * Based on lang-identifier.md
  *
- * These defaults are automatically available for all LSP configurations.
- * User-specified extensions in config files are merged with (not replacing) these defaults.
+ * These defaults are a fallback language-ID catalog.
+ * Configured LSP profiles should still explicitly declare which extensions they handle.
+ * Direct-command mode can use this full table because it intentionally delegates file
+ * compatibility decisions to the single launched server.
  */
 
 /**
@@ -93,3 +95,51 @@ export const DEFAULT_EXTENSIONS: Record<string, string> = {
   '.mdown': 'markdown',
   '.mkd': 'markdown',
 };
+
+export const DEFAULT_PROFILE_EXTENSIONS: Record<string, Record<string, string>> =
+  {
+    typescript: {
+      '.js': 'javascript',
+      '.mjs': 'javascript',
+      '.cjs': 'javascript',
+      '.jsx': 'javascriptreact',
+      '.ts': 'typescript',
+      '.mts': 'typescript',
+      '.cts': 'typescript',
+      '.tsx': 'typescriptreact',
+    },
+    pyright: {
+      '.py': 'python',
+      '.pyw': 'python',
+      '.pyi': 'python',
+    },
+    go: {
+      '.go': 'go',
+    },
+    rust: {
+      '.rs': 'rust',
+    },
+    roslyn: {
+      '.cs': 'csharp',
+      '.cshtml': 'razor',
+      '.razor': 'razor',
+    },
+    'vscode-roslyn': {
+      '.cs': 'csharp',
+      '.cshtml': 'razor',
+      '.razor': 'razor',
+    },
+    java: {
+      '.java': 'java',
+    },
+    clangd: {
+      '.c': 'c',
+      '.h': 'c',
+      '.cpp': 'cpp',
+      '.cc': 'cpp',
+      '.cxx': 'cpp',
+      '.hpp': 'cpp',
+      '.hh': 'cpp',
+      '.hxx': 'cpp',
+    },
+  };

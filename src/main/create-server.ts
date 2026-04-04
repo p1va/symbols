@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
 import { registerAllTools } from '../tools/index.js';
+import { registerLanguageServerResources } from '../resources/language-servers.js';
 
 /**
  * Creates and configures an MCP server with all LSP tools registered
@@ -12,6 +13,7 @@ export function createServer(manager: LspManager): McpServer {
   });
 
   registerAllTools(server, manager);
+  registerLanguageServerResources(server, manager);
 
   return server;
 }

@@ -18,7 +18,7 @@ vi.mock('../../src/config/lsp-config.js', () => ({
   autoDetectLsp: vi.fn(),
   createConfigFromDirectCommand: vi.fn(),
   getLspConfig: vi.fn(),
-  listAvailableLsps: vi.fn(),
+  loadLspConfig: vi.fn(),
 }));
 
 vi.mock('../../src/runtime/lsp-session.js', async () => {
@@ -36,13 +36,13 @@ import {
 import {
   autoDetectLsp,
   getLspConfig,
-  listAvailableLsps,
+  loadLspConfig,
   type ParsedLspConfig,
 } from '../../src/config/lsp-config.js';
 import { createLspSession } from '../../src/runtime/lsp-session.js';
 
 const mockResolveStartConfig = vi.mocked(resolveStartConfig);
-const mockListAvailableLsps = vi.mocked(listAvailableLsps);
+const mockLoadLspConfig = vi.mocked(loadLspConfig);
 const mockGetLspConfig = vi.mocked(getLspConfig);
 const mockAutoDetectLsp = vi.mocked(autoDetectLsp);
 const mockCreateLspSession = vi.mocked(createLspSession);
@@ -63,13 +63,14 @@ interface MockSessionRecord {
 
 function createParsedConfig(
   name: string,
-  extensions: Record<string, string>
+  extensions: Record<string, string>,
+  commandArgs: string[] = ['--stdio']
 ): ParsedLspConfig {
   return {
     name,
-    command: `${name}-lsp --stdio`,
+    command: `${name}-lsp ${commandArgs.join(' ')}`.trim(),
     commandName: `${name}-lsp`,
-    commandArgs: ['--stdio'],
+    commandArgs,
     extensions,
     workspace_files: [],
     preload_files: [],
@@ -81,21 +82,6 @@ function createParsedConfig(
   };
 }
 
-function createProfile(
-  name: string,
-  workspacePath: string,
-  extensions: Record<string, string>
-): LspSessionProfile {
-  return {
-    name,
-    workspacePath,
-    workspaceUri: pathToFileURL(workspacePath).href,
-    workspaceName: path.basename(workspacePath),
-    configPath: null,
-    config: createParsedConfig(name, extensions),
-  };
-}
-
 function createMockSessionRecord(
   sessionKey: string,
   initialProfile: LspSessionProfile,
@@ -103,7 +89,7 @@ function createMockSessionRecord(
 ): MockSessionRecord {
   let profile = initialProfile;
   const ownedDocuments = new Set<string>();
-  const state: MockSessionState = { state: 'stopped' };
+  const state: MockSessionState = { state: 'not_started' };
   const startMock = vi.fn(() => {
     state.state = 'ready';
     return Promise.resolve();
@@ -181,8 +167,14 @@ function createMockSessionRecord(
       preloadFiles: [...profile.config.preload_files],
       diagnosticsStrategy: profile.config.diagnostics.strategy,
       workspaceLoader: profile.config.workspace_loader || null,
-      workspaceReady: true,
-      workspaceLoading: false,
+      workspaceReady:
+        state.state === 'not_started' || state.state === 'stopped'
+          ? null
+          : state.state === 'ready',
+      workspaceLoading:
+        state.state === 'not_started' || state.state === 'stopped'
+          ? null
+          : state.state === 'starting',
       windowLogCount: 0,
     }),
   };
@@ -200,13 +192,8 @@ function createMockSessionRecord(
 
 describe('LspManager routing', () => {
   const workspacePath = '/workspace';
-  const alphaProfile = createProfile('alpha', workspacePath, {
-    '.ts': 'typescript',
-  });
-  const betaProfile = createProfile('beta', workspacePath, {
-    '.ts': 'typescript',
-  });
   const sessionRecords = new Map<string, MockSessionRecord>();
+  let configuredProfiles: Record<string, ParsedLspConfig>;
 
   function emitDocumentClaim(profileName: string, filePath: string): void {
     const record = sessionRecords.get(profileName);
@@ -226,6 +213,14 @@ describe('LspManager routing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionRecords.clear();
+    configuredProfiles = {
+      alpha: createParsedConfig('alpha', {
+        '.ts': 'typescript',
+      }),
+      beta: createParsedConfig('beta', {
+        '.ts': 'typescript',
+      }),
+    };
 
     mockResolveStartConfig.mockReturnValue({
       command: 'start',
@@ -235,17 +230,20 @@ describe('LspManager routing', () => {
       loglevel: 'info',
       console: false,
     });
-    mockListAvailableLsps.mockReturnValue(['alpha', 'beta']);
+    mockLoadLspConfig.mockImplementation(() => ({
+      config: {
+        'language-servers': configuredProfiles,
+      },
+      source: {
+        path: '/workspace/language-servers.yaml',
+        type: 'workspace',
+        description: 'Found in workspace directory',
+      },
+    }));
     mockAutoDetectLsp.mockReturnValue('alpha');
-    mockGetLspConfig.mockImplementation((profileName) => {
-      if (profileName === 'alpha') {
-        return alphaProfile.config;
-      }
-      if (profileName === 'beta') {
-        return betaProfile.config;
-      }
-      return null;
-    });
+    mockGetLspConfig.mockImplementation(
+      (profileName) => configuredProfiles[profileName] || null
+    );
 
     mockCreateLspSession.mockImplementation(
       (sessionKey, profile, ownershipSink) => {
@@ -297,5 +295,205 @@ describe('LspManager routing', () => {
     expect(alphaRecord).toBeDefined();
     expect(betaRecord?.startMock).toHaveBeenCalledTimes(1);
     expect(alphaRecord?.startMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the effective config path from the selected config source', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    expect(manager.getStatus().configPath).toBe(
+      '/workspace/language-servers.yaml'
+    );
+  });
+
+  it('reports untouched configured profiles as not_started', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    expect(manager.getProfileStatus('alpha')).toMatchObject({
+      state: 'not_started',
+      workspaceReady: null,
+      workspaceLoading: null,
+    });
+    expect(manager.getProfileStatus('beta')).toMatchObject({
+      state: 'not_started',
+      workspaceReady: null,
+      workspaceLoading: null,
+    });
+  });
+
+  it('reports stopped after an explicitly started session is stopped', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    await manager.start('alpha');
+    await manager.stop('alpha');
+
+    expect(manager.getProfileStatus('alpha')).toMatchObject({
+      state: 'stopped',
+      workspaceReady: null,
+      workspaceLoading: null,
+    });
+  });
+
+  it('keeps a running session on its launch snapshot until reload is applied', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    await manager.start('alpha');
+    configuredProfiles.alpha = createParsedConfig(
+      'alpha',
+      {
+        '.ts': 'typescript',
+      },
+      ['--stdio', '--from-detect']
+    );
+
+    await manager.detect();
+
+    expect(
+      sessionRecords.get('alpha')?.session.getProfile().config.commandArgs
+    ).toEqual(['--stdio']);
+  });
+
+  it('reload reapplies config to running sessions without starting dormant ones', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    await manager.start('alpha');
+    configuredProfiles.alpha = createParsedConfig(
+      'alpha',
+      {
+        '.ts': 'typescript',
+      },
+      ['--stdio', '--from-reload']
+    );
+    configuredProfiles.beta = createParsedConfig(
+      'beta',
+      {
+        '.ts': 'typescript',
+      },
+      ['--stdio', '--dormant']
+    );
+
+    const status = await manager.reload();
+    const alphaRecord = sessionRecords.get('alpha');
+    const betaRecord = sessionRecords.get('beta');
+
+    expect(alphaRecord?.stopMock).toHaveBeenCalledTimes(1);
+    expect(alphaRecord?.startMock).toHaveBeenCalledTimes(2);
+    expect(betaRecord?.stopMock).not.toHaveBeenCalled();
+    expect(betaRecord?.startMock).not.toHaveBeenCalled();
+    expect(
+      status.profiles.find((profile) => profile.name === 'alpha')
+    ).toMatchObject({
+      state: 'ready',
+      commandArgs: ['--stdio', '--from-reload'],
+    });
+    expect(
+      status.profiles.find((profile) => profile.name === 'beta')
+    ).toMatchObject({
+      state: 'not_started',
+      commandArgs: ['--stdio', '--dormant'],
+    });
+  });
+
+  it('reload does not restart profiles that were removed from config', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    await manager.start('alpha');
+    delete configuredProfiles.alpha;
+
+    const status = await manager.reload();
+    const alphaRecord = sessionRecords.get('alpha');
+
+    expect(alphaRecord?.stopMock).toHaveBeenCalledTimes(1);
+    expect(alphaRecord?.startMock).toHaveBeenCalledTimes(1);
+    expect(status.profiles.find((profile) => profile.name === 'alpha')).toBeUndefined();
+    expect(
+      status.profiles.find((profile) => profile.name === 'beta')
+    ).toMatchObject({
+      state: 'not_started',
+    });
+  });
+
+  it('starts in uninitialized mode without a config file and reports bootstrap guidance', async () => {
+    mockLoadLspConfig.mockReturnValue({
+      config: {
+        'language-servers': {},
+      },
+      source: {
+        path: 'default',
+        type: 'default',
+        description: 'Using default configuration (no config file found)',
+      },
+    });
+    mockAutoDetectLsp.mockReturnValue(null);
+    mockGetLspConfig.mockReturnValue(null);
+
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    const status = manager.getStatus();
+
+    expect(status).toMatchObject({
+      mode: 'start',
+      state: 'uninitialized',
+      configPath: null,
+      profiles: [],
+    });
+    expect(status.issues).toContain(
+      'No configuration file was found. Run `symbols config init` to create language-servers.yaml, then add a language server profile, or start Symbols in direct mode with `symbols run <command>`.'
+    );
+  });
+
+  it('short-circuits file routing when no config file is present', async () => {
+    mockLoadLspConfig.mockReturnValue({
+      config: {
+        'language-servers': {},
+      },
+      source: {
+        path: 'default',
+        type: 'default',
+        description: 'Using default configuration (no config file found)',
+      },
+    });
+    mockAutoDetectLsp.mockReturnValue(null);
+    mockGetLspConfig.mockReturnValue(null);
+
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    await expect(manager.getSessionForFile('src/test.ts')).rejects.toThrow(
+      'No configuration file was found. Run `symbols config init` to create language-servers.yaml, then add a language server profile, or start Symbols in direct mode with `symbols run <command>`.'
+    );
+    await expect(manager.getSearchSessions()).rejects.toThrow(
+      'No configuration file was found. Run `symbols config init` to create language-servers.yaml, then add a language server profile, or start Symbols in direct mode with `symbols run <command>`.'
+    );
   });
 });

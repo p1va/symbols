@@ -9,7 +9,7 @@ import {
   autoDetectLsp,
   createConfigFromDirectCommand,
   getLspConfig,
-  listAvailableLsps,
+  loadLspConfig,
 } from '../config/lsp-config.js';
 import logger from '../utils/logger.js';
 import {
@@ -21,7 +21,7 @@ import {
 } from './lsp-session.js';
 
 export type ManagerMode = 'start' | 'run' | null;
-export type ManagerState = 'idle' | 'ready' | 'degraded';
+export type ManagerState = 'idle' | 'ready' | 'uninitialized' | 'degraded';
 
 export interface LspManagerProfileStatus {
   name: string;
@@ -29,7 +29,10 @@ export interface LspManagerProfileStatus {
   configured: boolean;
   state: SessionState;
   command: string;
+  commandName: string;
+  commandArgs: string[];
   workspacePath: string;
+  workspaceFiles: string[];
   isDefault: boolean;
   lastError: string | null;
   pid: number | null;
@@ -37,8 +40,8 @@ export interface LspManagerProfileStatus {
   preloadFiles: string[];
   diagnosticsStrategy: 'push' | 'pull';
   workspaceLoader: string | null;
-  workspaceReady: boolean;
-  workspaceLoading: boolean;
+  workspaceReady: boolean | null;
+  workspaceLoading: boolean | null;
   windowLogCount: number;
   ownedDocumentCount: number;
 }
@@ -80,6 +83,7 @@ export interface LspManager {
   getStatus(): LspManagerStatus;
   listProfiles(): LspManagerProfileStatus[];
   getProfileStatus(profileName: string): LspManagerProfileStatus | null;
+  reload(): Promise<LspManagerStatus>;
   detect(): Promise<LspManagerStatus>;
   start(profileName?: string): Promise<LspSession>;
   stop(profileName?: string): Promise<void>;
@@ -95,6 +99,17 @@ function getNoProfilesMessage(): string {
     'No LSP profiles are currently configured. ' +
     'Add a language server to language-servers.yaml, or start Symbols in direct mode with `symbols run <command>`.'
   );
+}
+
+function getNoConfigMessage(): string {
+  return (
+    'No configuration file was found. ' +
+    'Run `symbols config init` to create language-servers.yaml, then add a language server profile, or start Symbols in direct mode with `symbols run <command>`.'
+  );
+}
+
+function isInitializationIssue(issue: string): boolean {
+  return issue === getNoProfilesMessage() || issue === getNoConfigMessage();
 }
 
 function makeSessionKey(profile: LspSessionProfile): string {
@@ -171,9 +186,12 @@ export function createLspManager(): LspManager {
     const resolvedWorkspaceName = path.basename(resolvedWorkspacePath);
     applyLogLevel(resolved.loglevel);
 
-    const availableProfileNames = listAvailableLsps(
+    const configWithSource = loadLspConfig(
       resolved.configPath,
       resolved.workspace
+    );
+    const availableProfileNames = Object.keys(
+      configWithSource.config['language-servers']
     );
     const selectedProfileName = resolved.lsp || null;
     const autoDetectedProfileName = selectedProfileName
@@ -212,13 +230,20 @@ export function createLspManager(): LspManager {
     }
 
     if (loadedProfiles.length === 0) {
-      loadIssues.push(getNoProfilesMessage());
+      loadIssues.push(
+        configWithSource.source.type === 'default'
+          ? getNoConfigMessage()
+          : getNoProfilesMessage()
+      );
     }
 
     return {
       mode: 'start',
       workspacePath: resolvedWorkspacePath,
-      configPath: resolved.configPath || null,
+      configPath:
+        configWithSource.source.type === 'default'
+          ? null
+          : configWithSource.source.path,
       defaultProfileName:
         selectedProfileName ||
         autoDetectedProfileName ||
@@ -246,6 +271,12 @@ export function createLspManager(): LspManager {
     );
   }
 
+  function getRunningSessions(profileName?: string): LspSession[] {
+    return getProfileSessions(profileName).filter(
+      (session) => session.isActive() || session.isReady()
+    );
+  }
+
   function onSessionDocumentOpen(
     sessionKey: string,
     documentPath: string
@@ -266,7 +297,10 @@ export function createLspManager(): LspManager {
     const sessionKey = makeSessionKey(profile);
     const existingSession = sessions.get(sessionKey);
     if (existingSession) {
-      existingSession.setProfile(profile);
+      // Running sessions keep the config snapshot they were launched with.
+      if (!existingSession.isActive() && !existingSession.isReady()) {
+        existingSession.setProfile(profile);
+      }
       return existingSession;
     }
 
@@ -333,6 +367,27 @@ export function createLspManager(): LspManager {
     syncLoadedProfiles(loadProfilesFromSource(source));
   }
 
+  async function reloadRunningProfiles(): Promise<LspManagerStatus> {
+    const runningProfileNames = [
+      ...new Set(getRunningSessions().map((session) => session.getProfile().name)),
+    ];
+
+    for (const session of getRunningSessions()) {
+      await stopSession(session);
+    }
+
+    reloadProfiles();
+
+    for (const profileName of runningProfileNames) {
+      if (!profiles.has(profileName)) {
+        continue;
+      }
+      await startProfile(profileName);
+    }
+
+    return getCurrentStatus();
+  }
+
   function ensureProfilesLoaded(profileName?: string): void {
     if (!source) {
       return;
@@ -363,12 +418,12 @@ export function createLspManager(): LspManager {
 
     const defaultConfiguredProfileName = resolveDefaultConfiguredProfileName();
     if (!defaultConfiguredProfileName) {
-      throw new Error(getNoProfilesMessage());
+      throw new Error(issues[0] || getNoProfilesMessage());
     }
 
     const defaultProfile = profiles.get(defaultConfiguredProfileName);
     if (!defaultProfile) {
-      throw new Error(getNoProfilesMessage());
+      throw new Error(issues[0] || getNoProfilesMessage());
     }
 
     return defaultProfile;
@@ -448,6 +503,10 @@ export function createLspManager(): LspManager {
   async function routeFile(filePath: string): Promise<LspSession> {
     ensureProfilesLoaded();
 
+    if (profiles.size === 0) {
+      throw new Error(issues[0] || getNoProfilesMessage());
+    }
+
     const ownedSession = resolveOwnedSessionForFile(filePath);
     if (ownedSession) {
       return startSession(ownedSession);
@@ -480,7 +539,10 @@ export function createLspManager(): LspManager {
       configured,
       state: snapshot.state,
       command: snapshot.command,
+      commandName: session.getProfile().config.commandName,
+      commandArgs: [...session.getProfile().config.commandArgs],
       workspacePath: snapshot.workspacePath,
+      workspaceFiles: [...session.getProfile().config.workspace_files],
       isDefault: snapshot.profileName === defaultProfileName,
       lastError: snapshot.lastError,
       pid: snapshot.pid,
@@ -500,6 +562,49 @@ export function createLspManager(): LspManager {
     reloadProfiles();
   }
 
+  function getCurrentStatus(): LspManagerStatus {
+    const profileStatuses = [...sessions.values()]
+      .map((session) =>
+        toProfileStatus(session, profiles.has(session.getProfile().name))
+      )
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    const hasReadySession = profileStatuses.some(
+      (profile) => profile.state === 'ready'
+    );
+    const hasSessionErrors = profileStatuses.some(
+      (profile) => profile.state === 'error'
+    );
+    const hasNonInitializationIssues = issues.some(
+      (issue) => !isInitializationIssue(issue)
+    );
+    const isUninitialized =
+      profileStatuses.length === 0 &&
+      issues.length > 0 &&
+      issues.every((issue) => isInitializationIssue(issue));
+
+    const hasErrors = hasNonInitializationIssues || hasSessionErrors;
+
+    const state: ManagerState = hasReadySession
+      ? 'ready'
+      : isUninitialized
+        ? 'uninitialized'
+        : hasErrors || (profileStatuses.length === 0 && hasSessionErrors)
+        ? 'degraded'
+        : 'idle';
+
+    return {
+      mode,
+      state,
+      workspacePath,
+      configPath,
+      defaultProfileName,
+      detectedProfileName,
+      issues: [...issues],
+      profiles: profileStatuses,
+    };
+  }
+
   return {
     configureForStart(cliArgs: StartCommandArgs): Promise<void> {
       configureFromSource({ mode: 'start', cliArgs });
@@ -512,35 +617,7 @@ export function createLspManager(): LspManager {
     },
 
     getStatus(): LspManagerStatus {
-      const profileStatuses = [...sessions.values()]
-        .map((session) =>
-          toProfileStatus(session, profiles.has(session.getProfile().name))
-        )
-        .sort((left, right) => left.name.localeCompare(right.name));
-
-      const hasReadySession = profileStatuses.some(
-        (profile) => profile.state === 'ready'
-      );
-      const hasErrors =
-        issues.length > 0 ||
-        profileStatuses.some((profile) => profile.state === 'error');
-
-      const state: ManagerState = hasReadySession
-        ? 'ready'
-        : hasErrors || profileStatuses.length === 0
-          ? 'degraded'
-          : 'idle';
-
-      return {
-        mode,
-        state,
-        workspacePath,
-        configPath,
-        defaultProfileName,
-        detectedProfileName,
-        issues: [...issues],
-        profiles: profileStatuses,
-      };
+      return getCurrentStatus();
     },
 
     listProfiles(): LspManagerProfileStatus[] {
@@ -553,6 +630,10 @@ export function createLspManager(): LspManager {
           (profile) => profile.name === profileName
         ) || null
       );
+    },
+
+    reload(): Promise<LspManagerStatus> {
+      return reloadRunningProfiles();
     },
 
     detect(): Promise<LspManagerStatus> {
@@ -634,7 +715,7 @@ export function createLspManager(): LspManager {
           : [...sessions.values()];
 
       if (targetSessions.length === 0) {
-        throw new Error(getNoProfilesMessage());
+        throw new Error(issues[0] || getNoProfilesMessage());
       }
 
       const startedSessions: LspSession[] = [];

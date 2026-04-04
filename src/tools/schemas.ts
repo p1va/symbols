@@ -69,22 +69,12 @@ export const logsSchema = {
 
 export const setupSchema = {
   action: z
-    .enum([
-      'status',
-      'detect',
-      'start',
-      'stop',
-      'restart',
-      'list_profiles',
-      'show_profile',
-    ])
+    .enum(['reload'])
     .optional()
-    .default('status')
-    .describe('Runtime control action to perform'),
-  profile: z
-    .string()
-    .optional()
-    .describe('Optional LSP profile name to target'),
+    .default('reload')
+    .describe(
+      'Reload the effective config and reapply it to currently running LSP sessions'
+    ),
 } as const;
 
 // Schema that transforms to OneBasedPosition for rename

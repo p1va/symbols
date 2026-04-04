@@ -4,51 +4,10 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import * as LspOperations from '../lsp/operations/index.js';
-import { getLogLevelName } from '../utils/log-level.js';
 import { logsSchema } from './schemas.js';
 import { validateLogs } from './validation.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
-
-function getLogLevelSymbol(type: number): string {
-  switch (type) {
-    case 1:
-      return '✘';
-    case 2:
-      return '⚠';
-    case 3:
-      return 'ℹ';
-    case 4:
-      return '•';
-    default:
-      return '?';
-  }
-}
-
-function formatLogMessages(
-  messages: Array<{ type: number; message: string }>
-): string {
-  if (messages.length === 0) {
-    return 'No window log messages available';
-  }
-
-  const formattedMessages = messages.map((msg) => {
-    const symbol = getLogLevelSymbol(msg.type);
-    const level = getLogLevelName(msg.type);
-    const message = msg.message.trim();
-    const contextMatch = message.match(/^\[([^\]]+)\]/);
-    const context = contextMatch ? contextMatch[1] : '';
-    const content = contextMatch
-      ? message.substring(contextMatch[0].length).trim()
-      : message;
-
-    if (context) {
-      return `${symbol} [${level}] [${context}] ${content}`;
-    }
-    return `${symbol} [${level}] ${content}`;
-  });
-
-  return formattedMessages.join('\n');
-}
+import { formatWindowLogMessages } from '../utils/window-logs.js';
 
 export function registerWindowLogsTool(server: McpServer, manager: LspManager) {
   server.registerTool(
@@ -74,7 +33,7 @@ export function registerWindowLogsTool(server: McpServer, manager: LspManager) {
             content: [
               {
                 type: 'text' as const,
-                text: `Profile '${validatedRequest.profile}' is not running. Use setup start or setup restart first.`,
+                text: `Profile '${validatedRequest.profile}' is not running. Run an LSP-backed tool on a matching file first.`,
               },
             ],
           };
@@ -84,7 +43,7 @@ export function registerWindowLogsTool(server: McpServer, manager: LspManager) {
           content: [
             {
               type: 'text' as const,
-              text: 'No running LSP sessions. Use setup start or call a file-based tool first.',
+              text: 'No running LSP sessions. Call an LSP-backed file tool first.',
             },
           ],
         };
@@ -101,7 +60,7 @@ export function registerWindowLogsTool(server: McpServer, manager: LspManager) {
         }
 
         sections.push(
-          `Profile: ${profileName}\n${formatLogMessages(result.data)}`
+          `Profile: ${profileName}\n${formatWindowLogMessages(result.data)}`
         );
       }
 

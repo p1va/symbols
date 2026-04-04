@@ -1,0 +1,37 @@
+{
+  "name": "symbols",
+  "version": "0.0.18",
+  "description": "Symbols MCP plugin for semantic code navigation, language server setup, and troubleshooting.",
+  "author": {
+    "name": "p1va",
+    "url": "https://github.com/p1va"
+  },
+  "homepage": "https://github.com/p1va/symbols",
+  "repository": "https://github.com/p1va/symbols",
+  "license": "MIT",
+  "keywords": [
+    "symbols",
+    "mcp",
+    "lsp",
+    "semantic-navigation",
+    "language-server"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Symbols",
+    "shortDescription": "Semantic code navigation via LSP",
+    "longDescription": "Use Symbols to configure language servers, inspect runtime state, and navigate code semantically through LSP-backed tools and resources.",
+    "developerName": "p1va",
+    "category": "Coding",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://github.com/p1va/symbols",
+    "privacyPolicyURL": "https://github.com/p1va/symbols",
+    "termsOfServiceURL": "https://github.com/p1va/symbols",
+    "defaultPrompt": [
+      "Enable a language server for this repo with Symbols",
+      "Use Symbols to inspect this codebase semantically",
+      "Troubleshoot why this LSP is not working in Symbols"
+    ]
+  }
+}

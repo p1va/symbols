@@ -49,13 +49,15 @@ language-servers:
   #     GOCACHE: '$HOME/.cache/go-build'
   #     GOMODCACHE: '$HOME/go/pkg/mod'
 
-  # rust:
-  #   command: 'rust-analyzer'
-  #   workspace_files:
-  #     - 'Cargo.toml'
-  #     - 'Cargo.lock'
-  #   diagnostics:
-  #     strategy: 'pull'
+  rust:
+    command: 'rust-analyzer'
+    extensions:
+      '.rs': 'rust'
+    workspace_files:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+    diagnostics:
+      strategy: 'pull'
 
   # roslyn:
   #   # Adjust command with path to LanguageServer.dll

@@ -78,42 +78,45 @@ The following language identifiers need verification for their file extension ma
 
 ### Implementation Guidance
 
-**Default Extensions**: The symbols tool includes built-in default mappings for all common file extensions listed in this table. These defaults are automatically merged with any extensions you specify in your configuration.
+**Default Extensions**: The symbols tool includes built-in fallback language-ID mappings for common file extensions listed in this table. Configured LSP profiles should still explicitly declare which extensions they handle.
 
 **Key Points:**
 
-- You typically don't need to specify `extensions` in your configuration - defaults cover most cases
-- When you do specify `extensions`, they are **merged with** (not replacing) the defaults
-- Your custom extensions override defaults when there's a conflict
-- This means you only need to specify extensions that are custom or override defaults
+- Configured profiles should specify `extensions` explicitly
+- Built-in defaults are still useful as a fallback language-ID catalog
+- Direct-command mode can safely use the full default table because only one server is involved
+- Configured multi-profile mode should avoid broad implicit extension claims
 
-**Using Default Extensions** - Most configs don't need to specify extensions:
+**Using Explicit Extensions** - Configured profiles should specify the file types they handle:
 
 ```yaml
 language-servers:
   typescript:
     command: typescript-language-server --stdio
+    extensions:
+      '.js': 'javascript'
+      '.mjs': 'javascript'
+      '.cjs': 'javascript'
+      '.jsx': 'javascriptreact'
+      '.ts': 'typescript'
+      '.mts': 'typescript'
+      '.cts': 'typescript'
+      '.tsx': 'typescriptreact'
     workspace_files:
       - package.json
       - tsconfig.json
-    # No extensions needed! Defaults include:
-    # .js, .mjs, .cjs → javascript
-    # .jsx → javascriptreact
-    # .ts, .mts, .cts → typescript
-    # .tsx → typescriptreact
-    # .json → json
 
   python:
     command: pyright-langserver --stdio
+    extensions:
+      '.py': 'python'
+      '.pyw': 'python'
+      '.pyi': 'python'
     workspace_files:
       - pyproject.toml
-    # No extensions needed! Defaults include:
-    # .py → python
-    # .pyw → python
-    # .pyi → python
 ```
 
-**Adding Custom Extensions** - Only specify extensions when you need custom mappings or overrides:
+**Adding Custom Extensions** - Extend the explicit handled set when you need project-specific mappings:
 
 ```yaml
 language-servers:
@@ -122,26 +125,25 @@ language-servers:
     workspace_files:
       - package.json
     extensions:
-      # Add custom extension for your project
+      '.js': 'javascript'
+      '.ts': 'typescript'
+      # Add project-specific extensions
       '.config.ts': 'typescript'
       '.spec.ts': 'typescript'
-      # All other defaults (.ts, .js, .jsx, .tsx, .json, etc.) are automatically included!
 
   csharp:
     command: csharp-ls
     workspace_files:
       - '*.csproj'
     extensions:
-      # Add Razor support (C# default .cs is already included)
+      '.cs': 'csharp'
       '.razor': 'razor'
       '.cshtml': 'razor'
 
   custom-lsp:
     command: my-custom-lsp
     extensions:
-      # Override default JavaScript mapping for custom LSP
       '.js': 'my-custom-javascript'
-      # All other defaults still apply
 ```
 
 ## References
