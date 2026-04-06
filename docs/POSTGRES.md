@@ -65,7 +65,7 @@ Assuming a Claude Code-style configuration add this to `.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",

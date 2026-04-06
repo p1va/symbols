@@ -1,8 +1,33 @@
 ## Pyright
 
+### Supported Extensions
+
+`.py`, `.pyw`, `.pyi`
+
+### Install
+
 Prefer the shipped `npx` command first. It avoids a separate global install.
 
-### Recommended profile
+Optional global install:
+
+```sh
+npm install -g pyright
+```
+
+Alternative installs:
+
+```sh
+pip install pyright
+pipx install pyright
+```
+
+### Verify
+
+```sh
+npx -y -p pyright pyright --version
+```
+
+### Recommended Profile
 
 ```yaml
 pyright:
@@ -20,9 +45,13 @@ pyright:
     strategy: 'pull'
 ```
 
-### Notes
+### Validate
 
-- A simple validation path is `diagnostics` or `inspect` on a `.py` file.
+- Run `diagnostics` or `inspect` on a real `.py` file.
+- Confirm import and type errors look plausible rather than every import failing.
+
+### Troubleshooting
+
 - If Pyright starts but only reports import errors, check the virtual environment configuration.
 - A common fix in `pyproject.toml` is:
 
@@ -32,5 +61,8 @@ venvPath = "."
 venv = ".venv"
 ```
 
-- Optional global install:
-  `npm install -g pyright`
+### More Information
+
+- https://www.npmjs.com/package/pyright
+- https://pypi.org/project/pyright/
+- https://github.com/microsoft/pyright

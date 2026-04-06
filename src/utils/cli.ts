@@ -615,9 +615,11 @@ export function handleConfigInit(args: ConfigInitArgs): void {
 
     console.log(`Configuration file created: ${configPath}`);
     console.log(
-      '\nThe configuration includes TypeScript and Python Language Servers.'
+      '\nThe configuration enables TypeScript and Pyright by default.'
     );
-    console.log('You can add more LSPs or modify the configuration as needed.');
+    console.log(
+      'It also includes commented examples for additional language servers you can enable as needed.'
+    );
   } catch (error) {
     console.error(
       'Error creating configuration file:',

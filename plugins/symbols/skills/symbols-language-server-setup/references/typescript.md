@@ -1,8 +1,26 @@
 ## TypeScript
 
+### Supported Extensions
+
+`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`
+
+### Install
+
 Prefer the shipped `npx` command first. It avoids a separate install step.
 
-### Recommended profile
+Optional global install:
+
+```sh
+npm install -g typescript-language-server typescript
+```
+
+### Verify
+
+```sh
+typescript-language-server --version
+```
+
+### Recommended Profile
 
 ```yaml
 typescript:
@@ -29,9 +47,17 @@ typescript:
     wait_timeout_ms: 2000
 ```
 
-### Notes
+### Validate
+
+- Run `outline` or `inspect` on a real `.ts` or `.tsx` file.
+- If search quality matters, confirm the profile owns at least one preload file after first use.
+
+### Troubleshooting
 
 - `preload_files` matter for search and broader index quality.
-- If startup latency matters, an optional global install is:
-  `npm install -g typescript-language-server`
-- A simple validation path is `outline` or `inspect` on a `.ts` or `.tsx` file.
+- If startup latency matters, prefer the global install above over repeated `npx` startup.
+
+### More Information
+
+- https://www.npmjs.com/package/typescript-language-server
+- https://github.com/typescript-language-server/typescript-language-server

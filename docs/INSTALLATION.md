@@ -7,6 +7,7 @@
 Install the repo-root Gemini extension:
 
 - **Add Extension:** `gemini extensions install p1va/symbols`
+- **What it adds:** the Symbols MCP server plus native Gemini `skills/` for language server setup and semantic code navigation
 - **Ask Gemini:** `please install the language servers relevant to this codebase`
 
 For local development from a checkout, link the current repo instead:
@@ -17,7 +18,7 @@ For local development from a checkout, link the current repo instead:
 
 Codex does not yet support a remote plugin marketplace, so installation currently requires a separate MCP step plus skill installation:
 
-- **Add MCP Server:** `codex mcp add symbols -- npx -y @p1va/symbols@latest start`
+- **Add MCP Server:** `codex mcp add language-servers -- npx -y @p1va/symbols@latest start`
 - **Add Language Server Skills:** `npx skills add p1va/symbols -a codex`
 - **Restart and ask Codex:** `please install the language servers relevant to this codebase`
 
@@ -56,7 +57,7 @@ See below configurations for the Language Servers tested. Other stdio Language S
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -117,7 +118,7 @@ venv = ".venv"
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -226,7 +227,7 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -293,7 +294,7 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -303,6 +304,7 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
         "-w",
         "optional/path/to/workspace",
         "clangd",
+        "--background-index",
         // Provide here more clangd args if needed
         // e.g. --compile-commands-dir path/to/dir
       ],
@@ -324,6 +326,311 @@ Ensure either `compile_commands.json` is found in the working directory or provi
 **Search: No Results Found**
 
 Index is generate when the first file is opened. To warm up is possible to pre load and keep a one or more files opened by providing a list in ` SYMBOLS_PRELOAD_FILES`
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-7F52FF?logo=kotlin&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Kotlin</b>
+</summary>
+
+### Kotlin LSP
+
+#### Installation
+
+```sh
+brew install JetBrains/utils/kotlin-lsp
+```
+
+#### Verify Installation
+
+```sh
+kotlin-lsp --help
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "kotlin-lsp",
+        "--stdio",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [Kotlin LSP](https://github.com/Kotlin/kotlin-lsp)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-2C2D72?logo=lua&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Lua</b>
+</summary>
+
+### Lua Language Server
+
+#### Installation
+
+```sh
+# macOS
+brew install lua-language-server
+
+# Ubuntu/Debian (via snap)
+sudo snap install lua-language-server --classic
+
+# Arch Linux
+sudo pacman -S lua-language-server
+
+# Fedora
+sudo dnf install lua-language-server
+```
+
+#### Verify Installation
+
+```sh
+lua-language-server --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "lua-language-server",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [Lua Language Server GitHub](https://github.com/LuaLS/lua-language-server)
+- [LuaLS Documentation](https://luals.github.io/)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-777BB4?logo=php&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>PHP</b>
+</summary>
+
+### PHP Language Server
+
+#### Installation
+
+```sh
+npm install -g intelephense
+```
+
+#### Verify Installation
+
+```sh
+intelephense --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "intelephense",
+        "--stdio",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [Intelephense Website](https://intelephense.com/)
+- [Intelephense on npm](https://www.npmjs.com/package/intelephense)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-CC342D?logo=ruby&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Ruby</b>
+</summary>
+
+### Ruby LSP
+
+#### Installation
+
+```sh
+gem install ruby-lsp
+```
+
+Or add it to your `Gemfile`:
+
+```ruby
+gem 'ruby-lsp', group: :development
+```
+
+Then run:
+
+```sh
+bundle install
+```
+
+#### Verify Installation
+
+```sh
+ruby-lsp --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "ruby-lsp",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+> ℹ️ If the project is Bundler-managed and the global binary is not a good fit, use `bundle exec ruby-lsp` as the server command instead.
+
+#### More Information
+
+- [Ruby LSP Website](https://shopify.github.io/ruby-lsp/)
+- [GitHub Repository](https://github.com/Shopify/ruby-lsp)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-FA7343?logo=swift&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Swift</b>
+</summary>
+
+### SourceKit-LSP
+
+#### Installation
+
+SourceKit-LSP ships with the Swift toolchain.
+
+```sh
+# macOS
+brew install swift
+```
+
+On Linux, install Swift from [swift.org](https://www.swift.org/download/).
+
+#### Verify Installation
+
+```sh
+sourcekit-lsp --help
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "sourcekit-lsp",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [SourceKit-LSP GitHub](https://github.com/apple/sourcekit-lsp)
+- [Swift.org](https://www.swift.org/)
 
 </details>
 
@@ -357,7 +664,7 @@ gopls version
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -412,7 +719,7 @@ rust-analyzer --version
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -460,7 +767,7 @@ $HOME/.java-lsp/jdtls/bin/jdtls --help
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",
@@ -523,6 +830,7 @@ To create a workspace config file run this instead
 `npx -y "@p1va/symbols@latest" config init`
 
 - Will initialize `./language-servers.yaml`
+- The generated file enables TypeScript and Pyright by default and includes commented examples for additional language servers such as Roslyn, Clangd, Go, Rust, Java, Kotlin, Lua, PHP, Ruby, and Swift.
 
 </details>
 
@@ -567,7 +875,7 @@ Update your MCP configuration with this MCP server. The first Language Server ha
 ```jsonc
 {
   "mcpServers": {
-    "symbols": {
+    "language-servers": {
       "command": "npx",
       "args": [
         "-y",

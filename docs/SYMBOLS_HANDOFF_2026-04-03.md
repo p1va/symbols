@@ -107,9 +107,9 @@ Main resource module:
 
 Current resource surface:
 
-- `symbols://language-servers`
-- `symbols://language-servers/{name}`
-- `symbols://language-servers/{name}/logs`
+- `language-servers://profiles`
+- `language-servers://profiles/{name}`
+- `language-servers://profiles/{name}/logs`
 
 Format choices:
 
@@ -120,7 +120,7 @@ These resources are now live and verified against the `symbols-dev` MCP server.
 
 ### Resource Semantics
 
-`symbols://language-servers` is the main effective-state view for agents.
+`language-servers://profiles` is the main effective-state view for agents.
 
 Each entry contains:
 
@@ -291,7 +291,7 @@ That plugin/skill layer should instruct the agent to:
 2. edit the effective `language-servers.yaml`
 3. call `setup.reload`
 4. run an LSP-backed tool on a matching file
-5. inspect `symbols://language-servers` and logs
+5. inspect `language-servers://profiles` and logs
 
 ## Good Starting Files For The Next Session
 

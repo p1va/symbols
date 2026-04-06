@@ -54,4 +54,33 @@ language-servers:
     expect(config?.extensions['.ipy']).toBe('python');
     expect(config?.extensions['.pyi']).toBeUndefined();
   });
+
+  it('applies profile-specific extension fallbacks for ruby including template files', () => {
+    const configPath = writeConfig(`
+language-servers:
+  ruby:
+    command: ruby-lsp
+`);
+
+    const config = getLspConfig('ruby', configPath);
+
+    expect(config).not.toBeNull();
+    expect(config?.extensions['.rb']).toBe('ruby');
+    expect(config?.extensions['.ru']).toBe('ruby');
+    expect(config?.extensions['.erb']).toBe('erb');
+  });
+
+  it('applies profile-specific extension fallbacks for clangd uppercase C++ files', () => {
+    const configPath = writeConfig(`
+language-servers:
+  clangd:
+    command: clangd --background-index
+`);
+
+    const config = getLspConfig('clangd', configPath);
+
+    expect(config).not.toBeNull();
+    expect(config?.extensions['.C']).toBe('cpp');
+    expect(config?.extensions['.H']).toBe('cpp');
+  });
 });

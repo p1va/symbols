@@ -1,15 +1,33 @@
 ## Rust
 
+### Supported Extensions
+
+`.rs`
+
+### Install
+
 Rust usually needs a real local binary instead of an `npx` wrapper.
 
-### Install and verify
+Recommended install:
 
 ```sh
 rustup component add rust-analyzer
+```
+
+Alternative installs:
+
+```sh
+brew install rust-analyzer
+sudo apt install rust-analyzer
+```
+
+### Verify
+
+```sh
 rust-analyzer --version
 ```
 
-### Recommended profile
+### Recommended Profile
 
 ```yaml
 rust:
@@ -23,7 +41,17 @@ rust:
     strategy: 'pull'
 ```
 
-### Notes
+### Validate
 
-- A simple validation path is `outline` or `inspect` on a `.rs` file.
-- If the repo uses Cargo, `Cargo.toml` should be enough for routing in most cases.
+- Run `outline` or `inspect` on a `.rs` file.
+- If the repo uses Cargo, confirm `Cargo.toml` is present so routing happens naturally.
+
+### Troubleshooting
+
+- If the workspace does not route naturally, add the relevant Cargo marker to `workspace_files`.
+- If the binary is installed but not found, fix `PATH` before broadening the profile.
+
+### More Information
+
+- https://rust-analyzer.github.io/
+- https://github.com/rust-lang/rust-analyzer

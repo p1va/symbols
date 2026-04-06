@@ -13,8 +13,6 @@
  * Covers all common programming languages
  */
 export const DEFAULT_EXTENSIONS: Record<string, string> = {
-  //TODO: Check Claude Code
-
   // JavaScript/TypeScript
   '.js': 'javascript',
   '.mjs': 'javascript',
@@ -51,8 +49,10 @@ export const DEFAULT_EXTENSIONS: Record<string, string> = {
   '.h': 'c',
   '.cpp': 'cpp',
   '.cc': 'cpp',
+  '.C': 'cpp',
   '.cxx': 'cpp',
   '.hpp': 'cpp',
+  '.H': 'cpp',
   '.hh': 'cpp',
   '.hxx': 'cpp',
 
@@ -61,6 +61,8 @@ export const DEFAULT_EXTENSIONS: Record<string, string> = {
   '.rbw': 'ruby',
   '.rake': 'ruby',
   '.gemspec': 'ruby',
+  '.ru': 'ruby',
+  '.erb': 'erb',
   '.php': 'php',
   '.phtml': 'php',
   '.php3': 'php',
@@ -69,6 +71,7 @@ export const DEFAULT_EXTENSIONS: Record<string, string> = {
   '.phps': 'php',
   '.swift': 'swift',
   '.kt': 'kotlin',
+  '.kts': 'kotlin',
   '.scala': 'scala',
   '.sc': 'scala',
   '.lua': 'lua',
@@ -137,9 +140,37 @@ export const DEFAULT_PROFILE_EXTENSIONS: Record<string, Record<string, string>> 
       '.h': 'c',
       '.cpp': 'cpp',
       '.cc': 'cpp',
+      '.C': 'cpp',
       '.cxx': 'cpp',
       '.hpp': 'cpp',
+      '.H': 'cpp',
       '.hh': 'cpp',
       '.hxx': 'cpp',
+    },
+    kotlin: {
+      '.kt': 'kotlin',
+      '.kts': 'kotlin',
+    },
+    lua: {
+      '.lua': 'lua',
+    },
+    php: {
+      '.php': 'php',
+      '.phtml': 'php',
+      '.php3': 'php',
+      '.php4': 'php',
+      '.php5': 'php',
+      '.phps': 'php',
+    },
+    ruby: {
+      '.rb': 'ruby',
+      '.rbw': 'ruby',
+      '.rake': 'ruby',
+      '.gemspec': 'ruby',
+      '.ru': 'ruby',
+      '.erb': 'erb',
+    },
+    swift: {
+      '.swift': 'swift',
     },
   };

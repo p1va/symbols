@@ -11,18 +11,20 @@ import type {
 import * as LspOperations from '../lsp/operations/index.js';
 import { formatWindowLogMessages } from '../utils/window-logs.js';
 
-interface LanguageServerSummaryResource {
-  mode: LspManagerStatus['mode'];
-  state: LspManagerStatus['state'];
-  workspacePath: string;
-  configPath: string | null;
-  defaultProfileName: string | null;
-  detectedProfileName: string | null;
-  issues: string[];
-  languageServers: LanguageServerResourceEntry[];
+interface LanguageServerStatusResource {
+  manager: {
+    mode: LspManagerStatus['mode'];
+    state: LspManagerStatus['state'];
+    workspacePath: string;
+    configPath: string | null;
+    defaultProfileName: string | null;
+    detectedProfileName: string | null;
+    issues: string[];
+  };
+  profiles: LanguageServerProfileResource[];
 }
 
-interface LanguageServerResourceEntry {
+interface LanguageServerProfileResource {
   name: string;
   config: {
     configured: boolean;
@@ -51,15 +53,16 @@ interface LanguageServerResourceEntry {
   };
 }
 
-interface LanguageServerDetailResource extends LanguageServerResourceEntry {
+interface LanguageServerProfileDetailResource
+  extends LanguageServerProfileResource {
   configPath: string | null;
   mode: LspManagerStatus['mode'];
   hints: string[];
 }
 
-function toLanguageServerResourceEntry(
+function toLanguageServerProfileResource(
   profile: LspManagerProfileStatus
-): LanguageServerResourceEntry {
+): LanguageServerProfileResource {
   return {
     name: profile.name,
     config: {
@@ -155,17 +158,19 @@ function buildHints(profile: LspManagerProfileStatus): string[] {
 
 export function buildLanguageServersSummaryResource(
   status: LspManagerStatus
-): LanguageServerSummaryResource {
+): LanguageServerStatusResource {
   return {
-    mode: status.mode,
-    state: status.state,
-    workspacePath: status.workspacePath,
-    configPath: status.configPath,
-    defaultProfileName: status.defaultProfileName,
-    detectedProfileName: status.detectedProfileName,
-    issues: [...status.issues],
-    languageServers: status.profiles
-      .map((profile) => toLanguageServerResourceEntry(profile))
+    manager: {
+      mode: status.mode,
+      state: status.state,
+      workspacePath: status.workspacePath,
+      configPath: status.configPath,
+      defaultProfileName: status.defaultProfileName,
+      detectedProfileName: status.detectedProfileName,
+      issues: [...status.issues],
+    },
+    profiles: status.profiles
+      .map((profile) => toLanguageServerProfileResource(profile))
       .sort((left, right) => left.name.localeCompare(right.name)),
   };
 }
@@ -173,9 +178,9 @@ export function buildLanguageServersSummaryResource(
 export function buildLanguageServerDetailResource(
   status: LspManagerStatus,
   profile: LspManagerProfileStatus
-): LanguageServerDetailResource {
+): LanguageServerProfileDetailResource {
   return {
-    ...toLanguageServerResourceEntry(profile),
+    ...toLanguageServerProfileResource(profile),
     configPath: status.configPath,
     mode: status.mode,
     hints: buildHints(profile),
@@ -238,12 +243,12 @@ export function registerLanguageServerResources(
   manager: LspManager
 ): void {
   server.registerResource(
-    'language-servers',
-    'symbols://language-servers',
+    'language-server-profiles',
+    'language-servers://profiles',
     {
-      title: 'Language Servers',
+      title: 'Language Server Profiles',
       description:
-        'Effective Symbols language-server configuration overlaid with runtime session state.',
+        'Manager status plus effective language-server configuration overlaid with runtime state for all configured profiles.',
       mimeType: 'application/json',
     },
     (uri) =>
@@ -254,17 +259,17 @@ export function registerLanguageServerResources(
   );
 
   server.registerResource(
-    'language-server-detail',
-    new ResourceTemplate('symbols://language-servers/{name}', {
+    'language-server-profile',
+    new ResourceTemplate('language-servers://profiles/{name}', {
       list: () =>
         listProfileUris(manager, (profileName) =>
-          `symbols://language-servers/${encodeURIComponent(profileName)}`
+          `language-servers://profiles/${encodeURIComponent(profileName)}`
         ),
     }),
     {
-      title: 'Language Server Detail',
+      title: 'Language Server Profile',
       description:
-        'Detailed view of one configured language server and its runtime session state.',
+        'Detailed view of one configured language-server profile and its runtime state.',
       mimeType: 'application/json',
     },
     (uri, variables) => {
@@ -280,16 +285,16 @@ export function registerLanguageServerResources(
 
   server.registerResource(
     'language-server-logs',
-    new ResourceTemplate('symbols://language-servers/{name}/logs', {
+    new ResourceTemplate('language-servers://profiles/{name}/logs', {
       list: () =>
         listProfileUris(manager, (profileName) =>
-          `symbols://language-servers/${encodeURIComponent(profileName)}/logs`
+          `language-servers://profiles/${encodeURIComponent(profileName)}/logs`
         ),
     }),
     {
       title: 'Language Server Logs',
       description:
-        'Recent LSP window/log messages for a configured language server.',
+        'Recent LSP window/log messages for one configured language-server profile.',
       mimeType: 'text/plain',
     },
     (uri, variables) => {

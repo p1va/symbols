@@ -1,17 +1,17 @@
 ---
 name: symbols-semantic-navigation
-description: Prefer Symbols' LSP-backed navigation and rename tools over text search when the user asks to inspect symbols, find references, rename code safely, gather diagnostics, or explore APIs in a language that has a configured Symbols profile. Use when semantic understanding matters more than raw grep or filename search.
+description: Prefer Language Servers' LSP-backed navigation and rename tools over text search when the user asks to inspect symbols, find references, rename code safely, gather diagnostics, or explore APIs in a language that has a configured profile. Use when semantic understanding matters more than raw grep or filename search.
 ---
 
-# Symbols Semantic Navigation
+# Semantic Navigation
 
-Use this skill when the codebase already has a relevant language server, or when the task should check that first. The goal is to use the current Symbols tool surface deliberately instead of falling back to grep-driven workflows too early.
+Use this skill when the codebase already has a relevant language server, or when the task should check that first. The goal is to use the current Language Servers tool surface deliberately instead of falling back to grep-driven workflows too early.
 
 For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 
 ## Workflow
 
-1. Check `symbols://language-servers` for a matching profile.
+1. Check `language-servers://profiles` for a matching profile.
    - If there is no suitable profile, route to `../symbols-language-server-setup/SKILL.md`.
 2. Start with the narrowest LSP-backed tool that answers the question.
    - `outline` for file structure and symbol locations
@@ -27,8 +27,8 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
    - They can lazily start a dormant session.
    - They can change the runtime state you see in the resources.
 5. If results look wrong, inspect:
-   - `symbols://language-servers/{name}`
-   - `symbols://language-servers/{name}/logs`
+   - `language-servers://profiles/{name}`
+   - `language-servers://profiles/{name}/logs`
    - then use `setup.reload` only if the config changed
 
 ## Tool Choice Rules
@@ -48,6 +48,6 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 
 ## Output Expectations
 
-- Name the Symbols tool you chose and why.
+- Name the Language Servers tool you chose and why.
 - Mention the file and coordinates used for the call.
 - If you fall back to plain text search or manual edits, state why the LSP path was not suitable.

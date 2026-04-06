@@ -60,11 +60,18 @@ describe('language server resources', () => {
 
     const summary = buildLanguageServersSummaryResource(status);
 
-    expect(summary.configPath).toBe(
+    expect(summary.manager.configPath).toBe(
       '/home/truelayer/.config/symbols/language-servers.yaml'
     );
-    expect(summary.languageServers).toHaveLength(1);
-    expect(summary.languageServers[0]).toMatchObject({
+    expect(summary.manager).toMatchObject({
+      mode: 'start',
+      state: 'ready',
+      defaultProfileName: 'csharp',
+      detectedProfileName: 'csharp',
+      issues: [],
+    });
+    expect(summary.profiles).toHaveLength(1);
+    expect(summary.profiles[0]).toMatchObject({
       name: 'csharp',
       config: {
         command:

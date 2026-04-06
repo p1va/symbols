@@ -74,7 +74,7 @@ It should not be the primary install-instruction catalog.
 
 Expose one main read-only resource:
 
-- `symbols://language-servers`
+- `language-servers://profiles`
 
 This should present the effective configured profiles overlaid with runtime
 session state.
@@ -104,8 +104,8 @@ session resources.
 
 The initial drill-down resources should be:
 
-- `symbols://language-servers/{name}`
-- `symbols://language-servers/{name}/logs`
+- `language-servers://profiles/{name}`
+- `language-servers://profiles/{name}/logs`
 
 Use profile `name` as the external handle. Include any internal `sessionKey`
 only as debug data inside the payload, not as the primary resource identifier.
@@ -114,12 +114,12 @@ only as debug data inside the payload, not as the primary resource identifier.
 
 Use JSON for state resources:
 
-- `symbols://language-servers`
-- `symbols://language-servers/{name}`
+- `language-servers://profiles`
+- `language-servers://profiles/{name}`
 
 Use text for logs:
 
-- `symbols://language-servers/{name}/logs`
+- `language-servers://profiles/{name}/logs`
 
 State resources should separate:
 
@@ -149,7 +149,7 @@ The intended workflow is:
 3. agent edits `language-servers.yaml`
 4. agent calls `setup.reload`
 5. agent uses an LSP-backed tool on a matching file
-6. agent inspects `symbols://language-servers` and logs if needed
+6. agent inspects `language-servers://profiles` and logs if needed
 
 ## What We Are Not Doing
 
@@ -168,9 +168,9 @@ only needs to load what the config declares.
 
 The next product-facing work should be:
 
-1. add `symbols://language-servers`
-2. add `symbols://language-servers/{name}`
-3. add `symbols://language-servers/{name}/logs`
+1. add `language-servers://profiles`
+2. add `language-servers://profiles/{name}`
+3. add `language-servers://profiles/{name}/logs`
 4. add `setup.reload`
 5. make `setup.status` and the resource clearly report the active config path
 6. keep direct config-file editing as the configuration workflow

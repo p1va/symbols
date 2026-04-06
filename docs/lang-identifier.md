@@ -10,13 +10,14 @@ This table maps human-readable language names to their Language Server Protocol 
 | Clojure             | `clojure`                  | `.clj`, `.cljs`, `.cljc`, `.edn`                           | Lisp dialect for JVM                                |
 | Coffeescript        | `coffeescript`             | `.coffee`, `.litcoffee`                                    | Compiles to JavaScript                              |
 | C                   | `c`                        | `.c`, `.h`                                                 |                                                     |
-| C++                 | `cpp`                      | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.h`, `.hpp` |                                                     |
+| C++                 | `cpp`                      | `.cpp`, `.cc`, `.C`, `.cxx`, `.hpp`, `.hh`, `.hxx`, `.H`   |                                                     |
 | C#                  | `csharp`                   | `.cs`                                                      |                                                     |
 | CSS                 | `css`                      | `.css`                                                     |                                                     |
 | Diff                | `diff`                     | `.diff`, `.patch`                                          | Patch files                                         |
 | Dart                | `dart`                     | `.dart`                                                    | Google's app development language                   |
 | Dockerfile          | `dockerfile`               | `Dockerfile`, `.dockerfile`, `Containerfile`               | Container definitions                               |
 | Elixir              | `elixir`                   | `.ex`, `.exs`                                              | Erlang VM functional language                       |
+| Embedded Ruby       | `erb`                      | `.erb`                                                     | Ruby template files                                 |
 | Erlang              | `erlang`                   | `.erl`, `.hrl`                                             |                                                     |
 | F#                  | `fsharp`                   | `.fs`, `.fsi`, `.fsx`, `.fsscript`                         | Functional-first .NET language                      |
 | Git                 | `git-commit`, `git-rebase` | `COMMIT_EDITMSG`, `git-rebase-todo`                        | Git operation files                                 |
@@ -29,6 +30,7 @@ This table maps human-readable language names to their Language Server Protocol 
 | JavaScript          | `javascript`               | `.js`, `.mjs`, `.cjs`                                      |                                                     |
 | JavaScript React    | `javascriptreact`          | `.jsx`                                                     | React JSX files                                     |
 | JSON                | `json`                     | `.json`, `.jsonc`                                          | `.jsonc` supports comments                          |
+| Kotlin              | `kotlin`                   | `.kt`, `.kts`                                              |                                                     |
 | LaTeX               | `latex`                    | `.tex`, `.ltx`, `.latex`                                   | Document preparation system                         |
 | Less                | `less`                     | `.less`                                                    | CSS preprocessor                                    |
 | Lua                 | `lua`                      | `.lua`                                                     | Scripting language                                  |
@@ -44,7 +46,7 @@ This table maps human-readable language names to their Language Server Protocol 
 | Python              | `python`                   | `.py`, `.pyw`, `.pyi`                                      | `.pyi` for type stubs                               |
 | R                   | `r`                        | `.r`, `.R`, `.rmd`, `.Rmd`                                 | Statistical computing                               |
 | Razor (cshtml)      | `razor`                    | `.cshtml`, `.razor`                                        | ASP.NET template engine                             |
-| Ruby                | `ruby`                     | `.rb`, `.rbw`, `.rake`, `.gemspec`                         |                                                     |
+| Ruby                | `ruby`                     | `.rb`, `.rbw`, `.rake`, `.gemspec`, `.ru`                  |                                                     |
 | Rust                | `rust`                     | `.rs`                                                      |                                                     |
 | SCSS                | `scss`, `sass`             | `.scss`, `.sass`                                           | `scss` uses curly brackets, `sass` uses indentation |
 | Scala               | `scala`                    | `.scala`, `.sc`                                            | JVM functional/OOP language                         |

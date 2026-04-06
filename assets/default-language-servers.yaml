@@ -50,6 +50,8 @@ language-servers:
 
   # go:
   #   command: gopls
+  #   extensions:
+  #     '.go': 'go'
   #   workspace_files:
   #     - 'go.mod'
   #     - 'go.work'
@@ -64,6 +66,8 @@ language-servers:
 
   # rust:
   #   command: 'rust-analyzer'
+  #   extensions:
+  #     '.rs': 'rust'
   #   workspace_files:
   #     - 'Cargo.toml'
   #     - 'Cargo.lock'
@@ -78,6 +82,10 @@ language-servers:
   #       --logLevel=Information
   #       --extensionLogDirectory=$SYMBOLS_ROSLYN_PATH/logs
   #       --stdio
+  #   extensions:
+  #     '.cs': 'csharp'
+  #     '.cshtml': 'razor'
+  #     '.razor': 'razor'
   #   workspace_loader: 'roslyn'
   #   workspace_files:
   #     - '*.sln'
@@ -99,8 +107,15 @@ language-servers:
   #       -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
   #       --jvm-arg=-Dlog.protocol=true
   #       --jvm-arg=-Dlog.level=ALL
+  #   extensions:
+  #     '.java': 'java'
   #   workspace_files:
+  #     - 'pom.xml'
   #     - 'build.gradle'
+  #     - 'build.gradle.kts'
+  #     - 'settings.gradle'
+  #     - 'settings.gradle.kts'
+  #     - 'mvnw'
   #     - 'gradlew'
   #   environment:
   #     # Adjust these to your machine
@@ -123,6 +138,10 @@ language-servers:
   #       --extension $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.xamlTools/Microsoft.VisualStudio.DesignTools.CodeAnalysis.Diagnostics.dll
   #       --extensionLogDirectory $ROSLYN_LOGS
   #       --stdio
+  #   extensions:
+  #     '.cs': 'csharp'
+  #     '.cshtml': 'razor'
+  #     '.razor': 'razor'
   #   workspace_loader: 'roslyn'
   #   workspace_files:
   #     - '*.sln'
@@ -137,13 +156,102 @@ language-servers:
   #     ROSLYN_LOGS: $HOME/.config/Code/logs/symbols-nodejs
 
   # clangd:
-  #   command: clangd
+  #   command: clangd --background-index
+  #   extensions:
+  #     '.c': 'c'
+  #     '.h': 'c'
+  #     '.cpp': 'cpp'
+  #     '.cc': 'cpp'
+  #     '.C': 'cpp'
+  #     '.cxx': 'cpp'
+  #     '.hpp': 'cpp'
+  #     '.H': 'cpp'
+  #     '.hh': 'cpp'
+  #     '.hxx': 'cpp'
   #   workspace_files:
+  #     - 'compile_commands.json'
+  #     - 'compile_flags.txt'
   #     - 'Makefile'
   #     - 'CMakeLists.txt'
   #   # Try to preload a file to trigger index creation and have search working
   #   preload_files:
-  #     - './src/file.cpp'
+  #     - './src/main.cpp'
+  #     - './main.cpp'
+  #     - './src/main.c'
+  #     - './main.c'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # kotlin:
+  #   command: kotlin-lsp --stdio
+  #   extensions:
+  #     '.kt': 'kotlin'
+  #     '.kts': 'kotlin'
+  #   workspace_files:
+  #     - 'build.gradle.kts'
+  #     - 'settings.gradle.kts'
+  #     - 'build.gradle'
+  #     - 'pom.xml'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # lua:
+  #   command: lua-language-server
+  #   extensions:
+  #     '.lua': 'lua'
+  #   workspace_files:
+  #     - '.luarc.json'
+  #     - '.luarc.jsonc'
+  #     - 'init.lua'
+  #     - 'stylua.toml'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # php:
+  #   command: intelephense --stdio
+  #   extensions:
+  #     '.php': 'php'
+  #     '.phtml': 'php'
+  #     '.php3': 'php'
+  #     '.php4': 'php'
+  #     '.php5': 'php'
+  #     '.phps': 'php'
+  #   workspace_files:
+  #     - 'composer.json'
+  #     - 'phpunit.xml'
+  #     - 'artisan'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # ruby:
+  #   command: ruby-lsp
+  #   extensions:
+  #     '.rb': 'ruby'
+  #     '.rbw': 'ruby'
+  #     '.rake': 'ruby'
+  #     '.gemspec': 'ruby'
+  #     '.ru': 'ruby'
+  #     '.erb': 'erb'
+  #   workspace_files:
+  #     - 'Gemfile'
+  #     - '.ruby-version'
+  #     - 'Rakefile'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # swift:
+  #   command: sourcekit-lsp
+  #   extensions:
+  #     '.swift': 'swift'
+  #   workspace_files:
+  #     - 'Package.swift'
+  #     - '*.xcodeproj'
+  #     - '*.xcworkspace'
   #   diagnostics:
   #     strategy: 'push'
   #     wait_timeout_ms: 2000

@@ -27,13 +27,15 @@ The server offers a minimal toolset intended to be simple to use and light on th
 
 ### Available Resources
 
-- **`symbols://language-servers`**: returns the effective language-server configuration overlaid with runtime session state for all profiles
-- **`symbols://language-servers/{name}`**: returns detailed config and runtime state for one language-server profile
-- **`symbols://language-servers/{name}/logs`**: returns recent Language Server window log messages for one profile
+- **`language-servers://profiles`**: returns manager state plus the effective language-server configuration overlaid with runtime state for all profiles
+- **`language-servers://profiles/{name}`**: returns detailed config and runtime state for one language-server profile
+- **`language-servers://profiles/{name}/logs`**: returns recent Language Server window log messages for one profile
 
 ## Installation
 
 ### Agent Installation
+
+Install the MCP Server, Agent Skills via Plugins and Extensions and then ask the agent to install any relevant language server for the codebase.
 
 <h4>
   <picture>
@@ -44,7 +46,7 @@ The server offers a minimal toolset intended to be simple to use and light on th
 </h4>
 
 - **Add Extension:** `gemini extensions install p1va/symbols`
-- **Ask Gemini:** `please install the language servers relevant to this codebase`
+- **Ask Gemini:** `Please install the language servers relevant to this codebase`
 
 <h4>
   <picture>
@@ -54,13 +56,13 @@ The server offers a minimal toolset intended to be simple to use and light on th
   <b>Codex</b>
 </h4>
 
-- **Add MCP Server:** `codex mcp add symbols -- npx -y @p1va/symbols@latest start`
+- **Add MCP Server:** `codex mcp add language-servers -- npx -y @p1va/symbols@latest start`
 - **Add Language Server Skills:** `npx skills add p1va/symbols -a codex`
-- **Restart and ask Codex:** `please install the language servers relevant to this codebase`
+- **Ask Codex:** `Please install the language servers relevant to this codebase`
 
-### Traditional Installation
+### Manual Installation
 
-For manual configuration, language-specific setup examples, and the `config` / `start` workflow, see [docs/INSTALLATION.md#traditional-installation](docs/INSTALLATION.md#traditional-installation).
+For manual configuration, language servers examples see [docs/INSTALLATION.md#traditional-installation](docs/INSTALLATION.md#traditional-installation).
 
 ## Development
 
