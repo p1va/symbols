@@ -20,10 +20,15 @@ import {
   ValidationErrorCode,
   type SymbolPositionRequest,
   type FileRequest,
-  type WorkspaceLoaderState,
 } from '../../src/types.js';
 import { createOneBasedPosition } from '../../src/types/position.js';
 import type { LspSession } from '../../src/runtime/lsp-session.js';
+
+type MockWorkspaceLoaderState = {
+  type: 'default' | 'roslyn';
+  ready: boolean;
+  data?: unknown;
+};
 
 // Mock the fs module
 vi.mock('fs', () => ({
@@ -46,7 +51,7 @@ type MockSessionOverrides = Partial<LspSession> & {
     isLoading: boolean;
     loadingStartedAt?: Date;
   };
-  workspaceLoaderState?: WorkspaceLoaderState | null;
+  workspaceLoaderState?: MockWorkspaceLoaderState | null;
   workspaceLoaderReady?: boolean;
   workspacePath?: string;
 };

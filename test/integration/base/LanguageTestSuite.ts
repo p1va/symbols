@@ -97,9 +97,10 @@ export abstract class LanguageTestSuite {
   protected addCommonTests(): void {
     test('Should list all tools', async () => {
       const tools = await this.client.listTools();
-      const expectedCount = this.config.expectedToolCount || 8;
+      const expectedCount = this.config.expectedToolCount || 9;
 
       expect(tools).toHaveLength(expectedCount);
+      expect(tools.map((t) => t.name)).toContain('setup');
       expect(tools.map((t) => t.name)).toContain('inspect');
       expect(tools.map((t) => t.name)).toContain('diagnostics');
       expect(tools.map((t) => t.name)).toContain('outline');

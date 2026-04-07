@@ -78,20 +78,23 @@ type RuntimeSource =
     };
 
 export interface LspManager {
-  configureForStart(cliArgs: StartCommandArgs): Promise<void>;
-  configureForRun(cliArgs: RunCommandArgs): Promise<void>;
-  getStatus(): LspManagerStatus;
-  listProfiles(): LspManagerProfileStatus[];
-  getProfileStatus(profileName: string): LspManagerProfileStatus | null;
-  reload(): Promise<LspManagerStatus>;
-  detect(): Promise<LspManagerStatus>;
-  start(profileName?: string): Promise<LspSession>;
-  stop(profileName?: string): Promise<void>;
-  restart(profileName?: string): Promise<void>;
-  shutdown(): Promise<void>;
-  getSessionForFile(filePath: string): Promise<LspSession>;
-  getSearchSessions(): Promise<LspSession[]>;
-  getStartedSessions(profileName?: string): LspSession[];
+  configureForStart(this: void, cliArgs: StartCommandArgs): Promise<void>;
+  configureForRun(this: void, cliArgs: RunCommandArgs): Promise<void>;
+  getStatus(this: void): LspManagerStatus;
+  listProfiles(this: void): LspManagerProfileStatus[];
+  getProfileStatus(
+    this: void,
+    profileName: string
+  ): LspManagerProfileStatus | null;
+  reload(this: void): Promise<LspManagerStatus>;
+  detect(this: void): Promise<LspManagerStatus>;
+  start(this: void, profileName?: string): Promise<LspSession>;
+  stop(this: void, profileName?: string): Promise<void>;
+  restart(this: void, profileName?: string): Promise<void>;
+  shutdown(this: void): Promise<void>;
+  getSessionForFile(this: void, filePath: string): Promise<LspSession>;
+  getSearchSessions(this: void): Promise<LspSession[]>;
+  getStartedSessions(this: void, profileName?: string): LspSession[];
 }
 
 function getNoProfilesMessage(): string {

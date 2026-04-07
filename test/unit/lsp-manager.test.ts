@@ -352,12 +352,11 @@ describe('LspManager routing', () => {
       name: 'alpha',
       state: 'not_started',
     });
-    await expect(detect()).resolves.toMatchObject({
-      profiles: expect.arrayContaining([
-        expect.objectContaining({ name: 'alpha' }),
-        expect.objectContaining({ name: 'beta' }),
-      ]),
-    });
+    const detectedStatus = await detect();
+    expect(detectedStatus.profiles.map((profile) => profile.name)).toEqual([
+      'alpha',
+      'beta',
+    ]);
   });
 
   it('reports stopped after an explicitly started session is stopped', async () => {

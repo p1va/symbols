@@ -100,7 +100,7 @@ Each language test suite includes:
 
 ### Common Tests (All Languages)
 
-- ✅ Tool listing verification (8 tools expected)
+- ✅ Tool listing verification (9 tools expected, including `setup`)
 - ✅ File symbol reading
 - ✅ Symbol inspection (if test position provided)
 - ✅ References finding
