@@ -13,9 +13,9 @@ import { listAvailableLsps, loadLspConfig } from '../config/lsp-config.js';
 import { getAppPaths } from './app-paths.js';
 
 // Command types
-export type CommandType = 'start' | 'run' | 'config' | null;
+type CommandType = 'start' | 'run' | 'config' | null;
 
-export interface BaseCliArgs {
+interface BaseCliArgs {
   command: CommandType;
   help?: boolean;
   version?: boolean;
@@ -41,7 +41,7 @@ export interface RunCommandArgs extends BaseCliArgs {
   };
 }
 
-export interface ConfigInitArgs {
+interface ConfigInitArgs {
   subcommand: 'init';
   global?: boolean;
   local?: boolean;
@@ -49,20 +49,20 @@ export interface ConfigInitArgs {
   force?: boolean;
 }
 
-export interface ConfigShowArgs {
+interface ConfigShowArgs {
   subcommand: 'show';
   configPath?: string;
   workspace?: string;
   format?: 'yaml' | 'json';
 }
 
-export interface ConfigPathArgs {
+interface ConfigPathArgs {
   subcommand: 'path';
   workspace?: string;
   all?: boolean;
 }
 
-export type ConfigSubcommandArgs =
+type ConfigSubcommandArgs =
   | ConfigInitArgs
   | ConfigShowArgs
   | ConfigPathArgs;
@@ -72,7 +72,7 @@ export interface ConfigCommandArgs extends BaseCliArgs {
   subcommandArgs: ConfigSubcommandArgs;
 }
 
-export type CliArgs =
+type CliArgs =
   | BaseCliArgs
   | StartCommandArgs
   | RunCommandArgs

@@ -22,14 +22,14 @@ const logsZodSchema = z.object(logsSchema);
 const setupZodSchema = z.object(setupSchema);
 const diagnosticsZodSchema = z.object(diagnosticsSchema);
 
-// Export inferred types
-export type SymbolPositionRequest = z.infer<typeof symbolPositionZodSchema>;
-export type FileRequest = z.infer<typeof fileZodSchema>;
-export type SearchRequest = z.infer<typeof searchZodSchema>;
-export type RenameRequest = z.infer<typeof renameZodSchema>;
-export type LogsRequest = z.infer<typeof logsZodSchema>;
-export type SetupRequest = z.infer<typeof setupZodSchema>;
-export type DiagnosticsRequest = z.infer<typeof diagnosticsZodSchema>;
+// Inferred request types used by the validators in this module
+type SymbolPositionRequest = z.infer<typeof symbolPositionZodSchema>;
+type FileRequest = z.infer<typeof fileZodSchema>;
+type SearchRequest = z.infer<typeof searchZodSchema>;
+type RenameRequest = z.infer<typeof renameZodSchema>;
+type LogsRequest = z.infer<typeof logsZodSchema>;
+type SetupRequest = z.infer<typeof setupZodSchema>;
+type DiagnosticsRequest = z.infer<typeof diagnosticsZodSchema>;
 
 /**
  * Validates and parses symbol position arguments

@@ -13,7 +13,7 @@ import {
 } from '../types/lsp.js';
 
 // Supported symbol types for enrichment
-export type EnrichableSymbol =
+type EnrichableSymbol =
   | Location
   | WorkspaceSymbol
   | SymbolInformation
@@ -22,7 +22,7 @@ export type EnrichableSymbol =
   | { uri: string; range: Range } // Generic location-like object
   | { location: Location }; // Legacy format with location wrapper
 
-export interface EnrichedSymbol<T extends EnrichableSymbol = EnrichableSymbol> {
+interface EnrichedSymbol<T extends EnrichableSymbol = EnrichableSymbol> {
   symbol: T;
   codeSnippet?: string;
   error?: string;

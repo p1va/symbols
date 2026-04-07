@@ -1,6 +1,6 @@
 import { getLogLevelName } from './log-level.js';
 
-export interface WindowLogMessage {
+interface WindowLogMessage {
   type: number;
   message: string;
 }

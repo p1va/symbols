@@ -45,12 +45,10 @@ const ConfigFileSchema = z.object({
 });
 
 // TypeScript interfaces derived from schemas
-export type DiagnosticsConfig = z.infer<typeof DiagnosticsConfigSchema>;
-export type SymbolsConfig = z.infer<typeof SymbolsConfigSchema>;
-export type LspConfig = z.infer<typeof LspConfigSchema>;
-export type ConfigFile = z.infer<typeof ConfigFileSchema>;
+type LspConfig = z.infer<typeof LspConfigSchema>;
+type ConfigFile = z.infer<typeof ConfigFileSchema>;
 
-export interface ConfigWithSource {
+interface ConfigWithSource {
   config: ConfigFile;
   source: {
     path: string;
@@ -68,7 +66,7 @@ export interface ConfigWithSource {
 /**
  * Parsed symbols config with containerKinds converted to numbers
  */
-export interface ParsedSymbolsConfig {
+interface ParsedSymbolsConfig {
   containerKinds?: number[];
 }
 

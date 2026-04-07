@@ -59,7 +59,7 @@ import type {
 import logger from '../utils/logger.js';
 import type { LspClient } from '../types.js';
 
-export type SendLspRequest = <TResult, TParams = unknown>(
+type SendLspRequest = <TResult, TParams = unknown>(
   method: string,
   params: TParams
 ) => Promise<TResult>;
@@ -111,19 +111,19 @@ export type SymbolKindValue = (typeof SymbolKind)[keyof typeof SymbolKind];
 // These represent structured data that flows from LspOperations to MCP tools
 
 /** Position information with 1-based coordinates for display */
-export interface DisplayPosition {
+interface DisplayPosition {
   line: number;
   character: number;
 }
 
 /** Range information with 1-based coordinates for display */
-export interface DisplayRange {
+interface DisplayRange {
   start: DisplayPosition;
   end: DisplayPosition;
 }
 
 /** Location information for display */
-export interface DisplayLocation {
+interface DisplayLocation {
   uri: string;
   range: DisplayRange;
 }

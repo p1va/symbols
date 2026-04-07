@@ -61,7 +61,7 @@ export interface LspSessionProfile {
   configPath: string | null;
 }
 
-export interface LspSessionStatusSnapshot {
+interface LspSessionStatusSnapshot {
   sessionKey: string;
   profileName: string;
   state: SessionState;
@@ -78,7 +78,7 @@ export interface LspSessionStatusSnapshot {
   windowLogCount: number;
 }
 
-export type FileLifecycleStrategy =
+type FileLifecycleStrategy =
   | 'transient'
   | 'persistent'
   | 'respect_existing';
@@ -96,7 +96,7 @@ export interface SessionDocumentScope {
   ): Promise<TResult>;
 }
 
-export interface SessionCursorContextScope extends SessionDocumentScope {
+interface SessionCursorContextScope extends SessionDocumentScope {
   cursorContext?: CursorContextOperationResult<unknown>['cursorContext'];
 }
 

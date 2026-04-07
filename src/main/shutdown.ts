@@ -8,7 +8,7 @@ import logger from '../utils/logger.js';
 
 const DEFAULT_TIMEOUT_MS = 5_000;
 
-export interface ShutdownOptions {
+interface ShutdownOptions {
   timeoutMs?: number;
 }
 

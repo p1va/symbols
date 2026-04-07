@@ -113,7 +113,7 @@ export interface LspConfig {
 }
 
 // Session-scoped document state for documents currently known to the LSP session.
-export interface SessionDocument {
+interface SessionDocument {
   uri: string;
   content: string;
   version: number;
@@ -216,7 +216,7 @@ export interface ValidationError extends BaseError {
 }
 
 // Enhanced LSP operation error (now compatible with the base error interface)
-export interface LspOperationError extends BaseError {
+interface LspOperationError extends BaseError {
   errorCode: ErrorCode;
 }
 

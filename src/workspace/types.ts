@@ -17,7 +17,7 @@ export type WorkspaceLoaderState = {
 /**
  * Pure function type for workspace initialization
  */
-export type InitializeWorkspace = (
+type InitializeWorkspace = (
   client: LspClient,
   config: LspConfig
 ) => Promise<WorkspaceLoaderState>;
@@ -25,13 +25,13 @@ export type InitializeWorkspace = (
 /**
  * Pure function type for checking workspace readiness
  */
-export type IsWorkspaceReady = (state: WorkspaceLoaderState) => boolean;
+type IsWorkspaceReady = (state: WorkspaceLoaderState) => boolean;
 
 /**
  * Pure function type for handling workspace notifications
  * Returns new state (immutable update)
  */
-export type HandleWorkspaceNotification = (
+type HandleWorkspaceNotification = (
   state: WorkspaceLoaderState,
   method: string
 ) => WorkspaceLoaderState;
@@ -49,7 +49,7 @@ export type WorkspaceLoader = {
 /**
  * Factory function type for creating workspace loaders
  */
-export type WorkspaceLoaderFactory = () => WorkspaceLoader;
+type WorkspaceLoaderFactory = () => WorkspaceLoader;
 
 /**
  * Registry mapping loader names to factory functions

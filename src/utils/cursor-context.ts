@@ -33,7 +33,7 @@ export interface CursorContext {
   snippet: string; // Text snippet showing cursor position with | marker
 }
 
-export interface SymbolAtPosition {
+interface SymbolAtPosition {
   name: string;
   kind: SymbolKindValue;
   containerName?: string;

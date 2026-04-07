@@ -20,8 +20,8 @@ import {
   SessionState,
 } from './lsp-session.js';
 
-export type ManagerMode = 'start' | 'run' | null;
-export type ManagerState = 'idle' | 'ready' | 'uninitialized' | 'degraded';
+type ManagerMode = 'start' | 'run' | null;
+type ManagerState = 'idle' | 'ready' | 'uninitialized' | 'degraded';
 
 export interface LspManagerProfileStatus {
   name: string;
