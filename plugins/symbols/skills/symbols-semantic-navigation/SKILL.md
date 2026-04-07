@@ -12,7 +12,7 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 ## Workflow
 
 1. Check `language-servers://profiles` for a matching profile.
-   - If there is no suitable profile, route to `../symbols-language-server-setup/SKILL.md`.
+   - If there is no suitable profile, use the `install-language-server` skill.
 2. Start with the narrowest LSP-backed tool that answers the question.
    - `outline` for file structure and symbol locations
    - `inspect` for symbol details and docs

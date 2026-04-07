@@ -1,4 +1,0 @@
-interface:
-  display_name: "Symbols LSP Setup"
-  short_description: "Install, enable, or troubleshoot LSPs in Symbols"
-  default_prompt: "Use $symbols-language-server-setup to enable or fix a language server in this repo and validate it with Symbols."

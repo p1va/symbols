@@ -17,23 +17,33 @@ Use the native Gemini extension skills in \`./skills\` for language server setup
 `;
 }
 
-async function listSymbolsSkillNames() {
+async function listSkillNames() {
   const entries = await readdir(sourceSkillsDir, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith('symbols-'))
-    .map((entry) => entry.name)
-    .sort();
+  const names = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => {
+        const files = await readdir(path.join(sourceSkillsDir, entry.name));
+        return files.includes('SKILL.md') ? entry.name : null;
+      })
+  );
+
+  return names.filter(Boolean).sort();
 }
 
 async function main() {
-  const skillNames = await listSymbolsSkillNames();
+  const skillNames = await listSkillNames();
 
   await rm(codexPluginSkillsDir, { recursive: true, force: true });
   await rm(geminiSkillsDir, { recursive: true, force: true });
-  await mkdir(path.dirname(codexPluginSkillsDir), { recursive: true });
-  await mkdir(path.dirname(geminiSkillsDir), { recursive: true });
-  await cp(sourceSkillsDir, codexPluginSkillsDir, { recursive: true });
-  await cp(sourceSkillsDir, geminiSkillsDir, { recursive: true });
+  await mkdir(codexPluginSkillsDir, { recursive: true });
+  await mkdir(geminiSkillsDir, { recursive: true });
+
+  for (const skillName of skillNames) {
+    const sourceSkillPath = path.join(sourceSkillsDir, skillName);
+    await cp(sourceSkillPath, path.join(codexPluginSkillsDir, skillName), { recursive: true });
+    await cp(sourceSkillPath, path.join(geminiSkillsDir, skillName), { recursive: true });
+  }
 
   const geminiContext = renderGeminiContext();
   await writeFile(geminiContextPath, geminiContext, 'utf8');

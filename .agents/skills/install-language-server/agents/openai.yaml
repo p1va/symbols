@@ -1,0 +1,4 @@
+interface:
+  display_name: "Install Or Fix Language Server"
+  short_description: "Install, validate, or troubleshoot a language server"
+  default_prompt: "Use $install-language-server to enable, validate, or fix a language server in this repo and verify it with Language Servers."

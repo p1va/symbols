@@ -2,7 +2,7 @@
 
 # Symbols MCP
 
-Read, inspect and navigate through codebase symbols by connecting to a Language Server
+Read, inspect and navigate through codebase symbols by connecting to Language Servers.
 
 ![NPM Version](https://img.shields.io/npm/v/%40p1va%2Fsymbols?style=flat)
 
@@ -11,25 +11,32 @@ Read, inspect and navigate through codebase symbols by connecting to a Language 
 ## Introduction
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficient for coding agents to explore and navigate the codebase and its dependencies.
-The server offers a minimal toolset intended to be simple to use and light on the model's context.
+The server offers a minimal set of tools, resources and skills  intended to be simple to use and light on the model's context.
 
-### Available Tools
+### Tools
+- **`Request`**:
+  - **`outline`**: returns an outline of code symbols in a file, optionally with a small code snippet
+  - **`inspect`**: returns docs, signature, declaration, and implementation locations for a symbol, including third-party symbols
+  - **`search`**: returns matching symbols across the codebase
+  - **`references`**: finds all references of a symbol across the codebase
+  - **`rename`**: renames all references of a symbol across the codebase
+  - **`diagnostics`**: returns active diagnostics in a given file
+  - **`completion`**: returns contextual completions at a given location
 
-- **`outline`**: returns an outline of code symbols in a file, optionally with a small code snippet
-- **`inspect`**: returns docs, signature, declaration, and implementation locations for a symbol, including third-party symbols
-- **`search`**: returns matching symbols across the codebase
-- **`references`**: finds all references of a symbol across the codebase
-- **`rename`**: renames all references of a symbol across the codebase
-- **`diagnostics`**: returns active diagnostics in a given file
-- **`completion`**: returns contextual completions at a given location
-- **`logs`**: returns recent Language Server window log messages for troubleshooting
-- **`setup`**: reloads the effective config and reapplies it to currently running language servers
+- **`Control`**:
 
-### Available Resources
+  - **`setup`**: reloads the effective config and reapplies it to currently running language servers
 
-- **`language-servers://profiles`**: returns manager state plus the effective language-server configuration overlaid with runtime state for all profiles
-- **`language-servers://profiles/{name}`**: returns detailed config and runtime state for one language-server profile
-- **`language-servers://profiles/{name}/logs`**: returns recent Language Server window log messages for one profile
+### Resources
+
+- **`language-servers://profiles`**: returns the configured language servers along with their state.
+- **`language-servers://profiles/{name}`**: returns a more detailed view of one language server.
+- **`language-servers://profiles/{name}/logs`**: returns the Language Server logs for troubleshooting.
+
+### Skills
+
+- **`How To Install a Language Server`**: teaches how to install a Language Server relevant to the codebase and configure it.
+- **`How To Rename a Codebase Symbol`**: teaches how to carry on codebase-wide rename using Language Servers.
 
 ## Installation
 
