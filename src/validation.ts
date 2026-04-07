@@ -34,6 +34,7 @@ export function isWorkspaceLoadingMessage(message: string): boolean {
  */
 export function validateWorkspaceReady(session: LspSession): ValidationResult {
   const workspaceState = session.getWorkspaceState();
+  const workspaceLoaderStore = session.getWorkspaceLoaderStore();
 
   if (workspaceState.isLoading) {
     return {
@@ -43,6 +44,17 @@ export function validateWorkspaceReady(session: LspSession): ValidationResult {
         message: createWorkspaceLoadingMessage(
           workspaceState.loadingStartedAt
         ),
+      },
+    };
+  }
+
+  const hasWorkspaceLoaderState = workspaceLoaderStore.getState() !== null;
+  if (hasWorkspaceLoaderState && !workspaceLoaderStore.isReady()) {
+    return {
+      valid: false,
+      error: {
+        errorCode: ValidationErrorCode.WorkspaceNotReady,
+        message: createWorkspaceLoadingMessage(),
       },
     };
   }

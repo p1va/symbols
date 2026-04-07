@@ -20,6 +20,7 @@ import {
   ValidationErrorCode,
   type SymbolPositionRequest,
   type FileRequest,
+  type WorkspaceLoaderState,
 } from '../../src/types.js';
 import { createOneBasedPosition } from '../../src/types/position.js';
 import type { LspSession } from '../../src/runtime/lsp-session.js';
@@ -45,6 +46,8 @@ type MockSessionOverrides = Partial<LspSession> & {
     isLoading: boolean;
     loadingStartedAt?: Date;
   };
+  workspaceLoaderState?: WorkspaceLoaderState | null;
+  workspaceLoaderReady?: boolean;
   workspacePath?: string;
 };
 
@@ -55,6 +58,19 @@ function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
     loadingStartedAt: undefined,
   };
   const workspacePath = overrides.workspacePath ?? '/test/workspace';
+  const workspaceLoaderState = overrides.workspaceLoaderState ?? null;
+  const workspaceLoaderReady =
+    overrides.workspaceLoaderReady ?? workspaceLoaderState?.ready ?? false;
+  const workspaceLoaderStore = {
+    state: workspaceLoaderState,
+    loader: null,
+    setState: vi.fn(),
+    setLoader: vi.fn(),
+    getState: vi.fn(() => workspaceLoaderState),
+    getLoader: vi.fn(() => null),
+    updateState: vi.fn(),
+    isReady: vi.fn(() => workspaceLoaderReady),
+  };
   const profile = {
     name: 'typescript',
     workspacePath,
@@ -82,6 +98,7 @@ function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
     restart: vi.fn(() => Promise.resolve()),
     request: vi.fn(),
     getWorkspaceState: vi.fn(() => workspaceState),
+    getWorkspaceLoaderStore: vi.fn(() => workspaceLoaderStore),
     getDiagnosticsStore: vi.fn(() => ({})),
     getDiagnosticProviderStore: vi.fn(() => ({})),
     getWindowLogStore: vi.fn(() => ({ getMessages: vi.fn() })),
@@ -168,6 +185,48 @@ describe('Validation Utilities', () => {
         );
         expect(result.error.message).toContain('not ready');
       }
+    });
+
+    it('should return invalid when workspace loader state exists but is not ready', () => {
+      const ctx = createMockContext({
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          loadingStartedAt: undefined,
+        },
+        workspaceLoaderState: {
+          type: 'roslyn',
+          ready: false,
+        },
+        workspaceLoaderReady: false,
+      });
+
+      const result = validateWorkspaceReady(ctx);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.error.errorCode).toBe(
+          ValidationErrorCode.WorkspaceNotReady
+        );
+        expect(result.error.message).toContain('still loading');
+      }
+    });
+
+    it('should return valid when workspace loader state exists and is ready', () => {
+      const ctx = createMockContext({
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          loadingStartedAt: undefined,
+        },
+        workspaceLoaderState: {
+          type: 'roslyn',
+          ready: true,
+        },
+        workspaceLoaderReady: true,
+      });
+
+      const result = validateWorkspaceReady(ctx);
+      expect(result.valid).toBe(true);
     });
   });
 

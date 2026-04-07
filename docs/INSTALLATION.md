@@ -849,6 +849,8 @@ Use your editor (here i use `code`) to tweak the generated config file and comme
 
 `code $(npx -y @p1va/symbols config path)`
 
+If a profile defines `extensions`, that map is authoritative for routing. Built-in profile fallback mappings are only used when `extensions` is omitted entirely, so if you want to keep the generated defaults and add another extension, copy the full generated map into the profile and extend it there.
+
 #### Show Active Config
 
 Finally run the command in your workspace (e.g. where you launch Claude Code) to see that the changes are being applied

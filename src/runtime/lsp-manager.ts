@@ -621,12 +621,12 @@ export function createLspManager(): LspManager {
     },
 
     listProfiles(): LspManagerProfileStatus[] {
-      return this.getStatus().profiles;
+      return getCurrentStatus().profiles;
     },
 
     getProfileStatus(profileName: string): LspManagerProfileStatus | null {
       return (
-        this.getStatus().profiles.find(
+        getCurrentStatus().profiles.find(
           (profile) => profile.name === profileName
         ) || null
       );
@@ -638,7 +638,7 @@ export function createLspManager(): LspManager {
 
     detect(): Promise<LspManagerStatus> {
       reloadProfiles();
-      return Promise.resolve(this.getStatus());
+      return Promise.resolve(getCurrentStatus());
     },
 
     start(profileName?: string): Promise<LspSession> {

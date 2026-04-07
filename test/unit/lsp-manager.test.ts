@@ -128,6 +128,16 @@ function createMockSessionRecord(
       isReady: true,
       isLoading: false,
     })),
+    getWorkspaceLoaderStore: vi.fn(() => ({
+      state: null,
+      loader: null,
+      setState: vi.fn(),
+      setLoader: vi.fn(),
+      getState: vi.fn(() => null),
+      getLoader: vi.fn(() => null),
+      updateState: vi.fn(),
+      isReady: vi.fn(() => false),
+    })),
     getDiagnosticsStore: vi.fn(() => ({}) as never),
     getDiagnosticProviderStore: vi.fn(() => ({}) as never),
     getWindowLogStore: vi.fn(() => ({
@@ -325,6 +335,28 @@ describe('LspManager routing', () => {
       state: 'not_started',
       workspaceReady: null,
       workspaceLoading: null,
+    });
+  });
+
+  it('supports destructured status helpers without relying on this binding', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    const { listProfiles, getProfileStatus, detect } = manager;
+
+    expect(listProfiles()).toHaveLength(2);
+    expect(getProfileStatus('alpha')).toMatchObject({
+      name: 'alpha',
+      state: 'not_started',
+    });
+    await expect(detect()).resolves.toMatchObject({
+      profiles: expect.arrayContaining([
+        expect.objectContaining({ name: 'alpha' }),
+        expect.objectContaining({ name: 'beta' }),
+      ]),
     });
   });
 

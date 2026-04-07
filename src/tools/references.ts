@@ -11,6 +11,7 @@ import { formatCursorContext } from '../utils/cursor-context.js';
 import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
 import { Location } from '../types/lsp.js';
 import { validateSymbolPosition } from './validation.js';
+import { formatFilePath } from './utils.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
 
 export function registerReferencesTool(server: McpServer, manager: LspManager) {
@@ -134,7 +135,8 @@ async function formatReferencesResults(
       continue;
     }
 
-    result += `\n\n${firstReference.uri} (${fileReferences.length} references)\n`;
+    const filePath = formatFilePath(firstReference.uri);
+    result += `\n\n${filePath} (${fileReferences.length} references)\n`;
 
     const sortedReferences = fileReferences.sort((a, b) => {
       const lineA = a.range.start.line;

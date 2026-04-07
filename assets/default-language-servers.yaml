@@ -1,4 +1,6 @@
 language-servers:
+  # If you set `extensions`, list every extension that profile should handle.
+  # Built-in profile fallbacks are only used when `extensions` is omitted entirely.
   typescript:
     # npm install -g typescript-language-server if you prefer to install globally
     # command: typescript-language-server --stdio

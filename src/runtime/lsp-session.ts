@@ -115,6 +115,7 @@ export interface LspSession {
     params: TParams
   ): Promise<TResult>;
   getWorkspaceState(): WorkspaceState;
+  getWorkspaceLoaderStore(): WorkspaceLoaderStore;
   getDiagnosticsStore(): DiagnosticsStore;
   getDiagnosticProviderStore(): DiagnosticProviderStore;
   getWindowLogStore(): WindowLogStore;
@@ -853,6 +854,9 @@ export function createLspSession(
     request,
     getWorkspaceState(): WorkspaceState {
       return stores.workspaceState;
+    },
+    getWorkspaceLoaderStore(): WorkspaceLoaderStore {
+      return stores.workspaceLoaderStore;
     },
     getDiagnosticsStore(): DiagnosticsStore {
       return stores.diagnosticsStore;
