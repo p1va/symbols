@@ -74,7 +74,7 @@ export function registerSetupTool(
   server.registerTool(
     'setup',
     {
-      title: 'Reload',
+      title: 'Setup',
       description:
         'Reload the effective config and reapply it to currently running LSP sessions.',
       inputSchema: setupSchema,

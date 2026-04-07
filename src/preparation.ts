@@ -81,7 +81,7 @@ export function prepareFileRequest(
   }
 
   return validationSuccess({
-    filePath: validation.absolutePath!,
+    filePath: validation.absolutePath,
   });
 }
 
@@ -95,7 +95,7 @@ export async function prepareSymbolPositionRequest(
   }
 
   return validationSuccess({
-    filePath: validation.absolutePath!,
+    filePath: validation.absolutePath,
     position: request.position,
     lspPosition: toZeroBased(request.position),
   });

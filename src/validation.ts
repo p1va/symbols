@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
   ValidationResult,
+  ValidationError,
   SymbolPositionRequest,
   FileRequest,
   ValidationErrorCode,
@@ -16,6 +17,10 @@ import {
 import type { LspSession } from './runtime/lsp-session.js';
 
 const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
+
+type FilePathValidationResult =
+  | { valid: true; absolutePath: string }
+  | { valid: false; error: ValidationError };
 
 function createWorkspaceLoadingMessage(startedAt?: Date): string {
   const startedAtSuffix = startedAt
@@ -72,7 +77,7 @@ export function validateWorkspaceReady(session: LspSession): ValidationResult {
 export function validateAndNormalizeFilePath(
   filePath: string,
   workspaceDir?: string
-): ValidationResult & { absolutePath?: string } {
+): FilePathValidationResult {
   try {
     // Convert to absolute path using workspace directory if provided
     const absolutePath = workspaceDir
@@ -182,7 +187,7 @@ export async function validatePosition(
 export function validateFileRequest(
   session: LspSession,
   request: FileRequest
-): ValidationResult & { absolutePath?: string } {
+): FilePathValidationResult {
   // Check workspace readiness
   const workspaceCheck = validateWorkspaceReady(session);
   if (!workspaceCheck.valid) {
@@ -198,9 +203,7 @@ export function validateFileRequest(
     return pathCheck;
   }
 
-  return pathCheck.absolutePath
-    ? { valid: true, absolutePath: pathCheck.absolutePath }
-    : { valid: true };
+  return pathCheck;
 }
 
 /**
@@ -209,7 +212,7 @@ export function validateFileRequest(
 export async function validateSymbolPositionRequest(
   session: LspSession,
   request: SymbolPositionRequest
-): Promise<ValidationResult & { absolutePath?: string }> {
+): Promise<FilePathValidationResult> {
   // Check workspace readiness
   const workspaceCheck = validateWorkspaceReady(session);
   if (!workspaceCheck.valid) {
@@ -227,16 +230,14 @@ export async function validateSymbolPositionRequest(
 
   // Validate position bounds
   const positionCheck = await validatePosition(
-    pathCheck.absolutePath!,
+    pathCheck.absolutePath,
     request.position
   );
   if (!positionCheck.valid) {
     return positionCheck;
   }
 
-  return pathCheck.absolutePath
-    ? { valid: true, absolutePath: pathCheck.absolutePath }
-    : { valid: true };
+  return pathCheck;
 }
 
 /**

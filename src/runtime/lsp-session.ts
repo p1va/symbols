@@ -78,10 +78,7 @@ interface LspSessionStatusSnapshot {
   windowLogCount: number;
 }
 
-type FileLifecycleStrategy =
-  | 'transient'
-  | 'persistent'
-  | 'respect_existing';
+type FileLifecycleStrategy = 'transient' | 'persistent' | 'respect_existing';
 
 export interface CursorContextOperationResult<T> {
   result: T;

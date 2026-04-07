@@ -62,10 +62,7 @@ interface ConfigPathArgs {
   all?: boolean;
 }
 
-type ConfigSubcommandArgs =
-  | ConfigInitArgs
-  | ConfigShowArgs
-  | ConfigPathArgs;
+type ConfigSubcommandArgs = ConfigInitArgs | ConfigShowArgs | ConfigPathArgs;
 
 export interface ConfigCommandArgs extends BaseCliArgs {
   command: 'config';
