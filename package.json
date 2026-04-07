@@ -36,6 +36,7 @@
     "format": "prettier --write .",
     "sync:agent-surfaces": "node scripts/sync-agent-surfaces.mjs",
     "check:unused": "knip",
+    "check:unused:ts": "tsc -p tsconfig.build.json --noEmit --noUnusedLocals --noUnusedParameters",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run test/unit/",

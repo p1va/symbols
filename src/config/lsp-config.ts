@@ -400,56 +400,6 @@ export function getLspConfig(
   };
 }
 
-/**
- * Get LSP configuration for a file based on its extension
- */
-export function getLspConfigForFile(
-  filePath: string,
-  configPath?: string,
-  workspacePath?: string
-): ParsedLspConfig | null {
-  const extension = path.extname(filePath);
-  const { config } = loadLspConfig(configPath, workspacePath);
-
-  // Find LSP that handles this file extension
-  for (const [lspName, lspConfig] of Object.entries(
-    config['language-servers']
-  )) {
-    const configuredExtensions =
-      Object.keys(lspConfig.extensions).length > 0
-        ? lspConfig.extensions
-        : DEFAULT_PROFILE_EXTENSIONS[lspName] || {};
-    if (configuredExtensions[extension]) {
-      return getLspConfig(lspName, configPath, workspacePath);
-    }
-  }
-
-  return null;
-}
-
-/**
- * Get language ID for a file based on its extension
- * Returns 'plaintext' if no match is found
- */
-export function getLanguageId(
-  filePath: string,
-  configPath?: string,
-  workspacePath?: string
-): string {
-  const extension = path.extname(filePath);
-  const { config } = loadLspConfig(configPath, workspacePath);
-
-  // Find language ID from LSP configuration
-  for (const lspConfig of Object.values(config['language-servers'])) {
-    const languageId = lspConfig.extensions[extension];
-    if (languageId) {
-      return languageId;
-    }
-  }
-
-  return DEFAULT_EXTENSIONS[extension] || 'plaintext';
-}
-
 export function getLanguageIdForExtensions(
   filePath: string,
   extensions: Record<string, string>

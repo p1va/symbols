@@ -129,6 +129,50 @@ describe('LspSession document lifecycle', () => {
     });
   });
 
+  it('marks the session as errored and notifies ownership listeners on unexpected exit', async () => {
+    const process = createMockProcess();
+    const onSessionUnexpectedExit = vi.fn();
+
+    const sendNotification = vi.fn().mockResolvedValue(undefined);
+    mockCreateLspClient.mockReturnValue({
+      ok: true,
+      data: {
+        client: {
+          connection: {
+            sendNotification,
+          } as never,
+          isInitialized: true,
+        },
+        process,
+      },
+    });
+    mockInitializeLspClient.mockResolvedValue({
+      ok: true,
+      data: undefined,
+    });
+
+    const session = createLspSession(
+      'typescript::/workspace',
+      createProfile(['anchor.ts']),
+      { onSessionUnexpectedExit }
+    );
+
+    await session.start();
+    process.emit('exit', 1, null);
+
+    expect(onSessionUnexpectedExit).toHaveBeenCalledWith(
+      'typescript::/workspace',
+      'LSP process exited with code 1'
+    );
+    expect(session.getStatusSnapshot()).toMatchObject({
+      state: 'error',
+      lastError: 'LSP process exited with code 1',
+      pid: null,
+      workspaceReady: false,
+      workspaceLoading: false,
+    });
+  });
+
   it('keeps anchor files open while transient operation files are opened and closed', async () => {
     const sendNotification = vi.fn().mockResolvedValue(undefined);
     mockCreateLspClient.mockReturnValue({

@@ -119,6 +119,18 @@ function makeSessionKey(profile: LspSessionProfile): string {
   return `${profile.name}::${profile.workspacePath}`;
 }
 
+function getUnsupportedFileMessage(filePath: string): string {
+  const extension = path.extname(filePath);
+  const extensionMessage = extension
+    ? `extension '${extension}'`
+    : 'files without an extension';
+
+  return (
+    `No configured LSP profile handles ${extensionMessage} for '${filePath}'. ` +
+    'Add an explicit extension mapping for this file type or choose a supported file.'
+  );
+}
+
 export function createLspManager(): LspManager {
   let source: RuntimeSource | null = null;
   let mode: ManagerMode = null;
@@ -314,6 +326,14 @@ export function createLspManager(): LspManager {
       onDocumentReleased(activeSessionKey, documentPath) {
         onSessionDocumentClose(activeSessionKey, documentPath);
       },
+      onSessionUnexpectedExit(activeSessionKey) {
+        if (activeSessionKey === sessionKey) {
+          const crashedSession = sessions.get(sessionKey);
+          if (crashedSession) {
+            removeDocumentOwnersForSession(crashedSession);
+          }
+        }
+      },
     });
     sessions.set(sessionKey, session);
     return session;
@@ -474,15 +494,6 @@ export function createLspManager(): LspManager {
       return matchingProfiles[0] || null;
     }
 
-    if (profiles.size === 1) {
-      return [...profiles.values()][0] || null;
-    }
-
-    const defaultConfiguredProfileName = resolveDefaultConfiguredProfileName();
-    if (defaultConfiguredProfileName) {
-      return profiles.get(defaultConfiguredProfileName) || null;
-    }
-
     return null;
   }
 
@@ -523,7 +534,7 @@ export function createLspManager(): LspManager {
 
     if (!profile) {
       throw new Error(
-        `No configured LSP profile can handle '${filePath}'. Configure an extension mapping or select a profile explicitly.`
+        getUnsupportedFileMessage(filePath)
       );
     }
 

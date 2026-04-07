@@ -149,6 +149,10 @@ export interface LspSessionOwnershipSink {
     filePath: string,
     uri: string
   ) => void;
+  onSessionUnexpectedExit?: (
+    sessionKey: string,
+    reason: string
+  ) => void;
 }
 
 function createWorkspaceConfig(profile: LspSessionProfile): LspConfig {
@@ -722,6 +726,7 @@ export function createLspSession(
           code !== null
             ? `LSP process exited with code ${code}`
             : `LSP process terminated by signal ${signal || 'unknown'}`;
+        ownershipSink.onSessionUnexpectedExit?.(sessionKey, lastError);
       });
 
       const initResult = await initializeLspClient(
