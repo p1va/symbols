@@ -392,7 +392,9 @@ export function createLspManager(): LspManager {
 
   async function reloadRunningProfiles(): Promise<LspManagerStatus> {
     const runningProfileNames = [
-      ...new Set(getRunningSessions().map((session) => session.getProfile().name)),
+      ...new Set(
+        getRunningSessions().map((session) => session.getProfile().name)
+      ),
     ];
 
     for (const session of getRunningSessions()) {
@@ -533,9 +535,7 @@ export function createLspManager(): LspManager {
     }
 
     if (!profile) {
-      throw new Error(
-        getUnsupportedFileMessage(filePath)
-      );
+      throw new Error(getUnsupportedFileMessage(filePath));
     }
 
     const session = getOrCreateSession(profile);
@@ -604,8 +604,8 @@ export function createLspManager(): LspManager {
       : isUninitialized
         ? 'uninitialized'
         : hasErrors || (profileStatuses.length === 0 && hasSessionErrors)
-        ? 'degraded'
-        : 'idle';
+          ? 'degraded'
+          : 'idle';
 
     return {
       mode,

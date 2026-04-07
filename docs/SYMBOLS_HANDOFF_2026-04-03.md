@@ -152,7 +152,7 @@ Important recent refinement:
 That distinguishes:
 
 - `not_started`
-from
+  from
 - `starting but not ready`
 
 The setup summary prints `workspace ready: n/a` for `not_started` and

@@ -1,5 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { LspManager, LspManagerProfileStatus, LspManagerStatus } from '../runtime/lsp-manager.js';
+import type {
+  LspManager,
+  LspManagerProfileStatus,
+  LspManagerStatus,
+} from '../runtime/lsp-manager.js';
 import { setupSchema } from './schemas.js';
 import { validateSetup } from './validation.js';
 

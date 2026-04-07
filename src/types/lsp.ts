@@ -200,12 +200,12 @@ export interface SemanticToken {
 
 // The textDocument/documentSymbol response can be either format
 // Use discriminated union based on the presence of location vs range
-export type DocumentSymbolResult =
+type DocumentSymbolResult =
   | { type: 'symbolInformation'; symbols: SymbolInformation[] }
   | { type: 'documentSymbol'; symbols: DocumentSymbol[] };
 
 // Utility function with refined checks
-export function parseDocumentSymbolResponse(
+function parseDocumentSymbolResponse(
   response: DocumentSymbol[] | SymbolInformation[]
 ): DocumentSymbolResult {
   logger.info(
@@ -317,7 +317,7 @@ export async function getDocumentSymbols(
 /**
  * Decodes semantic tokens from the LSP relative format into absolute positions
  */
-export function decodeSemanticTokens(
+function decodeSemanticTokens(
   data: number[],
   tokenTypes: string[],
   tokenModifiers: string[],

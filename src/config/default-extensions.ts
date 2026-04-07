@@ -99,78 +99,80 @@ export const DEFAULT_EXTENSIONS: Record<string, string> = {
   '.mkd': 'markdown',
 };
 
-export const DEFAULT_PROFILE_EXTENSIONS: Record<string, Record<string, string>> =
-  {
-    typescript: {
-      '.js': 'javascript',
-      '.mjs': 'javascript',
-      '.cjs': 'javascript',
-      '.jsx': 'javascriptreact',
-      '.ts': 'typescript',
-      '.mts': 'typescript',
-      '.cts': 'typescript',
-      '.tsx': 'typescriptreact',
-    },
-    pyright: {
-      '.py': 'python',
-      '.pyw': 'python',
-      '.pyi': 'python',
-    },
-    go: {
-      '.go': 'go',
-    },
-    rust: {
-      '.rs': 'rust',
-    },
-    roslyn: {
-      '.cs': 'csharp',
-      '.cshtml': 'razor',
-      '.razor': 'razor',
-    },
-    'vscode-roslyn': {
-      '.cs': 'csharp',
-      '.cshtml': 'razor',
-      '.razor': 'razor',
-    },
-    java: {
-      '.java': 'java',
-    },
-    clangd: {
-      '.c': 'c',
-      '.h': 'c',
-      '.cpp': 'cpp',
-      '.cc': 'cpp',
-      '.C': 'cpp',
-      '.cxx': 'cpp',
-      '.hpp': 'cpp',
-      '.H': 'cpp',
-      '.hh': 'cpp',
-      '.hxx': 'cpp',
-    },
-    kotlin: {
-      '.kt': 'kotlin',
-      '.kts': 'kotlin',
-    },
-    lua: {
-      '.lua': 'lua',
-    },
-    php: {
-      '.php': 'php',
-      '.phtml': 'php',
-      '.php3': 'php',
-      '.php4': 'php',
-      '.php5': 'php',
-      '.phps': 'php',
-    },
-    ruby: {
-      '.rb': 'ruby',
-      '.rbw': 'ruby',
-      '.rake': 'ruby',
-      '.gemspec': 'ruby',
-      '.ru': 'ruby',
-      '.erb': 'erb',
-    },
-    swift: {
-      '.swift': 'swift',
-    },
-  };
+export const DEFAULT_PROFILE_EXTENSIONS: Record<
+  string,
+  Record<string, string>
+> = {
+  typescript: {
+    '.js': 'javascript',
+    '.mjs': 'javascript',
+    '.cjs': 'javascript',
+    '.jsx': 'javascriptreact',
+    '.ts': 'typescript',
+    '.mts': 'typescript',
+    '.cts': 'typescript',
+    '.tsx': 'typescriptreact',
+  },
+  pyright: {
+    '.py': 'python',
+    '.pyw': 'python',
+    '.pyi': 'python',
+  },
+  go: {
+    '.go': 'go',
+  },
+  rust: {
+    '.rs': 'rust',
+  },
+  roslyn: {
+    '.cs': 'csharp',
+    '.cshtml': 'razor',
+    '.razor': 'razor',
+  },
+  'vscode-roslyn': {
+    '.cs': 'csharp',
+    '.cshtml': 'razor',
+    '.razor': 'razor',
+  },
+  java: {
+    '.java': 'java',
+  },
+  clangd: {
+    '.c': 'c',
+    '.h': 'c',
+    '.cpp': 'cpp',
+    '.cc': 'cpp',
+    '.C': 'cpp',
+    '.cxx': 'cpp',
+    '.hpp': 'cpp',
+    '.H': 'cpp',
+    '.hh': 'cpp',
+    '.hxx': 'cpp',
+  },
+  kotlin: {
+    '.kt': 'kotlin',
+    '.kts': 'kotlin',
+  },
+  lua: {
+    '.lua': 'lua',
+  },
+  php: {
+    '.php': 'php',
+    '.phtml': 'php',
+    '.php3': 'php',
+    '.php4': 'php',
+    '.php5': 'php',
+    '.phps': 'php',
+  },
+  ruby: {
+    '.rb': 'ruby',
+    '.rbw': 'ruby',
+    '.rake': 'ruby',
+    '.gemspec': 'ruby',
+    '.ru': 'ruby',
+    '.erb': 'erb',
+  },
+  swift: {
+    '.swift': 'swift',
+  },
+};

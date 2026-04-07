@@ -11,9 +11,10 @@ Read, inspect and navigate through codebase symbols by connecting to Language Se
 ## Introduction
 
 By connecting to a Language Server of choice this MCP server makes it easy and efficient for coding agents to explore and navigate the codebase and its dependencies.
-The server offers a minimal set of tools, resources and skills  intended to be simple to use and light on the model's context.
+The server offers a minimal set of tools, resources and skills intended to be simple to use and light on the model's context.
 
 ### Tools
+
 - **`Request`**:
   - **`outline`**: returns an outline of code symbols in a file, optionally with a small code snippet
   - **`inspect`**: returns docs, signature, declaration, and implementation locations for a symbol, including third-party symbols
@@ -24,7 +25,6 @@ The server offers a minimal set of tools, resources and skills  intended to be s
   - **`completion`**: returns contextual completions at a given location
 
 - **`Control`**:
-
   - **`setup`**: reloads the effective config and reapplies it to currently running language servers
 
 ### Resources

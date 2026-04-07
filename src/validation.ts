@@ -15,18 +15,14 @@ import {
 } from './types.js';
 import type { LspSession } from './runtime/lsp-session.js';
 
-export const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
+const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
 
-export function createWorkspaceLoadingMessage(startedAt?: Date): string {
+function createWorkspaceLoadingMessage(startedAt?: Date): string {
   const startedAtSuffix = startedAt
     ? ` (started ${startedAt.toISOString()})`
     : '';
 
   return `${WORKSPACE_LOADING_MESSAGE_PREFIX}${startedAtSuffix}. Please wait for initialization to complete.`;
-}
-
-export function isWorkspaceLoadingMessage(message: string): boolean {
-  return message.startsWith(WORKSPACE_LOADING_MESSAGE_PREFIX);
 }
 
 /**
@@ -41,9 +37,7 @@ export function validateWorkspaceReady(session: LspSession): ValidationResult {
       valid: false,
       error: {
         errorCode: ValidationErrorCode.WorkspaceNotReady,
-        message: createWorkspaceLoadingMessage(
-          workspaceState.loadingStartedAt
-        ),
+        message: createWorkspaceLoadingMessage(workspaceState.loadingStartedAt),
       },
     };
   }

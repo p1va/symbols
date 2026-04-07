@@ -149,10 +149,7 @@ export interface LspSessionOwnershipSink {
     filePath: string,
     uri: string
   ) => void;
-  onSessionUnexpectedExit?: (
-    sessionKey: string,
-    reason: string
-  ) => void;
+  onSessionUnexpectedExit?: (sessionKey: string, reason: string) => void;
 }
 
 function createWorkspaceConfig(profile: LspSessionProfile): LspConfig {
@@ -305,11 +302,7 @@ export function createLspSession(
       throw new Error(`LSP session '${profile.name}' is not initialized`);
     }
 
-    if (
-      state === 'not_started' ||
-      state === 'stopped' ||
-      state === 'error'
-    ) {
+    if (state === 'not_started' || state === 'stopped' || state === 'error') {
       throw new Error(`LSP session '${profile.name}' is not available`);
     }
 

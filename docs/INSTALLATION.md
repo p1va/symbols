@@ -251,7 +251,7 @@ $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
 }
 ```
 
-> ℹ️ Roslyn Language Server is also provided with the C# Dev Kit extension for VS Code however the launch command is a bit more complicated and changes each time the extension is updated. If wanting to try it i suggest trying the other modality (`config init` * `start`) which brings a template for the launch command
+> ℹ️ Roslyn Language Server is also provided with the C# Dev Kit extension for VS Code however the launch command is a bit more complicated and changes each time the extension is updated. If wanting to try it i suggest trying the other modality (`config init` \* `start`) which brings a template for the launch command
 
 #### Troubleshooting
 

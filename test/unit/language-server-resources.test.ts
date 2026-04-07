@@ -166,9 +166,7 @@ describe('window log formatting', () => {
       },
     ]);
 
-    expect(formatted).toBe(
-      'ℹ [Info] [csharp] Workspace loaded successfully'
-    );
+    expect(formatted).toBe('ℹ [Info] [csharp] Workspace loaded successfully');
   });
 });
 

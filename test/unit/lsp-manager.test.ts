@@ -47,7 +47,9 @@ import { createLspSession } from '../../src/runtime/lsp-session.js';
 const mockResolveStartConfig = vi.mocked(resolveStartConfig);
 const mockResolveRunConfig = vi.mocked(resolveRunConfig);
 const mockLoadLspConfig = vi.mocked(loadLspConfig);
-const mockCreateConfigFromDirectCommand = vi.mocked(createConfigFromDirectCommand);
+const mockCreateConfigFromDirectCommand = vi.mocked(
+  createConfigFromDirectCommand
+);
 const mockGetLspConfig = vi.mocked(getLspConfig);
 const mockAutoDetectLsp = vi.mocked(autoDetectLsp);
 const mockCreateLspSession = vi.mocked(createLspSession);
@@ -225,7 +227,10 @@ describe('LspManager routing', () => {
     );
   }
 
-  function emitUnexpectedExit(profileName: string, reason = 'LSP process exited with code 1'): void {
+  function emitUnexpectedExit(
+    profileName: string,
+    reason = 'LSP process exited with code 1'
+  ): void {
     const record = sessionRecords.get(profileName);
     if (!record) {
       throw new Error(`Session for profile '${profileName}' not found`);
@@ -351,7 +356,9 @@ describe('LspManager routing', () => {
       workspace: workspacePath,
     } as StartCommandArgs);
 
-    await expect(manager.getSessionForFile('queries/report.sql')).rejects.toThrow(
+    await expect(
+      manager.getSessionForFile('queries/report.sql')
+    ).rejects.toThrow(
       "No configured LSP profile handles extension '.sql' for 'queries/report.sql'. Add an explicit extension mapping for this file type or choose a supported file."
     );
 
@@ -370,11 +377,15 @@ describe('LspManager routing', () => {
       },
     } as RunCommandArgs);
 
-    await expect(manager.getSessionForFile('queries/report.sql')).rejects.toThrow(
+    await expect(
+      manager.getSessionForFile('queries/report.sql')
+    ).rejects.toThrow(
       "No configured LSP profile handles extension '.sql' for 'queries/report.sql'. Add an explicit extension mapping for this file type or choose a supported file."
     );
 
-    expect(sessionRecords.get('direct-command')?.startMock).not.toHaveBeenCalled();
+    expect(
+      sessionRecords.get('direct-command')?.startMock
+    ).not.toHaveBeenCalled();
   });
 
   it('reports the effective config path from the selected config source', async () => {
@@ -463,7 +474,9 @@ describe('LspManager routing', () => {
 
     emitUnexpectedExit('beta');
 
-    expect(sessionRecords.get('beta')?.session.listOwnedDocuments()).toEqual([]);
+    expect(sessionRecords.get('beta')?.session.listOwnedDocuments()).toEqual(
+      []
+    );
     expect(manager.getProfileStatus('beta')).toMatchObject({
       state: 'error',
       ownedDocumentCount: 0,
@@ -560,7 +573,9 @@ describe('LspManager routing', () => {
 
     expect(alphaRecord?.stopMock).toHaveBeenCalledTimes(1);
     expect(alphaRecord?.startMock).toHaveBeenCalledTimes(1);
-    expect(status.profiles.find((profile) => profile.name === 'alpha')).toBeUndefined();
+    expect(
+      status.profiles.find((profile) => profile.name === 'alpha')
+    ).toBeUndefined();
     expect(
       status.profiles.find((profile) => profile.name === 'beta')
     ).toMatchObject({

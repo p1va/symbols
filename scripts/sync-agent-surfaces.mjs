@@ -5,7 +5,12 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 const sourceSkillsDir = path.join(repoRoot, '.agents', 'skills');
-const codexPluginSkillsDir = path.join(repoRoot, 'plugins', 'symbols', 'skills');
+const codexPluginSkillsDir = path.join(
+  repoRoot,
+  'plugins',
+  'symbols',
+  'skills'
+);
 const geminiSkillsDir = path.join(repoRoot, 'skills');
 const geminiContextPath = path.join(repoRoot, 'GEMINI.md');
 
@@ -41,8 +46,12 @@ async function main() {
 
   for (const skillName of skillNames) {
     const sourceSkillPath = path.join(sourceSkillsDir, skillName);
-    await cp(sourceSkillPath, path.join(codexPluginSkillsDir, skillName), { recursive: true });
-    await cp(sourceSkillPath, path.join(geminiSkillsDir, skillName), { recursive: true });
+    await cp(sourceSkillPath, path.join(codexPluginSkillsDir, skillName), {
+      recursive: true,
+    });
+    await cp(sourceSkillPath, path.join(geminiSkillsDir, skillName), {
+      recursive: true,
+    });
   }
 
   const geminiContext = renderGeminiContext();

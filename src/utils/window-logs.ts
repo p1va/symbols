@@ -20,9 +20,7 @@ function getLogLevelSymbol(type: number): string {
   }
 }
 
-export function formatWindowLogMessages(
-  messages: WindowLogMessage[]
-): string {
+export function formatWindowLogMessages(messages: WindowLogMessage[]): string {
   if (messages.length === 0) {
     return 'No window log messages available';
   }

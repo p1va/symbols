@@ -262,8 +262,10 @@ export function registerLanguageServerResources(
     'language-server-profile',
     new ResourceTemplate('language-servers://profiles/{name}', {
       list: () =>
-        listProfileUris(manager, (profileName) =>
-          `language-servers://profiles/${encodeURIComponent(profileName)}`
+        listProfileUris(
+          manager,
+          (profileName) =>
+            `language-servers://profiles/${encodeURIComponent(profileName)}`
         ),
     }),
     {
@@ -287,8 +289,10 @@ export function registerLanguageServerResources(
     'language-server-logs',
     new ResourceTemplate('language-servers://profiles/{name}/logs', {
       list: () =>
-        listProfileUris(manager, (profileName) =>
-          `language-servers://profiles/${encodeURIComponent(profileName)}/logs`
+        listProfileUris(
+          manager,
+          (profileName) =>
+            `language-servers://profiles/${encodeURIComponent(profileName)}/logs`
         ),
     }),
     {

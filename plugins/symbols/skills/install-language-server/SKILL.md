@@ -12,6 +12,7 @@ description: Install, configure, validate, or troubleshoot a language-server pro
 When an MCP tool like `outline`, `inspect`, `references`, `rename`, `completion`, or `diagnostics` is called on a matching file, the MCP chooses the matching profile, starts that language server over stdio if needed, and proxies the request.
 
 This skill is for the part the MCP will not do automatically:
+
 - make sure the `language-servers` MCP server is available in this session
 - find or bootstrap the active config file
 - install or verify the target language server binary
@@ -20,10 +21,12 @@ This skill is for the part the MCP will not do automatically:
 - validate that a real file now routes to the right spawned language server
 
 Use this skill for both setup and troubleshooting:
+
 - Setup: bootstrap config if needed, add a new profile, reload, and validate.
 - Troubleshooting: inspect the existing profile and logs first, verify the binary and routing on a real file, and only edit YAML if the evidence points to a config problem.
 
 Use `language-servers://profiles` as the source of truth:
+
 - it proves the MCP server is connected
 - `manager.configPath` tells you which YAML file is active
 - `manager.state` tells you whether config exists or setup is still `uninitialized`

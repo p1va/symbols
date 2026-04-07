@@ -204,38 +204,6 @@ function extractCodeSnippet(
 }
 
 /**
- * Creates a code preview with markdown formatting
- * If maxLines is 0, shows entire code snippet without truncation
- */
-export function createCodePreview(
-  codeSnippet: string,
-  maxLines: number = 0
-): string {
-  // Trim trailing newlines from the snippet
-  const trimmedSnippet = codeSnippet.replace(/\n+$/, '');
-
-  let preview: string;
-
-  if (maxLines === 0) {
-    // Show entire code snippet
-    preview = trimmedSnippet;
-  } else {
-    // Truncate to maxLines if specified
-    const lines = trimmedSnippet.split('\n');
-    if (lines.length <= maxLines) {
-      preview = trimmedSnippet;
-    } else {
-      const previewLines = lines.slice(0, maxLines);
-      const remainingLines = lines.length - maxLines;
-      preview = `${previewLines.join('\n')}\n// ... ${remainingLines} more lines`;
-    }
-  }
-
-  // Wrap in markdown code block
-  return `\`\`\`\n${preview}\n\`\`\``;
-}
-
-/**
  * Creates a single-line signature preview from a code snippet
  * Condenses whitespace and limits to specified character count
  */
