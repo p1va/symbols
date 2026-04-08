@@ -58,7 +58,7 @@ See below configurations for the Language Servers tested. Other stdio Language S
 
 **Virtual Env not found**
 
-If the `logs` tool output includes errors or the `diagnostics` tool only reports module import errors even when none appear in the IDE these might be signs of Pyright not detecting the virtual environment.
+If `language-servers://profiles/{name}/logs` includes errors or the `diagnostics` tool only reports module import errors even when none appear in the IDE these might be signs of Pyright not detecting the virtual environment.
 
 You can update your `pyproject.toml` to correctly point it to the virtual environment location.
 
@@ -850,7 +850,7 @@ Finally run the command in your workspace (e.g. where you launch Claude Code) to
   <b>3. <code>start</code></b>
 </summary>
 
-Update your MCP configuration with this MCP server. The first Language Server having `workspace_files` matching any of the files seen at the root of the workspace will be launched
+Update your MCP configuration with this MCP server. File-backed tools route by extension, while workspace-wide search only considers profiles whose `workspace_files` match files at the workspace root.
 
 ```jsonc
 {

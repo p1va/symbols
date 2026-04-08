@@ -13,8 +13,8 @@ language-servers:
       .json: json
       .jsonc: json
     workspace_files:
-      - 'package.json'
       - 'tsconfig.json'
+      - 'jsconfig.json'
     # Each preload entry may be an exact path or a glob pattern.
     # A glob pattern resolves to the first matching file to keep memory bounded.
     preload_files:

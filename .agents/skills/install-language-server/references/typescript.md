@@ -46,8 +46,8 @@ language-servers:
       '.cts': 'typescript'
       '.tsx': 'typescriptreact'
     workspace_files:
-      - 'package.json'
       - 'tsconfig.json'
+      - 'jsconfig.json'
     preload_files:
       - './src/{index,main,app}.ts'
       - './{index,main}.ts'
@@ -60,6 +60,7 @@ language-servers:
 ### Validation Notes
 
 - Prefer a real `.ts` or `.tsx` file inside the current workspace.
+- `workspace_files` decide when TypeScript counts as a workspace-wide search candidate. Keep them specific.
 - If search quality matters, confirm the profile owns at least one preload file after first use.
 - Prefer bounded glob patterns for `preload_files`. Each pattern resolves to the first matching file, so the config is easier to reuse across repositories without opening every file.
 - If cold search is flaky, add a small `workspace_ready_delay_ms` so tsserver has time to build project state after the anchor file opens.
@@ -67,6 +68,7 @@ language-servers:
 ### Troubleshooting
 
 - `preload_files` matter for search and broader index quality.
+- Add `package.json` to `workspace_files` only if you intentionally want plain JS repos without `tsconfig.json` or `jsconfig.json` to count as TypeScript workspaces.
 - If the server starts but search still looks cold, check whether the configured preload entries actually matched files in this workspace.
 - If preload entries match but cold search still races, increase `workspace_ready_delay_ms` modestly before adding more anchors.
 - If startup latency matters, prefer the global install above over repeated `npx` startup.

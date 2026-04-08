@@ -39,14 +39,6 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 - Use `search` only when the server and current indexing state can support it.
 - Use plain text tools only when there is no working LSP profile or when the task is explicitly text-based.
 
-## Rename Workflow
-
-- Before renaming, use `inspect` or `references` on the declaration site to confirm you are on the right symbol.
-- Use `references` to understand scope when the rename could be broad or risky.
-- Prefer the Language Servers `rename` tool over manual text edits when the server supports it.
-- After renaming, verify with diagnostics or a build if the task warrants it.
-- If the server does not support rename for that language, say so explicitly and only then fall back to manual edits.
-
 ## Known Runtime Behaviors
 
 - `not_started` after `reload` is normal. The first matching file-backed tool call should start the profile.

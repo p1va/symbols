@@ -14,10 +14,10 @@ language-servers:
       '.mts': 'typescript'
       '.cts': 'typescript'
       '.tsx': 'typescriptreact'
-    # This Language Server will be launched when at least one of the following files is detected in the working directory
+    # These files identify a TypeScript/JavaScript workspace for routing and workspace-wide search.
     workspace_files:
-      - 'package.json'
       - 'tsconfig.json'
+      - 'jsconfig.json'
     # In TS Language Server for the search functionality to work
     # at least one code file in the workspace needs to always be kept open
     # Each preload entry may be an exact path or a glob pattern.

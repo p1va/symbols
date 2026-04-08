@@ -74,6 +74,8 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
   - Edit only the target profile under `language-servers`.
   - Preserve unrelated profiles, local paths, environment variables, and workspace-specific tweaks.
   - Keep `command`, `extensions`, `workspace_files`, and `diagnostics` explicit.
+  - Choose `workspace_files` carefully. They identify which repos count as a workspace for that server and which profiles can participate in workspace-wide search.
+  - Prefer specific project markers over broad files like `package.json` unless you intentionally want that profile to apply to very mixed repositories.
   - Add `preload_files` only when the reference calls for it.
   - Prefer one or two bounded glob patterns over a single repo-specific exact file when you need a keepalive anchor. The runtime resolves each glob to the first matching file rather than opening every match.
   - The YAML file is the desired state for which language servers the MCP may spawn and how files route to them.
@@ -97,6 +99,7 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
 - Do not replace an existing config with a copied example. Merge the target profile into the active file.
 - If troubleshooting, do not edit YAML before checking the existing profile, logs, and one real file-backed request.
 - Wrong `workspace_files` or missing `extensions` are common routing failures.
+- Overly broad `workspace_files` can make workspace-wide search start the wrong server.
 - Some servers need extra environment variables or project markers. Use the reference before inventing settings.
 - If you need an unsupported language, start with the official implementor list: https://microsoft.github.io/language-server-protocol/implementors/servers/
 
