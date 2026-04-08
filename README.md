@@ -78,3 +78,10 @@ For manual configuration and language servers examples see [here](docs/INSTALLAT
 - `pnpm start` starts the built artifacts
 - `pnpm test:unit` runs the unit tests
 - `pnpm test:integration:{language id}` runs the integration tests for a given language
+
+## Release
+
+- `pnpm sync:skills` to mirror `.agents/skills/` into:
+  - `skills/` for Gemini Extension
+  - `plugins/symbols/skills/` for Codex Plugin.
+- `pnpm version patch` to bump version and tag, `git push --follow-tags` to push.
