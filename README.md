@@ -22,7 +22,7 @@ The server offers a minimal set of tools, resources and skills intended to be si
 - **`rename`**: renames all references of a symbol across the codebase
 - **`diagnostics`**: returns active diagnostics in a given file
 - **`completion`**: returns contextual completions at a given location
-- **`setup`**: reloads the effective config and reapplies it to currently running language servers
+- **`reload`**: reloads the effective config and reapplies it to currently running language servers
 
 ### Resources
 
@@ -32,8 +32,8 @@ The server offers a minimal set of tools, resources and skills intended to be si
 
 ### Skills
 
-- **`How To Install a Language Server`**: teaches how to install a Language Server relevant to the codebase and configure it.
-- **`How To Rename a Codebase Symbol`**: teaches how to carry on codebase-wide rename using Language Servers.
+- **`install-language-server`**: installs, configures, validates, or troubleshoots a language-server profile for the current workspace.
+- **`language-server-navigation`**: guides symbol inspection, references, rename, diagnostics, and search through Language Server tools before falling back to text search.
 
 ## Installation
 
@@ -66,7 +66,7 @@ Install the MCP Server, Agent Skills via Plugins and Extensions and then ask the
 
 ### Manual Installation
 
-For manual configuration, language servers examples see [docs/INSTALLATION.md#traditional-installation](docs/INSTALLATION.md#traditional-installation).
+For manual configuration and language servers examples see [here](docs/INSTALLATION.md#traditional-installation).
 
 ## Development
 

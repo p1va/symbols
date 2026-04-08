@@ -89,7 +89,7 @@ than reaching for a raw client directly.
 
 Main tool:
 
-- `src/tools/setup.ts`
+- `src/tools/reload.ts`
 
 Supported actions:
 
@@ -298,7 +298,7 @@ That plugin/skill layer should instruct the agent to:
 - `src/runtime/lsp-manager.ts`
 - `src/runtime/lsp-session.ts`
 - `src/resources/language-servers.ts`
-- `src/tools/setup.ts`
+- `src/tools/reload.ts`
 - `src/config/lsp-config.ts`
 - `docs/PLUGIN_CONTROL_PLANE_DIRECTION.md`
 - `docs/SYMBOLS_HANDOFF_2026-04-03.md`

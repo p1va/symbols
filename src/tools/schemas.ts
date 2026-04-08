@@ -50,13 +50,3 @@ export const renameSchema = {
     .string()
     .describe('Replacement name to use for the symbol at the given position.'),
 } as const;
-
-export const setupSchema = {
-  action: z
-    .enum(['reload'])
-    .optional()
-    .default('reload')
-    .describe(
-      'Reload the active configuration and reapply it to currently running LSP sessions.'
-    ),
-} as const;

@@ -121,7 +121,7 @@ function buildHints(profile: LspManagerProfileStatus): string[] {
       'Session is in an error state. Check the logs resource, then verify the configured command and install path.'
     );
     hints.push(
-      'After fixing config, call setup reload and then rerun an LSP-backed tool.'
+      'After fixing config, call reload and then rerun an LSP-backed tool.'
     );
   }
 

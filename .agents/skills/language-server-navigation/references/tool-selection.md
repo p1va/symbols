@@ -1,0 +1,8 @@
+- Prefer `inspect` when you need docs, declarations, implementations, or type details for one symbol.
+- Prefer `references` when you need call sites or usages of a known symbol.
+- Prefer `rename` when a matching language server can apply the change safely across the workspace.
+- Prefer `outline` when you need to find candidate symbols or stable line and character coordinates first.
+- Prefer `completion` for API discovery at a specific cursor position.
+- Prefer `diagnostics` after edits or when checking whether a file currently has compile or type issues.
+- Use `search` only when the server supports it and indexing state is likely ready.
+- If output quality is weak after a config edit, call `reload` before retrying.

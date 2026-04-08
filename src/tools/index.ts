@@ -12,13 +12,13 @@ import { registerRenameTool } from './rename.js';
 import { registerSearchTool } from './search.js';
 import { registerOutlineTool } from './outline.js';
 import { registerDiagnosticsTool } from './diagnostics.js';
-import { registerSetupTool } from './setup.js';
+import { registerReloadTool } from './reload.js';
 
 /**
  * Register all MCP tools with the server
  */
 export function registerAllTools(server: McpServer, manager: LspManager) {
-  registerSetupTool(server, manager);
+  registerReloadTool(server, manager);
   registerInspectTool(server, manager);
   registerReferencesTool(server, manager);
   registerCompletionTool(server, manager);

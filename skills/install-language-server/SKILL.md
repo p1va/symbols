@@ -1,6 +1,6 @@
 ---
 name: install-language-server
-description: Install, configure, validate, or troubleshoot a language-server profile for the `language-servers` MCP by editing the active config, running `setup.reload`, and checking a real file.
+description: Install, configure, validate, or troubleshoot a language-server profile for the `language-servers` MCP by editing the active config, running `reload`, and checking a real file.
 ---
 
 # Install Language Server
@@ -17,7 +17,7 @@ This skill is for the part the MCP will not do automatically:
 - find or bootstrap the active config file
 - install or verify the target language server binary
 - add or update one profile in that YAML file
-- run `setup.reload` so the MCP rereads the YAML
+- run `reload` so the MCP rereads the YAML
 - validate that a real file now routes to the right spawned language server
 
 Use this skill for both setup and troubleshooting:
@@ -52,7 +52,7 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
   - Then read `language-servers://profiles` again and confirm the config path now exists.
 - [ ] Choose the target language and open the matching reference.
   - The references only provide language-specific implementation details: install commands, verify commands, one profile snippet, and language-specific validation or troubleshooting notes.
-  - Use this skill for the generic workflow: resource checks, config discovery, `setup.reload`, and logs.
+  - Use this skill for the generic workflow: resource checks, config discovery, `reload`, and logs.
   - [C/C++](references/clangd.md): `.c .h .cpp .cc .cxx .hpp .hxx .C .H`
   - [C# / Roslyn](references/roslyn.md): `.cs`
   - [Go](references/gopls.md): `.go`
@@ -78,7 +78,7 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
   - Prefer one or two bounded glob patterns over a single repo-specific exact file when you need a keepalive anchor. The runtime resolves each glob to the first matching file rather than opening every match.
   - The YAML file is the desired state for which language servers the MCP may spawn and how files route to them.
 - [ ] Apply the config.
-  - Run `setup.reload`.
+  - Run `reload`.
   - This makes the MCP reread the YAML and apply the new desired state.
   - Then read `language-servers://profiles` again and confirm the profile is present.
 - [ ] Validate on a real file for that language.
@@ -88,11 +88,11 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
 - [ ] If validation fails, inspect the profile resource and logs.
   - `language-servers://profiles/{name}`
   - `language-servers://profiles/{name}/logs`
-  - Fix one issue, rerun `setup.reload` if the config changed, then revalidate on the same file.
+  - Fix one issue, rerun `reload` if the config changed, then revalidate on the same file.
 
 ## Gotchas
 
-- `setup.reload` is the only apply-config action. Do not restart the MCP server unless the user explicitly asks.
+- `reload` is the only apply-config action. Do not restart the MCP server unless the user explicitly asks.
 - `not_started` after reload is expected. Use a matching file-backed tool call to start the profile.
 - Do not replace an existing config with a copied example. Merge the target profile into the active file.
 - If troubleshooting, do not edit YAML before checking the existing profile, logs, and one real file-backed request.

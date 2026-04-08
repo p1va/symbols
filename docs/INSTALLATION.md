@@ -1,28 +1,6 @@
 # Installation
 
-## Agent Installation
-
-### Gemini
-
-Install the repo-root Gemini extension:
-
-- **Add Extension:** `gemini extensions install p1va/symbols`
-- **What it adds:** the Symbols MCP server plus native Gemini `skills/` for language server setup and semantic code navigation
-- **Ask Gemini:** `please install the language servers relevant to this codebase`
-
-For local development from a checkout, link the current repo instead:
-
-`gemini extensions link .`
-
-### Codex
-
-Codex does not yet support a remote plugin marketplace, so installation currently requires a separate MCP step plus skill installation:
-
-- **Add MCP Server:** `codex mcp add language-servers -- npx -y @p1va/symbols@latest start`
-- **Add Language Server Skills:** `npx skills add p1va/symbols -a codex`
-- **Restart and ask Codex:** `please install the language servers relevant to this codebase`
-
-## Traditional Installation
+## Manual Installation
 
 ### Quickstart (`run` command)
 

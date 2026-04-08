@@ -4,8 +4,6 @@ import type {
   LspManagerProfileStatus,
   LspManagerStatus,
 } from '../runtime/lsp-manager.js';
-import { setupSchema } from './schemas.js';
-import { validateSetup } from './validation.js';
 
 function formatProfileSummary(profile: LspManagerProfileStatus): string {
   const workspaceReadyText =
@@ -69,20 +67,19 @@ function formatStatus(status: LspManagerStatus): string {
   return sections.join('\n\n');
 }
 
-export function registerSetupTool(
+export function registerReloadTool(
   server: McpServer,
   manager: LspManager
 ): void {
   server.registerTool(
-    'setup',
+    'reload',
     {
-      title: 'Setup',
+      title: 'Reload',
       description:
         'Reload the active language-server configuration and reapply it to currently running LSP sessions.',
-      inputSchema: setupSchema,
+      inputSchema: {},
     },
-    async (request) => {
-      validateSetup(request);
+    async () => {
       const status = await manager.reload();
       return {
         content: [{ type: 'text' as const, text: formatStatus(status) }],

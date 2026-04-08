@@ -8,7 +8,6 @@ import type {
   LspManagerStatus,
 } from '../../src/runtime/lsp-manager.js';
 import { formatWindowLogMessages } from '../../src/utils/window-logs.js';
-import { validateSetup } from '../../src/tools/validation.js';
 
 function createProfileStatus(
   overrides: Partial<LspManagerProfileStatus> = {}
@@ -111,7 +110,7 @@ describe('language server resources', () => {
       'Session is in an error state. Check the logs resource, then verify the configured command and install path.'
     );
     expect(detail.hints).toContain(
-      'After fixing config, call setup reload and then rerun an LSP-backed tool.'
+      'After fixing config, call reload and then rerun an LSP-backed tool.'
     );
     expect(detail.hints).toContain(
       'Recent window log messages are available via the logs resource.'
@@ -167,13 +166,5 @@ describe('window log formatting', () => {
     ]);
 
     expect(formatted).toBe('ℹ [Info] [csharp] Workspace loaded successfully');
-  });
-});
-
-describe('setup validation', () => {
-  it('defaults setup to reload', () => {
-    expect(validateSetup({})).toEqual({
-      action: 'reload',
-    });
   });
 });

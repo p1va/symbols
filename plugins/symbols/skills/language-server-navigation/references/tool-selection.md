@@ -12,4 +12,4 @@
 
 - Tool calls can lazily start a profile.
 - Resource reads are safer than text status parsing for current state.
-- If output quality is weak after a config edit, call `setup.reload` before retrying.
+- If output quality is weak after a config edit, call `reload` before retrying.

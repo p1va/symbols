@@ -1,9 +1,9 @@
 ---
-name: symbols-semantic-navigation
-description: Prefer Language Servers' LSP-backed navigation and rename tools over text search when the user asks to inspect symbols, find references, rename code safely, gather diagnostics, or explore APIs in a language that has a configured profile. Use when semantic understanding matters more than raw grep or filename search.
+name: language-server-navigation
+description: Prefer Language Server navigation and rename tools over text search when the user asks to inspect symbols, find references, rename code safely, gather diagnostics, or explore APIs in a language that has a configured profile.
 ---
 
-# Semantic Navigation
+# Language Server Navigation
 
 Use this skill when the codebase already has a relevant language server, or when the task should check that first. The goal is to use the current Language Servers tool surface deliberately instead of falling back to grep-driven workflows too early.
 
@@ -29,7 +29,7 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 5. If results look wrong, inspect:
    - `language-servers://profiles/{name}`
    - `language-servers://profiles/{name}/logs`
-   - then use `setup.reload` only if the config changed
+   - then use `reload` only if the config changed
 
 ## Tool Choice Rules
 
@@ -37,11 +37,11 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 - Prefer `references` over text search for call sites or symbol usage.
 - Prefer `inspect` over opening arbitrary files when you need docs, types, or declaration context.
 - Use `search` only when the server and current indexing state can support it.
-- Use plain text tools only when there is no working LSP profile or when the task is explicitly non-semantic.
+- Use plain text tools only when there is no working LSP profile or when the task is explicitly text-based.
 
 ## Known Runtime Behaviors
 
-- `not_started` after `setup.reload` is normal. The first matching file-backed tool call should start the profile.
+- `not_started` after `reload` is normal. The first matching file-backed tool call should start the profile.
 - Search quality varies by server. TypeScript often needs a preload anchor to keep enough index state alive, and glob-based `preload_files` entries are usually easier to reuse than exact paths.
 - Logs are best-effort. A running server may still have no window-log messages.
 - Resources are the read surface. Use them for state and log inspection before guessing.
