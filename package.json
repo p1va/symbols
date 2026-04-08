@@ -35,6 +35,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "sync:skills": "node scripts/sync-skills.mjs",
+    "sync:version": "node scripts/sync-version.mjs",
     "check:unused": "knip",
     "check:unused:ts": "tsc -p tsconfig.build.json --noEmit --noUnusedLocals --noUnusedParameters",
     "test": "vitest run",

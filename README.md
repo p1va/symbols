@@ -82,6 +82,8 @@ For manual configuration and language servers examples see [here](docs/INSTALLAT
 ## Release
 
 - `pnpm sync:skills` to mirror `.agents/skills/` into:
-  - `skills/` for Gemini Extension
-  - `plugins/symbols/skills/` for Codex Plugin.
-- `pnpm version patch` to bump version and tag, `git push --follow-tags` to push.
+  - `skills/` for the Gemini Extension
+  - `plugins/symbols/skills/` for the Codex Plugin.
+- `pnpm version patch` to bump the version and create the tag. Then:
+  - `pnpm sync:version` to update plugin and extension manifests.
+  - `git push --follow-tags` to push the commit and tag.
