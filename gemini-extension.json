@@ -1,12 +1,16 @@
 {
   "name": "symbols",
-  "version": "0.0.18",
+  "version": "0.0.20",
   "description": "Symbols MCP server and native Gemini skills for language server setup and semantic code navigation.",
   "contextFileName": "GEMINI.md",
   "mcpServers": {
     "language-servers": {
       "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest", "start"]
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "start"
+      ]
     }
   }
 }

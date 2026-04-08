@@ -1,6 +1,6 @@
 {
   "name": "symbols",
-  "version": "0.0.18",
+  "version": "0.0.20",
   "description": "Symbols MCP plugin for semantic code navigation, language server setup, and troubleshooting.",
   "author": {
     "name": "p1va",
@@ -24,7 +24,10 @@
     "longDescription": "Use Symbols to configure language servers, inspect runtime state, and navigate code semantically through LSP-backed tools and resources.",
     "developerName": "p1va",
     "category": "Coding",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "websiteURL": "https://github.com/p1va/symbols",
     "privacyPolicyURL": "https://github.com/p1va/symbols",
     "termsOfServiceURL": "https://github.com/p1va/symbols",
