@@ -51,10 +51,8 @@ language-servers:
       - 'Makefile'
       - 'CMakeLists.txt'
     preload_files:
-      - './src/main.cpp'
-      - './main.cpp'
-      - './src/main.c'
-      - './main.c'
+      - './src/main.{cpp,c}'
+      - './main.{cpp,c}'
     diagnostics:
       strategy: 'push'
       wait_timeout_ms: 2000
@@ -64,6 +62,7 @@ language-servers:
 
 - Prefer a real `.c` or `.cpp` file with `compile_commands.json` or `compile_flags.txt` available.
 - If search matters, confirm the server owns at least one preload file after first use.
+- Prefer bounded glob patterns for `preload_files` so the same profile works across repositories without opening every source file.
 
 ### Troubleshooting
 

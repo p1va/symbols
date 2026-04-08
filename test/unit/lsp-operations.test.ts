@@ -61,6 +61,7 @@ function createMockSession(options: MockSessionOptions = {}): {
       },
       symbols: {},
       preload_files: [],
+      workspace_ready_delay_ms: 0,
     },
   };
 

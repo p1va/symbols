@@ -49,10 +49,9 @@ language-servers:
       - 'package.json'
       - 'tsconfig.json'
     preload_files:
-      - './src/index.ts'
-      - './index.ts'
-      - './src/main.ts'
-      - './main.ts'
+      - './src/{index,main,app}.ts'
+      - './{index,main}.ts'
+    workspace_ready_delay_ms: 3000
     diagnostics:
       strategy: 'push'
       wait_timeout_ms: 2000
@@ -62,10 +61,14 @@ language-servers:
 
 - Prefer a real `.ts` or `.tsx` file inside the current workspace.
 - If search quality matters, confirm the profile owns at least one preload file after first use.
+- Prefer bounded glob patterns for `preload_files`. Each pattern resolves to the first matching file, so the config is easier to reuse across repositories without opening every file.
+- If cold search is flaky, add a small `workspace_ready_delay_ms` so tsserver has time to build project state after the anchor file opens.
 
 ### Troubleshooting
 
 - `preload_files` matter for search and broader index quality.
+- If the server starts but search still looks cold, check whether the configured preload entries actually matched files in this workspace.
+- If preload entries match but cold search still races, increase `workspace_ready_delay_ms` modestly before adding more anchors.
 - If startup latency matters, prefer the global install above over repeated `npx` startup.
 
 ### More Information

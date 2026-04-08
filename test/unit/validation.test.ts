@@ -88,6 +88,7 @@ function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
       extensions: { '.ts': 'typescript' },
       diagnostics: { strategy: 'push' as const },
       symbols: {},
+      workspace_ready_delay_ms: 0,
     },
   };
 

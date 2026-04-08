@@ -81,6 +81,7 @@ function createParsedConfig(
     extensions,
     workspace_files: [],
     preload_files: [],
+    workspace_ready_delay_ms: 0,
     diagnostics: {
       strategy: 'push',
       wait_timeout_ms: 2000,

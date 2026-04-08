@@ -42,7 +42,10 @@ import {
   CursorContext,
   generateCursorContext,
 } from '../utils/cursor-context.js';
-import { getDefaultPreloadFiles } from '../utils/log-level.js';
+import {
+  getDefaultPreloadEntriesForProfile,
+  resolvePreloadEntries,
+} from '../utils/preload-files.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
 
 export type SessionState =
@@ -154,6 +157,7 @@ function createWorkspaceConfig(profile: LspSessionProfile): LspConfig {
     workspaceUri: profile.workspaceUri,
     workspaceName: profile.workspaceName,
     preloadFiles: profile.config.preload_files || [],
+    workspaceReadyDelayMs: profile.config.workspace_ready_delay_ms,
   };
 }
 
@@ -622,31 +626,104 @@ export function createLspSession(
     delete stores.workspaceState.readyAt;
 
     try {
-      const filesToOpen =
-        createWorkspaceConfig(profile).preloadFiles || getDefaultPreloadFiles();
+      const configuredEntries = (
+        createWorkspaceConfig(profile).preloadFiles ?? []
+      ).map((entry) => String(entry));
+      const defaultEntries: string[] = getDefaultPreloadEntriesForProfile({
+        name: profile.name,
+        commandName: profile.config.commandName,
+        commandArgs: profile.config.commandArgs,
+      });
 
-      if (filesToOpen.length === 0) {
-        stores.workspaceState.isLoading = false;
-        stores.workspaceState.isReady = true;
-        stores.workspaceState.readyAt = new Date();
-        return;
+      let requestedEntries: string[] = [...configuredEntries];
+      let resolution = await resolvePreloadEntries(
+        profile.workspacePath,
+        requestedEntries
+      );
+      let usedFallback = false;
+
+      if (requestedEntries.length === 0 && defaultEntries.length > 0) {
+        requestedEntries = [...defaultEntries];
+        resolution = await resolvePreloadEntries(
+          profile.workspacePath,
+          requestedEntries
+        );
+      } else if (
+        requestedEntries.length > 0 &&
+        resolution.resolvedEntries.length === 0 &&
+        defaultEntries.length > 0
+      ) {
+        logger.warn(
+          'Configured preload entries matched no files; using defaults',
+          {
+            profile: profile.name,
+            configuredEntries,
+            fallbackEntries: defaultEntries,
+          }
+        );
+        requestedEntries = [...defaultEntries];
+        resolution = await resolvePreloadEntries(
+          profile.workspacePath,
+          requestedEntries
+        );
+        usedFallback = true;
       }
 
-      for (const filePath of filesToOpen) {
-        const result = await openDocument(filePath, 'persistent');
+      logger.info('Resolved workspace preload entries', {
+        profile: profile.name,
+        requestedEntries,
+        resolvedEntries: resolution.resolvedEntries.map((entry) => ({
+          entry: entry.entry,
+          resolvedPath: entry.resolvedPath,
+          matchCount: entry.matchCount,
+        })),
+        missingEntries: resolution.missingEntries,
+        usedFallback,
+      });
+
+      const openedFiles: string[] = [];
+      const failedFiles: string[] = [];
+
+      for (const preloadEntry of resolution.resolvedEntries) {
+        const result = await openDocument(
+          preloadEntry.resolvedPath,
+          'persistent'
+        );
 
         if (!result.ok) {
           logger.warn(
             'Failed to open preloaded file for workspace initialization',
             {
               profile: profile.name,
-              filePath,
+              entry: preloadEntry.entry,
+              filePath: preloadEntry.resolvedPath,
               error: result.error,
             }
           );
+          failedFiles.push(preloadEntry.resolvedPath);
           continue;
         }
+
+        openedFiles.push(preloadEntry.resolvedPath);
       }
+
+      const warmupDelayMs = profile.config.workspace_ready_delay_ms || 0;
+
+      if (warmupDelayMs > 0) {
+        logger.info('Waiting before marking workspace ready', {
+          profile: profile.name,
+          warmupDelayMs,
+          openedFiles,
+        });
+        await new Promise((resolve) => setTimeout(resolve, warmupDelayMs));
+      }
+
+      stores.workspaceLoaderStore.updateState('symbols/preloadComplete', {
+        openedFiles,
+        missingEntries: resolution.missingEntries,
+        failedFiles,
+        usedFallback,
+      });
 
       stores.workspaceState.isLoading = false;
       stores.workspaceState.isReady = true;

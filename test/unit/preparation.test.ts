@@ -52,6 +52,7 @@ function createMockSession(
         diagnostics: { strategy: 'push' as const },
         symbols: {},
         preload_files: [],
+        workspace_ready_delay_ms: 0,
       },
     })),
     setProfile: vi.fn(),

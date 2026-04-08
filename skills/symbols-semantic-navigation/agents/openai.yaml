@@ -1,4 +1,4 @@
 interface:
-  display_name: 'Symbols Semantic Navigation'
-  short_description: 'Use LSP-backed navigation and rename'
-  default_prompt: 'Use $symbols-semantic-navigation to inspect this codebase semantically and prefer Symbols tools over grep.'
+  display_name: 'Language Server Navigation'
+  short_description: 'Use Language Server navigation and rename'
+  default_prompt: 'Use $symbols-semantic-navigation to inspect this codebase through Language Server tools and prefer Symbols tools over grep.'

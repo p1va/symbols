@@ -33,7 +33,8 @@ type IsWorkspaceReady = (state: WorkspaceLoaderState) => boolean;
  */
 type HandleWorkspaceNotification = (
   state: WorkspaceLoaderState,
-  method: string
+  method: string,
+  params?: unknown
 ) => WorkspaceLoaderState;
 
 /**

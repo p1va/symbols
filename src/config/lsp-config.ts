@@ -30,14 +30,15 @@ const LspConfigSchema = z.object({
   command: z.string(),
   extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID handled by this profile
   workspace_files: z.array(z.string()).default([]),
-  preload_files: z.array(z.string()).default([]), // files to open during initialization
+  preload_files: z.array(z.string()).default([]), // files or glob patterns to open during initialization
+  workspace_ready_delay_ms: z.number().min(0).max(30000).default(0), // wait before marking workspace ready
   diagnostics: DiagnosticsConfigSchema.default({
     strategy: 'push',
     wait_timeout_ms: 2000,
   }),
   symbols: SymbolsConfigSchema.default({}),
   environment: z.record(z.string(), z.string()).optional(),
-  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', etc.)
+  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', 'typescript', etc.)
 });
 
 const ConfigFileSchema = z.object({
@@ -357,6 +358,16 @@ export function getLspConfig(
     lspConfig.preload_files = preloadFiles;
   }
 
+  if (process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS) {
+    const delayMs = parseInt(process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS, 10);
+    if (isNaN(delayMs) || delayMs < 0 || delayMs > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_WORKSPACE_READY_DELAY_MS: ${process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS}. Must be a number between 0 and 30000.`
+      );
+    }
+    lspConfig.workspace_ready_delay_ms = delayMs;
+  }
+
   // Parse command into name and args (respecting quoted segments and spaces)
   // SECURITY NOTE: Commands are parsed from configuration files using shell-quote.
   // Only load configuration files from trusted sources, as malicious configs could
@@ -548,6 +559,7 @@ export function createConfigFromDirectCommand(
     extensions: DEFAULT_EXTENSIONS, // Default mappings - works for all LSPs
     workspace_files: [], // Empty - not used in direct mode
     preload_files: [], // Empty by default - can be overridden by env var
+    workspace_ready_delay_ms: 0,
     diagnostics: {
       strategy: 'pull',
       wait_timeout_ms: 2000,
@@ -587,6 +599,16 @@ export function createConfigFromDirectCommand(
       path.delimiter
     ).filter((file) => file.trim().length > 0);
     config.preload_files = preloadFiles;
+  }
+
+  if (process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS) {
+    const delayMs = parseInt(process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS, 10);
+    if (isNaN(delayMs) || delayMs < 0 || delayMs > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_WORKSPACE_READY_DELAY_MS: ${process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS}. Must be a number between 0 and 30000.`
+      );
+    }
+    config.workspace_ready_delay_ms = delayMs;
   }
 
   return config;

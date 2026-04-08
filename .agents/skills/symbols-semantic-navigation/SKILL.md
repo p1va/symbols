@@ -42,7 +42,7 @@ For a compact tool-selection cheat sheet, read `references/tool-selection.md`.
 ## Known Runtime Behaviors
 
 - `not_started` after `setup.reload` is normal. The first matching file-backed tool call should start the profile.
-- Search quality varies by server. TypeScript often needs a preload file to keep enough index state alive.
+- Search quality varies by server. TypeScript often needs a preload anchor to keep enough index state alive, and glob-based `preload_files` entries are usually easier to reuse than exact paths.
 - Logs are best-effort. A running server may still have no window-log messages.
 - Resources are the read surface. Use them for state and log inspection before guessing.
 

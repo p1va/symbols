@@ -9,13 +9,13 @@ language-servers:
       - 'tsconfig.json'
     # In TS Language Server for the search functionality to work
     # at least one code file in the workspace needs to always be kept open
-    # As a workaround we specify one file that would be kept open
-    # Other files will be opened/closed as needed
+    # Each preload entry may be an exact path or a glob pattern.
+    # A glob pattern resolves to the first matching file to keep memory bounded.
     preload_files:
-      - './src/index.ts'
-      - './index.ts'
-      - './src/main.ts'
-      - './main.ts'
+      - './src/{index,main,app}.ts'
+      - './{index,main}.ts'
+    # Give tsserver a short warm-up window before treating the workspace as ready.
+    workspace_ready_delay_ms: 3000
     diagnostics:
       # TS Language Server will push diagnostics once a file is updated
       # We open a file, wait and then return the collected diagnostics so diagnostics tool duration will include wait_timeout_ms

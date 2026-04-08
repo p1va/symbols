@@ -145,7 +145,7 @@ function buildHints(profile: LspManagerProfileStatus): string[] {
 
   if (profile.preloadFiles.length > 0 && profile.ownedDocumentCount === 0) {
     hints.push(
-      'This profile configures preload files, but none are currently owned by the live session.'
+      'This profile configures preload files or patterns, but none are currently owned by the live session. Check that at least one entry matches a real file in this workspace.'
     );
   }
 

@@ -34,6 +34,39 @@ import { createWorkspaceLoader } from './workspace/registry.js';
 import { WorkspaceLoaderStore } from './types.js';
 import { expandEnvVars } from './utils/env-expansion.js';
 
+function summarizeProgressNotification(params: unknown): unknown {
+  if (!params || typeof params !== 'object') {
+    return params;
+  }
+
+  const notification = params as {
+    token?: unknown;
+    value?: {
+      kind?: string;
+      title?: string;
+      message?: string;
+      percentage?: number;
+    };
+  };
+
+  return {
+    token: notification.token,
+    value:
+      notification.value && typeof notification.value === 'object'
+        ? {
+            kind: notification.value.kind,
+            title: notification.value.title,
+            message: notification.value.message,
+            percentage: notification.value.percentage,
+          }
+        : notification.value,
+  };
+}
+
+function resolveWorkspaceLoaderType(lspConfig: ParsedLspConfig): string {
+  return lspConfig.workspace_loader || 'default';
+}
+
 export function createLspClient(
   workspaceConfig: LspConfig,
   lspConfig: ParsedLspConfig,
@@ -228,6 +261,14 @@ export function createLspClient(
 
     // Log all incoming notifications (including unhandled ones)
     connection.onNotification((method: string, params: unknown) => {
+      if (method === '$/progress') {
+        logger.info('LSP notification received', {
+          method,
+          params: summarizeProgressNotification(params),
+        });
+        return;
+      }
+
       logger.debug('LSP notification received', { method, params });
     });
 
@@ -237,6 +278,10 @@ export function createLspClient(
 
       if (method === 'workspace/configuration') {
         return [];
+      }
+
+      if (method === 'window/workDoneProgress/create') {
+        return null;
       }
 
       // Return null instead of MethodNotFound error to prevent LSP crashes
@@ -330,6 +375,9 @@ export async function initializeLspClient(
         } as WorkspaceFolder,
       ],
       capabilities: {
+        window: {
+          workDoneProgress: true,
+        },
         workspace: {
           // diagnostics capability disabled for now
         },
@@ -448,7 +496,7 @@ async function initializeWorkspaceLoader(
 ): Promise<void> {
   try {
     // Get workspace loader type from config, default to 'default'
-    const loaderType = lspConfig.workspace_loader || 'default';
+    const loaderType = resolveWorkspaceLoaderType(lspConfig);
 
     // Create workspace loader using factory
     const loader = createWorkspaceLoader(loaderType);
@@ -555,6 +603,9 @@ function setupNotificationHandlers(
   // Handle window log messages (for getWindowLogMessages tool)
   connection.onNotification('window/logMessage', (params: LogMessage) => {
     windowLogStore.addMessage(params);
+    if (workspaceLoaderStore) {
+      workspaceLoaderStore.updateState('window/logMessage', params);
+    }
   });
 
   // Handle show message notifications (silent)
@@ -634,11 +685,17 @@ function setupNotificationHandlers(
     }
   });
 
+  connection.onNotification('$/progress', (params: unknown) => {
+    if (workspaceLoaderStore) {
+      workspaceLoaderStore.updateState('$/progress', params);
+    }
+  });
+
   // Handle C# Roslyn toast notifications (silent)
   connection.onNotification('window/_roslyn_showToast', (params: unknown) => {
     logger.debug('Received Roslyn toast notification', { params });
     if (workspaceLoaderStore) {
-      workspaceLoaderStore.updateState('window/_roslyn_showToast');
+      workspaceLoaderStore.updateState('window/_roslyn_showToast', params);
     }
   });
 

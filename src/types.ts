@@ -110,6 +110,7 @@ export interface LspConfig {
   workspaceName: string;
   clientCapabilities?: ClientCapabilities;
   preloadFiles?: string[]; // Array of file paths to open during initialization
+  workspaceReadyDelayMs?: number; // Optional wait before marking workspace ready
 }
 
 // Session-scoped document state for documents currently known to the LSP session.
@@ -170,7 +171,7 @@ export interface WorkspaceLoaderStore {
   setLoader(loader: WorkspaceLoader): void;
   getState(): WorkspaceLoaderState | null;
   getLoader(): WorkspaceLoader | null;
-  updateState(method: string): void;
+  updateState(method: string, params?: unknown): void;
   isReady(): boolean;
 }
 

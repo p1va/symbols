@@ -6,6 +6,10 @@ import type { ChildProcessWithoutNullStreams } from 'child_process';
 import { createLspSession } from '../../src/runtime/lsp-session.js';
 import type { LspSessionProfile } from '../../src/runtime/lsp-session.js';
 import { createLspClient, initializeLspClient } from '../../src/lsp-client.js';
+import {
+  getDefaultPreloadEntriesForProfile,
+  resolvePreloadEntries,
+} from '../../src/utils/preload-files.js';
 
 vi.mock('node:fs', async () => {
   const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
@@ -28,9 +32,18 @@ vi.mock('../../src/config/lsp-config.js', () => ({
   getLanguageIdForExtensions: vi.fn(() => 'typescript'),
 }));
 
+vi.mock('../../src/utils/preload-files.js', () => ({
+  getDefaultPreloadEntriesForProfile: vi.fn(() => []),
+  resolvePreloadEntries: vi.fn(),
+}));
+
 const mockReadFile = vi.mocked(fs.promises.readFile);
 const mockCreateLspClient = vi.mocked(createLspClient);
 const mockInitializeLspClient = vi.mocked(initializeLspClient);
+const mockGetDefaultPreloadEntriesForProfile = vi.mocked(
+  getDefaultPreloadEntriesForProfile
+);
+const mockResolvePreloadEntries = vi.mocked(resolvePreloadEntries);
 
 function createMockProcess(): ChildProcessWithoutNullStreams {
   const process = new EventEmitter() as ChildProcessWithoutNullStreams;
@@ -62,6 +75,7 @@ function createProfile(preloadFiles: string[] = []): LspSessionProfile {
       },
       workspace_files: [],
       preload_files: preloadFiles,
+      workspace_ready_delay_ms: 0,
       diagnostics: {
         strategy: 'push',
         wait_timeout_ms: 2000,
@@ -96,6 +110,17 @@ describe('LspSession document lifecycle', () => {
     vi.clearAllMocks();
 
     mockReadFile.mockResolvedValue('content');
+    mockGetDefaultPreloadEntriesForProfile.mockReturnValue([]);
+    mockResolvePreloadEntries.mockImplementation((workspacePath, entries) =>
+      Promise.resolve({
+        resolvedEntries: entries.map((entry) => ({
+          entry,
+          resolvedPath: path.resolve(workspacePath, entry),
+          matchCount: 1,
+        })),
+        missingEntries: [],
+      })
+    );
   });
 
   it('reports not_started before the session has ever been launched', () => {
@@ -244,5 +269,60 @@ describe('LspSession document lifecycle', () => {
 
     expect(mockReadFile).toHaveBeenCalledWith(anchorPath, 'utf8');
     expect(mockReadFile).toHaveBeenCalledWith(transientPath, 'utf8');
+  });
+
+  it('falls back to default preload entries when configured ones resolve to nothing', async () => {
+    const sendNotification = vi.fn().mockResolvedValue(undefined);
+    mockCreateLspClient.mockReturnValue({
+      ok: true,
+      data: {
+        client: {
+          connection: {
+            sendNotification,
+          } as never,
+          isInitialized: true,
+        },
+        process: createMockProcess(),
+      },
+    });
+    mockInitializeLspClient.mockResolvedValue({
+      ok: true,
+      data: undefined,
+    });
+    mockGetDefaultPreloadEntriesForProfile.mockReturnValue(['src/index.ts']);
+    mockResolvePreloadEntries
+      .mockResolvedValueOnce({
+        resolvedEntries: [],
+        missingEntries: ['missing.ts'],
+      })
+      .mockResolvedValueOnce({
+        resolvedEntries: [
+          {
+            entry: 'src/index.ts',
+            resolvedPath: '/workspace/src/index.ts',
+            matchCount: 1,
+          },
+        ],
+        missingEntries: [],
+      });
+
+    const session = createLspSession(
+      'typescript::/workspace',
+      createProfile(['missing.ts'])
+    );
+
+    await session.start();
+
+    expect(mockResolvePreloadEntries).toHaveBeenNthCalledWith(1, '/workspace', [
+      'missing.ts',
+    ]);
+    expect(mockResolvePreloadEntries).toHaveBeenNthCalledWith(2, '/workspace', [
+      'src/index.ts',
+    ]);
+    expect(sendNotification.mock.calls[0]?.[1]).toMatchObject({
+      textDocument: {
+        uri: 'file:///workspace/src/index.ts',
+      },
+    });
   });
 });

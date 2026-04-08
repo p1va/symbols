@@ -15,7 +15,7 @@ function formatProfileSummary(profile: LspManagerProfileStatus): string {
         ? 'yes'
         : 'no';
   const lines = [
-    `${profile.name} [${profile.state}]${profile.isDefault ? ' default' : ''}`,
+    `${profile.name} [${profile.state}]`,
     `  session key: ${profile.sessionKey}`,
     `  command: ${profile.command}`,
     `  configured: ${profile.configured ? 'yes' : 'no'}`,
@@ -43,9 +43,11 @@ function formatStatus(status: LspManagerStatus): string {
     `Mode: ${status.mode || 'unconfigured'}`,
     `Workspace: ${status.workspacePath}`,
     `Config path: ${status.configPath || 'none'}`,
-    `Default profile: ${status.defaultProfileName || 'none'}`,
-    `Detected profile: ${status.detectedProfileName || 'none'}`,
   ];
+
+  if (status.detectedProfileName) {
+    sections.push(`Auto-detected profile: ${status.detectedProfileName}`);
+  }
 
   if (status.issues.length > 0) {
     sections.push(

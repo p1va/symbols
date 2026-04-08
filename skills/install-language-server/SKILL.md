@@ -75,6 +75,7 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
   - Preserve unrelated profiles, local paths, environment variables, and workspace-specific tweaks.
   - Keep `command`, `extensions`, `workspace_files`, and `diagnostics` explicit.
   - Add `preload_files` only when the reference calls for it.
+  - Prefer one or two bounded glob patterns over a single repo-specific exact file when you need a keepalive anchor. The runtime resolves each glob to the first matching file rather than opening every match.
   - The YAML file is the desired state for which language servers the MCP may spawn and how files route to them.
 - [ ] Apply the config.
   - Run `setup.reload`.
