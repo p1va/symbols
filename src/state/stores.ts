@@ -137,9 +137,9 @@ export function createWorkspaceLoaderStore(): WorkspaceLoaderStore {
     getLoader(): WorkspaceLoader | null {
       return loader;
     },
-    updateState(method: string) {
+    updateState(method: string, params?: unknown) {
       if (state && loader?.handleNotification) {
-        const newState = loader.handleNotification(state, method);
+        const newState = loader.handleNotification(state, method, params);
         this.setState(newState);
       }
     },

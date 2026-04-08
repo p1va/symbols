@@ -1,22 +1,32 @@
 language-servers:
-
+  # If you set `extensions`, list every extension that profile should handle.
+  # Built-in profile fallbacks are only used when `extensions` is omitted entirely.
   typescript:
     # npm install -g typescript-language-server if you prefer to install globally
     # command: typescript-language-server --stdio
     command: npx -y typescript-language-server --stdio
-    # This Language Server will be launched when at least one of the following files is detected in the working directory 
+    extensions:
+      '.js': 'javascript'
+      '.mjs': 'javascript'
+      '.cjs': 'javascript'
+      '.jsx': 'javascriptreact'
+      '.ts': 'typescript'
+      '.mts': 'typescript'
+      '.cts': 'typescript'
+      '.tsx': 'typescriptreact'
+    # These files identify a TypeScript/JavaScript workspace for routing and workspace-wide search.
     workspace_files:
-      - 'package.json'
       - 'tsconfig.json'
+      - 'jsconfig.json'
     # In TS Language Server for the search functionality to work
     # at least one code file in the workspace needs to always be kept open
-    # As a workaround we specify one file that would be kept open
-    # Other files will be opened/closed as needed
+    # Each preload entry may be an exact path or a glob pattern.
+    # A glob pattern resolves to the first matching file to keep memory bounded.
     preload_files:
-      - './src/index.ts'
-      - './index.ts'
-      - './src/main.ts'
-      - './main.ts'
+      - './src/{index,main,app}.ts'
+      - './{index,main}.ts'
+    # Give tsserver a short warm-up window before treating the workspace as ready.
+    workspace_ready_delay_ms: 3000
     diagnostics:
       # TS Language Server will push diagnostics once a file is updated
       # We open a file, wait and then return the collected diagnostics so diagnostics tool duration will include wait_timeout_ms
@@ -28,6 +38,10 @@ language-servers:
     # npm install -g pyright if you prefer to install globally
     # command: pyright-langserver --stdio
     command: npx -y -p pyright pyright-langserver --stdio
+    extensions:
+      '.py': 'python'
+      '.pyw': 'python'
+      '.pyi': 'python'
     workspace_files:
       - 'pyproject.toml'
       - 'requirements.txt'
@@ -38,6 +52,8 @@ language-servers:
 
   # go:
   #   command: gopls
+  #   extensions:
+  #     '.go': 'go'
   #   workspace_files:
   #     - 'go.mod'
   #     - 'go.work'
@@ -52,6 +68,8 @@ language-servers:
 
   # rust:
   #   command: 'rust-analyzer'
+  #   extensions:
+  #     '.rs': 'rust'
   #   workspace_files:
   #     - 'Cargo.toml'
   #     - 'Cargo.lock'
@@ -66,6 +84,10 @@ language-servers:
   #       --logLevel=Information
   #       --extensionLogDirectory=$SYMBOLS_ROSLYN_PATH/logs
   #       --stdio
+  #   extensions:
+  #     '.cs': 'csharp'
+  #     '.cshtml': 'razor'
+  #     '.razor': 'razor'
   #   workspace_loader: 'roslyn'
   #   workspace_files:
   #     - '*.sln'
@@ -87,8 +109,15 @@ language-servers:
   #       -data $HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME
   #       --jvm-arg=-Dlog.protocol=true
   #       --jvm-arg=-Dlog.level=ALL
+  #   extensions:
+  #     '.java': 'java'
   #   workspace_files:
+  #     - 'pom.xml'
   #     - 'build.gradle'
+  #     - 'build.gradle.kts'
+  #     - 'settings.gradle'
+  #     - 'settings.gradle.kts'
+  #     - 'mvnw'
   #     - 'gradlew'
   #   environment:
   #     # Adjust these to your machine
@@ -111,6 +140,10 @@ language-servers:
   #       --extension $VS_CODE_EXTENSIONS/ms-dotnettools.csharp-$MS_DOTNET_TOOLS_VERSION/.xamlTools/Microsoft.VisualStudio.DesignTools.CodeAnalysis.Diagnostics.dll
   #       --extensionLogDirectory $ROSLYN_LOGS
   #       --stdio
+  #   extensions:
+  #     '.cs': 'csharp'
+  #     '.cshtml': 'razor'
+  #     '.razor': 'razor'
   #   workspace_loader: 'roslyn'
   #   workspace_files:
   #     - '*.sln'
@@ -125,15 +158,101 @@ language-servers:
   #     ROSLYN_LOGS: $HOME/.config/Code/logs/symbols-nodejs
 
   # clangd:
-  #   command: clangd
+  #   command: clangd --background-index
+  #   extensions:
+  #     '.c': 'c'
+  #     '.h': 'c'
+  #     '.cpp': 'cpp'
+  #     '.cc': 'cpp'
+  #     '.C': 'cpp'
+  #     '.cxx': 'cpp'
+  #     '.hpp': 'cpp'
+  #     '.H': 'cpp'
+  #     '.hh': 'cpp'
+  #     '.hxx': 'cpp'
   #   workspace_files:
+  #     - 'compile_commands.json'
+  #     - 'compile_flags.txt'
   #     - 'Makefile'
   #     - 'CMakeLists.txt'
-  #   # Try to preload a file to trigger index creation and have search working
+  #   # Each preload entry may be an exact path or a glob pattern.
+  #   # A glob pattern resolves to the first matching file to keep memory bounded.
   #   preload_files:
-  #     - './src/file.cpp'
+  #     - './src/main.{cpp,c}'
+  #     - './main.{cpp,c}'
   #   diagnostics:
   #     strategy: 'push'
   #     wait_timeout_ms: 2000
 
+  # kotlin:
+  #   command: kotlin-lsp --stdio
+  #   extensions:
+  #     '.kt': 'kotlin'
+  #     '.kts': 'kotlin'
+  #   workspace_files:
+  #     - 'build.gradle.kts'
+  #     - 'settings.gradle.kts'
+  #     - 'build.gradle'
+  #     - 'pom.xml'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
 
+  # lua:
+  #   command: lua-language-server
+  #   extensions:
+  #     '.lua': 'lua'
+  #   workspace_files:
+  #     - '.luarc.json'
+  #     - '.luarc.jsonc'
+  #     - 'init.lua'
+  #     - 'stylua.toml'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # php:
+  #   command: intelephense --stdio
+  #   extensions:
+  #     '.php': 'php'
+  #     '.phtml': 'php'
+  #     '.php3': 'php'
+  #     '.php4': 'php'
+  #     '.php5': 'php'
+  #     '.phps': 'php'
+  #   workspace_files:
+  #     - 'composer.json'
+  #     - 'phpunit.xml'
+  #     - 'artisan'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # ruby:
+  #   command: ruby-lsp
+  #   extensions:
+  #     '.rb': 'ruby'
+  #     '.rbw': 'ruby'
+  #     '.rake': 'ruby'
+  #     '.gemspec': 'ruby'
+  #     '.ru': 'ruby'
+  #     '.erb': 'erb'
+  #   workspace_files:
+  #     - 'Gemfile'
+  #     - '.ruby-version'
+  #     - 'Rakefile'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000
+
+  # swift:
+  #   command: sourcekit-lsp
+  #   extensions:
+  #     '.swift': 'swift'
+  #   workspace_files:
+  #     - 'Package.swift'
+  #     - '*.xcodeproj'
+  #     - '*.xcworkspace'
+  #   diagnostics:
+  #     strategy: 'push'
+  #     wait_timeout_ms: 2000

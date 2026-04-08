@@ -80,7 +80,7 @@ Implement:
 
 Suggested internal change:
 
-- introduce an `LspRuntime` or `SessionManager` object
+- introduce an `LspManager` or `SessionManager` object
 - move module-level mutable state out of `src/main/index.ts`
 - make `createContext()` runtime-backed instead of depending on global variables
 
@@ -238,7 +238,7 @@ Why this matters:
 ### 2. Extract A Minimal Runtime Seam Early
 
 Before adding setup tools, introduce the thinnest possible runtime object
-(`LspRuntime`, `SessionManager`, or similar) with a narrow API such as:
+(`LspManager`, `SessionManager`, or similar) with a narrow API such as:
 
 - `status()`
 - `start()`

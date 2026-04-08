@@ -13,9 +13,9 @@ import { listAvailableLsps, loadLspConfig } from '../config/lsp-config.js';
 import { getAppPaths } from './app-paths.js';
 
 // Command types
-export type CommandType = 'start' | 'run' | 'config' | null;
+type CommandType = 'start' | 'run' | 'config' | null;
 
-export interface BaseCliArgs {
+interface BaseCliArgs {
   command: CommandType;
   help?: boolean;
   version?: boolean;
@@ -41,7 +41,7 @@ export interface RunCommandArgs extends BaseCliArgs {
   };
 }
 
-export interface ConfigInitArgs {
+interface ConfigInitArgs {
   subcommand: 'init';
   global?: boolean;
   local?: boolean;
@@ -49,30 +49,27 @@ export interface ConfigInitArgs {
   force?: boolean;
 }
 
-export interface ConfigShowArgs {
+interface ConfigShowArgs {
   subcommand: 'show';
   configPath?: string;
   workspace?: string;
   format?: 'yaml' | 'json';
 }
 
-export interface ConfigPathArgs {
+interface ConfigPathArgs {
   subcommand: 'path';
   workspace?: string;
   all?: boolean;
 }
 
-export type ConfigSubcommandArgs =
-  | ConfigInitArgs
-  | ConfigShowArgs
-  | ConfigPathArgs;
+type ConfigSubcommandArgs = ConfigInitArgs | ConfigShowArgs | ConfigPathArgs;
 
 export interface ConfigCommandArgs extends BaseCliArgs {
   command: 'config';
   subcommandArgs: ConfigSubcommandArgs;
 }
 
-export type CliArgs =
+type CliArgs =
   | BaseCliArgs
   | StartCommandArgs
   | RunCommandArgs
@@ -470,7 +467,8 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
     if (subcommand === 'init') {
       // Default to local mode if neither --global nor --local is specified
       const isGlobal = Boolean(argv.global);
-      const isLocal = argv.local !== undefined ? Boolean(argv.local) : !isGlobal;
+      const isLocal =
+        argv.local !== undefined ? Boolean(argv.local) : !isGlobal;
 
       return {
         command: 'config',
@@ -614,9 +612,11 @@ export function handleConfigInit(args: ConfigInitArgs): void {
 
     console.log(`Configuration file created: ${configPath}`);
     console.log(
-      '\nThe configuration includes TypeScript and Python Language Servers.'
+      '\nThe configuration enables TypeScript and Pyright by default.'
     );
-    console.log('You can add more LSPs or modify the configuration as needed.');
+    console.log(
+      'It also includes commented examples for additional language servers you can enable as needed.'
+    );
   } catch (error) {
     console.error(
       'Error creating configuration file:',

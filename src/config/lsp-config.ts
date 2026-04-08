@@ -10,7 +10,10 @@ import { parse as shellParse, type ShellQuoteToken } from 'shell-quote';
 import which from 'which';
 import { getAppPaths } from '../utils/app-paths.js';
 import { symbolKindNamesToNumbers } from './symbol-kinds.js';
-import { DEFAULT_EXTENSIONS } from './default-extensions.js';
+import {
+  DEFAULT_EXTENSIONS,
+  DEFAULT_PROFILE_EXTENSIONS,
+} from './default-extensions.js';
 import { expandEnvVars } from '../utils/env-expansion.js';
 
 // Zod schemas for validation
@@ -25,16 +28,17 @@ const SymbolsConfigSchema = z.object({
 
 const LspConfigSchema = z.object({
   command: z.string(),
-  extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID, merged with DEFAULT_EXTENSIONS
+  extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID handled by this profile
   workspace_files: z.array(z.string()).default([]),
-  preload_files: z.array(z.string()).default([]), // files to open during initialization
+  preload_files: z.array(z.string()).default([]), // files or glob patterns to open during initialization
+  workspace_ready_delay_ms: z.number().min(0).max(30000).default(0), // wait before marking workspace ready
   diagnostics: DiagnosticsConfigSchema.default({
     strategy: 'push',
     wait_timeout_ms: 2000,
   }),
   symbols: SymbolsConfigSchema.default({}),
   environment: z.record(z.string(), z.string()).optional(),
-  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', etc.)
+  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', 'typescript', etc.)
 });
 
 const ConfigFileSchema = z.object({
@@ -42,12 +46,10 @@ const ConfigFileSchema = z.object({
 });
 
 // TypeScript interfaces derived from schemas
-export type DiagnosticsConfig = z.infer<typeof DiagnosticsConfigSchema>;
-export type SymbolsConfig = z.infer<typeof SymbolsConfigSchema>;
-export type LspConfig = z.infer<typeof LspConfigSchema>;
-export type ConfigFile = z.infer<typeof ConfigFileSchema>;
+type LspConfig = z.infer<typeof LspConfigSchema>;
+type ConfigFile = z.infer<typeof ConfigFileSchema>;
 
-export interface ConfigWithSource {
+interface ConfigWithSource {
   config: ConfigFile;
   source: {
     path: string;
@@ -65,7 +67,7 @@ export interface ConfigWithSource {
 /**
  * Parsed symbols config with containerKinds converted to numbers
  */
-export interface ParsedSymbolsConfig {
+interface ParsedSymbolsConfig {
   containerKinds?: number[];
 }
 
@@ -309,6 +311,13 @@ export function getLspConfig(
     return null;
   }
 
+  const configuredExtensions = lspConfig.extensions;
+  const fallbackProfileExtensions = DEFAULT_PROFILE_EXTENSIONS[lspName] || {};
+  const effectiveExtensions =
+    Object.keys(configuredExtensions).length > 0
+      ? configuredExtensions
+      : fallbackProfileExtensions;
+
   // Apply environment variable overrides (SYMBOLS_* prefix)
   // Precedence: ENV vars > YAML config > Zod defaults
 
@@ -349,6 +358,16 @@ export function getLspConfig(
     lspConfig.preload_files = preloadFiles;
   }
 
+  if (process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS) {
+    const delayMs = parseInt(process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS, 10);
+    if (isNaN(delayMs) || delayMs < 0 || delayMs > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_WORKSPACE_READY_DELAY_MS: ${process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS}. Must be a number between 0 and 30000.`
+      );
+    }
+    lspConfig.workspace_ready_delay_ms = delayMs;
+  }
+
   // Parse command into name and args (respecting quoted segments and spaces)
   // SECURITY NOTE: Commands are parsed from configuration files using shell-quote.
   // Only load configuration files from trusted sources, as malicious configs could
@@ -380,15 +399,9 @@ export function getLspConfig(
     );
   }
 
-  // Merge user extensions with defaults (user extensions override defaults)
-  const extensions = {
-    ...DEFAULT_EXTENSIONS,
-    ...lspConfig.extensions,
-  };
-
   return {
     ...lspConfig,
-    extensions,
+    extensions: effectiveExtensions,
     symbols,
     name: lspName,
     commandName,
@@ -396,51 +409,12 @@ export function getLspConfig(
   };
 }
 
-/**
- * Get LSP configuration for a file based on its extension
- */
-export function getLspConfigForFile(
+export function getLanguageIdForExtensions(
   filePath: string,
-  configPath?: string,
-  workspacePath?: string
-): ParsedLspConfig | null {
-  const extension = path.extname(filePath);
-  const { config } = loadLspConfig(configPath, workspacePath);
-
-  // Find LSP that handles this file extension
-  for (const [lspName, lspConfig] of Object.entries(
-    config['language-servers']
-  )) {
-    if (lspConfig.extensions[extension]) {
-      return getLspConfig(lspName, configPath, workspacePath);
-    }
-  }
-
-  return null;
-}
-
-/**
- * Get language ID for a file based on its extension
- * Returns 'plaintext' if no match is found
- */
-export function getLanguageId(
-  filePath: string,
-  configPath?: string,
-  workspacePath?: string
+  extensions: Record<string, string>
 ): string {
   const extension = path.extname(filePath);
-  const { config } = loadLspConfig(configPath, workspacePath);
-
-  // Find language ID from LSP configuration
-  for (const lspConfig of Object.values(config['language-servers'])) {
-    const languageId = lspConfig.extensions[extension];
-    if (languageId) {
-      return languageId;
-    }
-  }
-
-  // Default to plaintext if no match found
-  return 'plaintext';
+  return extensions[extension] || DEFAULT_EXTENSIONS[extension] || 'plaintext';
 }
 
 /**
@@ -510,17 +484,20 @@ export function createConfigFromDirectCommand(
   // Validate that the command exists and is executable
   // Check if it's a path (absolute, relative, or contains path separators)
   // Covers Unix (/path, ./path, ~/path) and Windows (C:\path, .\path, path\to\file)
-  const isPath = path.isAbsolute(expandedCommandName) ||
-                 expandedCommandName.includes('/') ||
-                 expandedCommandName.includes('\\') ||
-                 expandedCommandName.startsWith('.') ||
-                 expandedCommandName.startsWith('~');
+  const isPath =
+    path.isAbsolute(expandedCommandName) ||
+    expandedCommandName.includes('/') ||
+    expandedCommandName.includes('\\') ||
+    expandedCommandName.startsWith('.') ||
+    expandedCommandName.startsWith('~');
 
   if (isPath) {
     // For paths, resolve and check if file exists and is executable
     // Handle ~ expansion: use HOME on Unix, USERPROFILE on Windows
     const homeDir = process.env.HOME || process.env.USERPROFILE || '~';
-    const resolvedPath = path.resolve(expandedCommandName.replace(/^~/, homeDir));
+    const resolvedPath = path.resolve(
+      expandedCommandName.replace(/^~/, homeDir)
+    );
 
     if (!fs.existsSync(resolvedPath)) {
       throw new Error(
@@ -567,7 +544,7 @@ export function createConfigFromDirectCommand(
   }
 
   // Expand environment variables in command arguments as well
-  const expandedCommandArgs = commandArgs.map(arg => expandEnvVars(arg));
+  const expandedCommandArgs = commandArgs.map((arg) => expandEnvVars(arg));
 
   // Reconstruct command string from expanded parts
   const command = [expandedCommandName, ...expandedCommandArgs].join(' ');
@@ -582,6 +559,7 @@ export function createConfigFromDirectCommand(
     extensions: DEFAULT_EXTENSIONS, // Default mappings - works for all LSPs
     workspace_files: [], // Empty - not used in direct mode
     preload_files: [], // Empty by default - can be overridden by env var
+    workspace_ready_delay_ms: 0,
     diagnostics: {
       strategy: 'pull',
       wait_timeout_ms: 2000,
@@ -621,6 +599,16 @@ export function createConfigFromDirectCommand(
       path.delimiter
     ).filter((file) => file.trim().length > 0);
     config.preload_files = preloadFiles;
+  }
+
+  if (process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS) {
+    const delayMs = parseInt(process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS, 10);
+    if (isNaN(delayMs) || delayMs < 0 || delayMs > 30000) {
+      throw new Error(
+        `Invalid SYMBOLS_WORKSPACE_READY_DELAY_MS: ${process.env.SYMBOLS_WORKSPACE_READY_DELAY_MS}. Must be a number between 0 and 30000.`
+      );
+    }
+    config.workspace_ready_delay_ms = delayMs;
   }
 
   return config;

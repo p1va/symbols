@@ -63,7 +63,7 @@ export function formatFilePath(path: string): string {
 }
 
 // Rename operation result types
-export interface ChangeResult {
+interface ChangeResult {
   fileUri: string;
   success: boolean;
   appliedChanges: AppliedChange[];
@@ -71,7 +71,7 @@ export interface ChangeResult {
   error?: string;
 }
 
-export interface AppliedChange {
+interface AppliedChange {
   range: {
     start: { line: number; character: number };
     end: { line: number; character: number };
@@ -82,7 +82,7 @@ export interface AppliedChange {
   character: number; // 1-based for display
 }
 
-export interface FailedChange {
+interface FailedChange {
   range: {
     start: { line: number; character: number };
     end: { line: number; character: number };
@@ -96,7 +96,7 @@ export interface FailedChange {
 /**
  * Applies changes to a single file safely by reading from disk and applying bottom-up
  */
-export async function applyFileChanges(
+async function applyFileChanges(
   fileUri: string,
   changes: FileChange[]
 ): Promise<ChangeResult> {

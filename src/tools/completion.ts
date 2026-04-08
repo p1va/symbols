@@ -3,37 +3,29 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext, createOneBasedPosition } from '../types.js';
+import { createOneBasedPosition } from '../types.js';
+import { prepareSymbolPositionRequest } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
 import { getSymbolKindName } from './utils.js';
 import { CompletionResult } from '../types/lsp.js';
 import { validateSymbolPosition } from './validation.js';
+import type { LspManager } from '../runtime/lsp-manager.js';
 
-export function registerCompletionTool(
-  server: McpServer,
-  createContext: () => LspContext
-) {
+export function registerCompletionTool(server: McpServer, manager: LspManager) {
   server.registerTool(
     'completion',
     {
       title: 'Completion',
       description:
-        'Gets context-aware code completions at a given position. IMPORTANT: To get meaningful results provide precise line and character pointing right after trigger characters. e.g. "client.|some_method()" returns get(), some_method(), another_method() etc.',
+        'Get context-aware code completions at a precise file position. For the best results, place the cursor immediately after the trigger point, for example right after `client.`.',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {
-      const ctx = createContext();
-
-      if (!ctx.client) {
-        throw new Error('LSP client not initialized');
-      }
-
-      // Validate and parse request arguments
       const validatedRequest = validateSymbolPosition(request);
+      const session = await manager.getSessionForFile(validatedRequest.file);
 
-      // Convert raw request to branded position type
       const symbolRequest = {
         file: validatedRequest.file,
         position: createOneBasedPosition(
@@ -42,14 +34,20 @@ export function registerCompletionTool(
         ),
       };
 
-      const result = await LspOperations.completion(ctx, symbolRequest);
+      const prepared = await prepareSymbolPositionRequest(
+        session,
+        symbolRequest
+      );
+      if (!prepared.ok) {
+        throw new Error(prepared.error.message);
+      }
+
+      const result = await LspOperations.completion(session, prepared.data);
       if (!result.ok) {
         throw new Error(result.error.message);
       }
 
-      // Format response with cursor context
       const { result: completions, cursorContext } = result.data;
-
       const formattedText = formatCompletionResults(completions);
 
       const sections: string[] = [];
@@ -80,43 +78,26 @@ function formatCompletionResults(completions: CompletionResult[]): string {
     return 'Found no completion suggestions';
   }
 
-  // Limit results to avoid token overflow (prioritize higher priority items)
   const maxResults = 100;
   const sortedCompletions = completions
     .sort((a, b) => {
-      // Sort by sortText first (LSP priority), then by label
       const sortA = a.sortText || a.label;
       const sortB = b.sortText || b.label;
       return sortA.localeCompare(sortB);
     })
     .slice(0, maxResults);
 
-  // Group by symbol kind
   const groupedByKind = new Map<number, CompletionResult[]>();
 
   for (const completion of sortedCompletions) {
-    const kind = completion.kind || 1; // Default to Text if no kind
+    const kind = completion.kind || 1;
     if (!groupedByKind.has(kind)) {
       groupedByKind.set(kind, []);
     }
     groupedByKind.get(kind)!.push(completion);
   }
 
-  // Define priority order for symbol kinds (most useful first)
-  const kindPriority = [
-    2, // Method
-    10, // Property
-    3, // Function
-    7, // Class
-    8, // Interface
-    9, // Module
-    6, // Variable
-    4, // Constructor
-    5, // Field
-    13, // Enum
-    22, // Constant
-    1, // Text (fallback)
-  ];
+  const kindPriority = [2, 10, 3, 7, 8, 9, 6, 4, 5, 13, 22, 1];
 
   let result = `Found ${completions.length} completion suggestion${completions.length === 1 ? '' : 's'}`;
 
@@ -124,7 +105,6 @@ function formatCompletionResults(completions: CompletionResult[]): string {
     result += ` (showing top ${maxResults})`;
   }
 
-  // Add grouped results in priority order
   for (const kind of kindPriority) {
     const items = groupedByKind.get(kind);
     if (!items || items.length === 0) continue;
@@ -133,10 +113,8 @@ function formatCompletionResults(completions: CompletionResult[]): string {
     result += `\n\n${kindName}s (${items.length})`;
 
     for (const item of items.slice(0, 20)) {
-      // Limit per group
       result += `\n  ${item.label}`;
 
-      // Add detail if available and different from label
       if (
         item.detail &&
         item.detail.trim() !== item.label &&
@@ -145,14 +123,12 @@ function formatCompletionResults(completions: CompletionResult[]): string {
         result += ` - ${item.detail.trim()}`;
       }
 
-      // Add brief documentation if available
       if (
         item.documentation &&
         typeof item.documentation === 'string' &&
         item.documentation.trim() !== ''
       ) {
         const doc = item.documentation.trim();
-        // Show first line of documentation, truncated
         const firstLine = doc.split('\n')[0];
         if (firstLine && firstLine.length > 60) {
           result += `\n    // ${firstLine.substring(0, 57)}...`;

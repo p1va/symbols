@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Language Server Navigation'
+  short_description: 'Use Language Server navigation and rename'
+  default_prompt: 'Use $language-server-navigation to inspect this codebase through Language Server tools and prefer Symbols tools over grep.'

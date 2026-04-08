@@ -3,8 +3,13 @@
     "symbols": {
       "command": "npx",
       "args": [
-        "-y", "@p1va/symbols@latest", "run",
-        "npx", "-y", "typescript-language-server", "--stdio"
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "npx",
+        "-y",
+        "typescript-language-server",
+        "--stdio"
       ],
       "env": {
         "SYMBOLS_PRELOAD_FILES": "src/index.ts",

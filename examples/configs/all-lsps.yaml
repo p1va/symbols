@@ -18,11 +18,12 @@ language-servers:
     workspace_files:
       - 'package.json'
       - 'tsconfig.json'
-    # For the search functionality to work a file in the workspace needs to always kept open
-    # As a workaround we specify one file that would be kept open on the Language Server side
-    # Other files will be opened/closed as needed
+    # Each preload entry may be an exact path or a glob pattern.
+    # A glob pattern resolves to the first matching file to keep memory bounded.
     preload_files:
-      - './src/index.ts'
+      - './src/{index,main,app}.ts'
+      - './{index,main}.ts'
+    workspace_ready_delay_ms: 3000
     diagnostics:
       strategy: 'push'
       wait_timeout_ms: 2000

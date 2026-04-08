@@ -107,7 +107,9 @@ function initializeSessionLogger(enableConsole: boolean = false): void {
     currentLogger.debug('='.repeat(80));
     currentLogger.debug(`Session started - Log file: ${currentLogFile}`);
     currentLogger.debug(`Log level: ${currentLogger.level}`);
-    currentLogger.debug(`Console mode: ${consoleMode ? 'enabled' : 'disabled'}`);
+    currentLogger.debug(
+      `Console mode: ${consoleMode ? 'enabled' : 'disabled'}`
+    );
     currentLogger.debug(
       `Environment: ${process.env.NODE_ENV || 'development'}`
     );

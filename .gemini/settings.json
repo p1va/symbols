@@ -1,16 +1,6 @@
 {
   "mcp": {
-    "allowed": ["symbols"],
+    "allowed": ["language-servers"],
     "excluded": []
-  },
-  "mcpServers": {
-    "symbols": {
-      "command": "node",
-      "args": ["dist/index.js"],
-      "env": {},
-      "cwd": ".",
-      "timeout": 30000,
-      "trust": true
-    }
   }
 }

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": ["-y", "@p1va/symbols@latest", "start"],
+      "note": "Starts Symbols in workspace-config mode. Use the plugin skills to edit language-servers.yaml, call setup.reload, and validate with language-servers resources and LSP-backed tools."
+    }
+  }
+}
