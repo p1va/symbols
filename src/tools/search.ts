@@ -17,7 +17,8 @@ export function registerSearchTool(server: McpServer, manager: LspManager) {
     'search',
     {
       title: 'Search',
-      description: 'Searches workspace symbols by name',
+      description:
+        'Search workspace symbols by name or pattern. Result quality depends on the language server and current indexing state.',
       inputSchema: searchSchema,
     },
     async (request) => {

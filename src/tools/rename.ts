@@ -18,7 +18,7 @@ export function registerRenameTool(server: McpServer, manager: LspManager) {
     {
       title: 'Rename',
       description:
-        'Renames all references of a given symbol across the codebase',
+        'Rename the symbol at a file position across the workspace using language-server rename support.',
       inputSchema: renameSchema,
     },
     async (request) => {

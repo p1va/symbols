@@ -19,7 +19,8 @@ export function registerReferencesTool(server: McpServer, manager: LspManager) {
     'references',
     {
       title: 'References',
-      description: 'Finds all references of a given symbol across the codebase',
+      description:
+        'Find semantic references to the symbol at a file position across the workspace.',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {

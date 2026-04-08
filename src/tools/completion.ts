@@ -19,7 +19,7 @@ export function registerCompletionTool(server: McpServer, manager: LspManager) {
     {
       title: 'Completion',
       description:
-        'Gets context-aware code completions at a given position. IMPORTANT: To get meaningful results provide precise line and character pointing right after trigger characters. e.g. "client.|some_method()" returns get(), some_method(), another_method() etc.',
+        'Get context-aware code completions at a precise file position. For the best results, place the cursor immediately after the trigger point, for example right after `client.`.',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {

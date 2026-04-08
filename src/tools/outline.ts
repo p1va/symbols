@@ -22,7 +22,7 @@ export function registerOutlineTool(server: McpServer, manager: LspManager) {
     {
       title: 'Outline',
       description:
-        'Get hierarchical outline of code symbols in a file. Shows names, types, and locations and a code snippet when preview: true',
+        'Return a hierarchical outline of symbols in a file, including names, kinds, and locations. Use `preview: true` to include short declaration snippets.',
       inputSchema: fileSchema,
     },
     async (request) => {

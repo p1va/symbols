@@ -21,7 +21,7 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
     {
       title: 'Inspect',
       description:
-        'Inspects a symbol (either defined in the codebase or imported from a library or framework) and returns documentation, signature info, code locations like definition, implementation, type declaration. IMPORTANT: As a follow-up consider using the inspect tool present on this MCP server for further discovery',
+        'Inspect the symbol at a file position and return documentation, signature details, and related code locations such as definitions, implementations, and type declarations.',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {

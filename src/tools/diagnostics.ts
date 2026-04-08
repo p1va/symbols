@@ -75,7 +75,7 @@ export function registerDiagnosticsTool(
     {
       title: 'Diagnostics',
       description:
-        'Retrieves active diagnostics (errors/warnings/hints) for a code file',
+        'Return active diagnostics for a file, including errors, warnings, info, and hints reported by the language server.',
       inputSchema: diagnosticsSchema,
     },
     async (request) => {

@@ -76,7 +76,7 @@ export function registerSetupTool(
     {
       title: 'Setup',
       description:
-        'Reload the effective config and reapply it to currently running LSP sessions.',
+        'Reload the active language-server configuration and reapply it to currently running LSP sessions.',
       inputSchema: setupSchema,
     },
     async (request) => {

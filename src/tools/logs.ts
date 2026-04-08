@@ -14,7 +14,8 @@ export function registerWindowLogsTool(server: McpServer, manager: LspManager) {
     'logs',
     {
       title: 'Logs',
-      description: 'Retrieve logs from the Language Server for troubleshooting',
+      description:
+        'Return language-server logs for troubleshooting. Optionally restrict the output to one profile.',
       inputSchema: logsSchema,
     },
     (request) => {
