@@ -3,39 +3,73 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext } from '../types.js';
+import { prepareWorkspaceRequest } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { searchSchema } from './schemas.js';
 import { getSymbolKindName, formatFilePath } from './utils.js';
 import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
 import { SymbolSearchResult } from '../types/lsp.js';
 import { validateSearch } from './validation.js';
+import type { LspManager } from '../runtime/lsp-manager.js';
 
-export function registerSearchTool(
-  server: McpServer,
-  createContext: () => LspContext
-) {
+export function registerSearchTool(server: McpServer, manager: LspManager) {
   server.registerTool(
     'search',
     {
       title: 'Search',
-      description: 'Searches workspace symbols by name',
+      description:
+        'Search workspace symbols by name or pattern. Result quality depends on the language server and current indexing state.',
       inputSchema: searchSchema,
     },
     async (request) => {
-      const ctx = createContext();
-      if (!ctx.client) throw new Error('LSP client not initialized');
-
-      // Validate and parse request arguments
       const validatedRequest = validateSearch(request);
+      const sessions = await manager.getSearchSessions();
 
-      const result = await LspOperations.searchSymbols(ctx, validatedRequest);
-      if (!result.ok) throw new Error(result.error.message);
+      const settledResults = await Promise.allSettled(
+        sessions.map(async (session) => {
+          const prepared = prepareWorkspaceRequest(session, validatedRequest);
+          if (!prepared.ok) {
+            throw new Error(prepared.error.message);
+          }
 
-      const formattedText = await formatSearchResults(
-        result.data,
+          return await LspOperations.searchSymbols(session, prepared.data);
+        })
+      );
+
+      const allSymbols: SymbolSearchResult[] = [];
+      const errors: string[] = [];
+
+      for (const settled of settledResults) {
+        if (settled.status === 'rejected') {
+          errors.push(
+            settled.reason instanceof Error
+              ? settled.reason.message
+              : String(settled.reason)
+          );
+          continue;
+        }
+
+        if (!settled.value.ok) {
+          errors.push(settled.value.error.message);
+          continue;
+        }
+
+        allSymbols.push(...settled.value.data);
+      }
+
+      if (allSymbols.length === 0 && errors.length > 0) {
+        throw new Error(errors.join('\n'));
+      }
+
+      let formattedText = await formatSearchResults(
+        allSymbols,
         validatedRequest.query
       );
+
+      if (errors.length > 0) {
+        formattedText = `Warnings:\n${errors.map((error) => `- ${error}`).join('\n')}\n\n${formattedText}`;
+      }
+
       return {
         content: [
           {
@@ -56,7 +90,6 @@ async function formatSearchResults(
     return `Found no matches for query "${query}"`;
   }
 
-  // Enrich symbols with code snippets for signature previews
   const enrichmentResults = await enrichSymbolsWithCode(symbols);
   const enrichedSymbols = enrichmentResults.map((result) => ({
     ...result.symbol,
@@ -66,9 +99,7 @@ async function formatSearchResults(
     error: result.error,
   }));
 
-  // Group enriched symbols by file
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const groupedByFile = new Map<string, any[]>(); // EnrichedSymbol type is complex from spread operator
+  const groupedByFile = new Map<string, typeof enrichedSymbols>();
 
   for (const symbol of enrichedSymbols) {
     const uri = symbol.location.uri;
@@ -79,46 +110,31 @@ async function formatSearchResults(
   }
 
   const sections = [];
-
-  // Add summary
   const fileCount = groupedByFile.size;
   sections.push(
     `Found ${symbols.length} matches for query "${query}" across ${fileCount} files`
   );
 
-  // Add results grouped by file
   for (const [uri, fileSymbols] of groupedByFile) {
     const filePath = formatFilePath(uri);
     let fileContent = `${filePath} (${fileSymbols.length} results)\n`;
 
-    // Sort symbols by line number for natural reading order
     const sortedSymbols = fileSymbols.sort((a, b) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const lineA = a.location.range.start.line;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const lineB = b.location.range.start.line;
       return lineA - lineB;
     });
 
     for (const symbol of sortedSymbols) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const line = symbol.location.range.start.line + 1; // Convert to 1-based
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const char = symbol.location.range.start.character + 1; // Convert to 1-based
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+      const line = symbol.location.range.start.line + 1;
+      const char = symbol.location.range.start.character + 1;
       const kind = getSymbolKindName(symbol.kind);
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       fileContent += `  @${line}:${char} ${kind} - ${symbol.name}\n`;
 
-      // Add signature preview if available
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (symbol.signaturePreview) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         fileContent += `    \`${symbol.signaturePreview}\`\n`;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       } else if (symbol.error) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         fileContent += `    // ${symbol.error}\n`;
       }
     }

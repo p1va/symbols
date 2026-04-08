@@ -6,18 +6,23 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  LspContext,
   ValidationResult,
+  ValidationError,
   SymbolPositionRequest,
   FileRequest,
   ValidationErrorCode,
   OneBasedPosition,
   toZeroBased,
 } from './types.js';
+import type { LspSession } from './runtime/lsp-session.js';
 
-export const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
+const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
 
-export function createWorkspaceLoadingMessage(startedAt?: Date): string {
+type FilePathValidationResult =
+  | { valid: true; absolutePath: string }
+  | { valid: false; error: ValidationError };
+
+function createWorkspaceLoadingMessage(startedAt?: Date): string {
   const startedAtSuffix = startedAt
     ? ` (started ${startedAt.toISOString()})`
     : '';
@@ -25,24 +30,19 @@ export function createWorkspaceLoadingMessage(startedAt?: Date): string {
   return `${WORKSPACE_LOADING_MESSAGE_PREFIX}${startedAtSuffix}. Please wait for initialization to complete.`;
 }
 
-export function isWorkspaceLoadingMessage(message: string): boolean {
-  return message.startsWith(WORKSPACE_LOADING_MESSAGE_PREFIX);
-}
-
 /**
  * Validates that the workspace is ready for operations
  */
-export function validateWorkspaceReady(ctx: LspContext): ValidationResult {
-  const { workspaceState, workspaceLoaderStore } = ctx;
+export function validateWorkspaceReady(session: LspSession): ValidationResult {
+  const workspaceState = session.getWorkspaceState();
+  const workspaceLoaderStore = session.getWorkspaceLoaderStore();
 
   if (workspaceState.isLoading) {
     return {
       valid: false,
       error: {
         errorCode: ValidationErrorCode.WorkspaceNotReady,
-        message: createWorkspaceLoadingMessage(
-          workspaceState.loadingStartedAt
-        ),
+        message: createWorkspaceLoadingMessage(workspaceState.loadingStartedAt),
       },
     };
   }
@@ -77,7 +77,7 @@ export function validateWorkspaceReady(ctx: LspContext): ValidationResult {
 export function validateAndNormalizeFilePath(
   filePath: string,
   workspaceDir?: string
-): ValidationResult & { absolutePath?: string } {
+): FilePathValidationResult {
   try {
     // Convert to absolute path using workspace directory if provided
     const absolutePath = workspaceDir
@@ -185,11 +185,11 @@ export async function validatePosition(
  * Comprehensive validation for file-based requests
  */
 export function validateFileRequest(
-  ctx: LspContext,
+  session: LspSession,
   request: FileRequest
-): ValidationResult & { absolutePath?: string } {
+): FilePathValidationResult {
   // Check workspace readiness
-  const workspaceCheck = validateWorkspaceReady(ctx);
+  const workspaceCheck = validateWorkspaceReady(session);
   if (!workspaceCheck.valid) {
     return workspaceCheck;
   }
@@ -197,26 +197,24 @@ export function validateFileRequest(
   // Validate and normalize file path using workspace context
   const pathCheck = validateAndNormalizeFilePath(
     request.file,
-    ctx.workspacePath
+    session.getProfile().workspacePath
   );
   if (!pathCheck.valid) {
     return pathCheck;
   }
 
-  return pathCheck.absolutePath
-    ? { valid: true, absolutePath: pathCheck.absolutePath }
-    : { valid: true };
+  return pathCheck;
 }
 
 /**
  * Comprehensive validation for symbol position requests
  */
 export async function validateSymbolPositionRequest(
-  ctx: LspContext,
+  session: LspSession,
   request: SymbolPositionRequest
-): Promise<ValidationResult & { absolutePath?: string }> {
+): Promise<FilePathValidationResult> {
   // Check workspace readiness
-  const workspaceCheck = validateWorkspaceReady(ctx);
+  const workspaceCheck = validateWorkspaceReady(session);
   if (!workspaceCheck.valid) {
     return workspaceCheck;
   }
@@ -224,7 +222,7 @@ export async function validateSymbolPositionRequest(
   // Validate and normalize file path using workspace context
   const pathCheck = validateAndNormalizeFilePath(
     request.file,
-    ctx.workspacePath
+    session.getProfile().workspacePath
   );
   if (!pathCheck.valid) {
     return pathCheck;
@@ -232,21 +230,21 @@ export async function validateSymbolPositionRequest(
 
   // Validate position bounds
   const positionCheck = await validatePosition(
-    pathCheck.absolutePath!,
+    pathCheck.absolutePath,
     request.position
   );
   if (!positionCheck.valid) {
     return positionCheck;
   }
 
-  return pathCheck.absolutePath
-    ? { valid: true, absolutePath: pathCheck.absolutePath }
-    : { valid: true };
+  return pathCheck;
 }
 
 /**
  * Simple workspace validation for search operations (no file required)
  */
-export function validateWorkspaceOperation(ctx: LspContext): ValidationResult {
-  return validateWorkspaceReady(ctx);
+export function validateWorkspaceOperation(
+  session: LspSession
+): ValidationResult {
+  return validateWorkspaceReady(session);
 }

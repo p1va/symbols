@@ -118,7 +118,8 @@ Feel free to switch `pnpm` to `npm` or `yarn` as suits your stack.
 ## 5 Release flow (you do per release)
 
 ```bash
-npm version patch|minor|major   # bumps version & creates a vX.Y.Z tag
+pnpm version patch|minor|major  # bumps package.json version & creates a vX.Y.Z tag
+pnpm sync:version               # copies package.json version into plugin/extension manifests
 git push --follow-tags          # pushes commit **and** tag
 ```
 

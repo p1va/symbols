@@ -7,13 +7,8 @@ import {
   Range,
   ServerCapabilities,
 } from 'vscode-languageserver-protocol';
-// Import and re-export position types
-import {
-  createOneBasedPosition,
-  createZeroBasedPosition,
-  toZeroBased,
-  toOneBased,
-} from './types/position.js';
+// Import the position helpers used across the runtime.
+import { createOneBasedPosition, toZeroBased } from './types/position.js';
 
 // Import types separately so they are erased at runtime. This prevents
 // Node from expecting the corresponding value exports during `pnpm dev`
@@ -26,17 +21,7 @@ import type {
 
 // Error codes for LSP operations
 export enum ErrorCode {
-  WorkspaceLoadInProgress = 'WORKSPACE_LOADING',
-  FileNotFound = 'FILE_NOT_FOUND',
   LSPError = 'LSP_ERROR',
-  InvalidPosition = 'INVALID_POSITION',
-}
-
-// Structured error for LSP operations (will be enhanced below with error hierarchy)
-export interface LspOperationErrorLegacy {
-  message: string;
-  errorCode: ErrorCode;
-  originalError?: Error;
 }
 
 // Helper functions to create different error types
@@ -45,38 +30,6 @@ export function createLspError(
   message: string,
   originalError?: Error
 ): LspOperationError {
-  return originalError
-    ? { message, errorCode, originalError }
-    : { message, errorCode };
-}
-
-export function createValidationError(
-  errorCode: ValidationErrorCode,
-  message: string,
-  originalError?: Error
-): ValidationError {
-  return originalError
-    ? { message, errorCode, originalError }
-    : { message, errorCode };
-}
-
-export function createFileSystemError(
-  errorCode: FileSystemErrorCode,
-  message: string,
-  filePath?: string,
-  originalError?: Error
-): FileSystemError {
-  const error: FileSystemError = { message, errorCode };
-  if (filePath) error.filePath = filePath;
-  if (originalError) error.originalError = originalError;
-  return error;
-}
-
-export function createNetworkError(
-  errorCode: NetworkErrorCode,
-  message: string,
-  originalError?: Error
-): NetworkError {
   return originalError
     ? { message, errorCode, originalError }
     : { message, errorCode };
@@ -157,17 +110,18 @@ export interface LspConfig {
   workspaceName: string;
   clientCapabilities?: ClientCapabilities;
   preloadFiles?: string[]; // Array of file paths to open during initialization
+  workspaceReadyDelayMs?: number; // Optional wait before marking workspace ready
 }
 
-// File lifecycle management
-export interface PreloadedFile {
+// Session-scoped document state for documents currently known to the LSP session.
+interface SessionDocument {
   uri: string;
   content: string;
   version: number;
   isOpen: boolean;
 }
 
-export type PreloadedFiles = Map<string, PreloadedFile>;
+export type SessionDocuments = Map<string, SessionDocument>;
 
 // Diagnostic provider information
 export interface DiagnosticProvider {
@@ -217,18 +171,13 @@ export interface WorkspaceLoaderStore {
   setLoader(loader: WorkspaceLoader): void;
   getState(): WorkspaceLoaderState | null;
   getLoader(): WorkspaceLoader | null;
-  updateState(method: string): void;
+  updateState(method: string, params?: unknown): void;
   isReady(): boolean;
 }
 
 export type { OneBasedPosition, ZeroBasedPosition };
 
-export {
-  createOneBasedPosition,
-  createZeroBasedPosition,
-  toZeroBased,
-  toOneBased,
-};
+export { createOneBasedPosition, toZeroBased };
 
 // Tool request types (using branded position types)
 export interface SymbolPositionRequest {
@@ -249,43 +198,11 @@ export interface RenameRequest {
   position: OneBasedPosition;
   newName: string;
 }
-
-// Context object that bundles cross-cutting services
-export interface LspContext {
-  readonly client: LspClient;
-  readonly preloadedFiles: PreloadedFiles;
-  readonly diagnosticsStore: DiagnosticsStore;
-  readonly diagnosticProviderStore: DiagnosticProviderStore;
-  readonly windowLogStore: WindowLogStore;
-  readonly workspaceLoaderStore: WorkspaceLoaderStore;
-  readonly workspaceState: WorkspaceState;
-  readonly workspaceUri: string;
-  readonly workspacePath: string;
-  readonly lspName?: string;
-  readonly lspConfig?: import('./config/lsp-config.js').ParsedLspConfig | null;
-}
-
 // Additional error codes for validation (extending the main ErrorCode enum)
 export enum ValidationErrorCode {
   InvalidPath = 'INVALID_PATH',
   PositionOutOfBounds = 'POSITION_OUT_OF_BOUNDS',
   WorkspaceNotReady = 'WORKSPACE_NOT_READY',
-}
-
-// Additional error codes for file system operations
-export enum FileSystemErrorCode {
-  FileNotFound = 'FILE_NOT_FOUND',
-  PermissionDenied = 'PERMISSION_DENIED',
-  FileReadError = 'FILE_READ_ERROR',
-  FileWriteError = 'FILE_WRITE_ERROR',
-}
-
-// Additional error codes for network/LSP operations
-export enum NetworkErrorCode {
-  ConnectionTimeout = 'CONNECTION_TIMEOUT',
-  ConnectionRefused = 'CONNECTION_REFUSED',
-  ProtocolError = 'PROTOCOL_ERROR',
-  ServerNotResponding = 'SERVER_NOT_RESPONDING',
 }
 
 // Base error interface for all error types
@@ -299,28 +216,10 @@ export interface ValidationError extends BaseError {
   errorCode: ValidationErrorCode;
 }
 
-// File system error type
-export interface FileSystemError extends BaseError {
-  errorCode: FileSystemErrorCode;
-  filePath?: string;
-}
-
-// Network/LSP error type
-export interface NetworkError extends BaseError {
-  errorCode: NetworkErrorCode;
-}
-
 // Enhanced LSP operation error (now compatible with the base error interface)
-export interface LspOperationError extends BaseError {
+interface LspOperationError extends BaseError {
   errorCode: ErrorCode;
 }
-
-// Union type for all possible errors in the system
-export type ApplicationError =
-  | LspOperationError
-  | ValidationError
-  | FileSystemError
-  | NetworkError;
 
 export type ValidationResult =
   | { valid: true }

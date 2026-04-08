@@ -27,15 +27,3 @@ export const createWorkspaceLoader = (type: string): WorkspaceLoader => {
   const factory = WORKSPACE_LOADERS[type] ?? WORKSPACE_LOADERS['default']!;
   return factory();
 };
-
-/**
- * Pure function: Get all available workspace loader types
- */
-export const getAvailableLoaderTypes = (): string[] =>
-  Object.keys(WORKSPACE_LOADERS);
-
-/**
- * Pure function: Check if a loader type is available
- */
-export const isLoaderTypeAvailable = (type: string): boolean =>
-  type in WORKSPACE_LOADERS;

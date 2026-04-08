@@ -1,6 +1,5 @@
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { isWorkspaceLoadingMessage } from '../../../src/validation.js';
 
 export interface ToolCallResult {
   content: unknown;
@@ -15,6 +14,7 @@ export interface SymbolPosition {
 
 const TOOL_RETRY_TIMEOUT_MS = 15000;
 const TOOL_RETRY_POLL_MS = 250;
+const WORKSPACE_LOADING_MESSAGE_PREFIX = 'Workspace is still loading';
 
 function isTextItem(item: unknown): item is { text: string } {
   if (!item || typeof item !== 'object') {
@@ -71,7 +71,9 @@ function shouldRetryForWorkspaceLoading(result: ToolCallResult): boolean {
     return false;
   }
 
-  return isWorkspaceLoadingMessage(extractToolText(result.content));
+  return extractToolText(result.content).startsWith(
+    WORKSPACE_LOADING_MESSAGE_PREFIX
+  );
 }
 
 export class McpTestClient {
@@ -365,9 +367,5 @@ export class McpTestClient {
     newName: string
   ): Promise<ToolCallResult> {
     return this.callTool('rename', { ...position, newName });
-  }
-
-  async getLogs(): Promise<ToolCallResult> {
-    return this.callTool('logs', {});
   }
 }

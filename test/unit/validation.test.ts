@@ -18,11 +18,17 @@ import {
 } from '../../src/validation.js';
 import {
   ValidationErrorCode,
-  type LspContext,
   type SymbolPositionRequest,
   type FileRequest,
 } from '../../src/types.js';
 import { createOneBasedPosition } from '../../src/types/position.js';
+import type { LspSession } from '../../src/runtime/lsp-session.js';
+
+type MockWorkspaceLoaderState = {
+  type: 'default' | 'roslyn';
+  ready: boolean;
+  data?: unknown;
+};
 
 // Mock the fs module
 vi.mock('fs', () => ({
@@ -39,36 +45,93 @@ const mockStatSync = fs.statSync as MockedFunction<typeof fs.statSync>;
 const mockReadFile = fs.promises.readFile as MockedFunction<
   typeof fs.promises.readFile
 >;
+type MockSessionOverrides = Partial<LspSession> & {
+  workspaceState?: {
+    isReady: boolean;
+    isLoading: boolean;
+    loadingStartedAt?: Date;
+  };
+  workspaceLoaderState?: MockWorkspaceLoaderState | null;
+  workspaceLoaderReady?: boolean;
+  workspacePath?: string;
+};
 
-// Helper to create a basic mock LspContext
-function createMockContext(overrides: Partial<LspContext> = {}): LspContext {
-  return {
-    client: {} as LspContext['client'],
-    preloadedFiles: new Map(),
-    diagnosticsStore: {} as LspContext['diagnosticsStore'],
-    diagnosticProviderStore: {} as LspContext['diagnosticProviderStore'],
-    windowLogStore: {} as LspContext['windowLogStore'],
-    workspaceLoaderStore: {
-      state: { type: 'default', ready: true },
-      loader: null,
-      setState: vi.fn(),
-      setLoader: vi.fn(),
-      getState: vi.fn(() => ({ type: 'default', ready: true })),
-      getLoader: vi.fn(() => null),
-      updateState: vi.fn(),
-      isReady: vi.fn(() => true),
-    } as LspContext['workspaceLoaderStore'],
-    workspaceState: {
-      isReady: true,
-      isLoading: false,
-      loadingStartedAt: undefined,
+function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
+  const workspaceState = overrides.workspaceState ?? {
+    isReady: true,
+    isLoading: false,
+    loadingStartedAt: undefined,
+  };
+  const workspacePath = overrides.workspacePath ?? '/test/workspace';
+  const workspaceLoaderState = overrides.workspaceLoaderState ?? null;
+  const workspaceLoaderReady =
+    overrides.workspaceLoaderReady ?? workspaceLoaderState?.ready ?? false;
+  const workspaceLoaderStore = {
+    state: workspaceLoaderState,
+    loader: null,
+    setState: vi.fn(),
+    setLoader: vi.fn(),
+    getState: vi.fn(() => workspaceLoaderState),
+    getLoader: vi.fn(() => null),
+    updateState: vi.fn(),
+    isReady: vi.fn(() => workspaceLoaderReady),
+  };
+  const profile = {
+    name: 'typescript',
+    workspacePath,
+    workspaceUri: `file://${workspacePath}`,
+    workspaceName: 'workspace',
+    configPath: null,
+    config: {
+      commandName: 'typescript-language-server',
+      commandArgs: ['--stdio'],
+      extensions: { '.ts': 'typescript' },
+      diagnostics: { strategy: 'push' as const },
+      symbols: {},
+      workspace_ready_delay_ms: 0,
     },
-    workspaceUri: 'file:///test/workspace',
-    workspacePath: '/test/workspace',
-    lspName: 'typescript',
-    lspConfig: null,
+  };
+
+  return {
+    sessionKey: 'typescript::/test/workspace',
+    getProfile: vi.fn(() => profile),
+    setProfile: vi.fn(),
+    canHandleFile: vi.fn(() => true),
+    isReady: vi.fn(() => true),
+    isActive: vi.fn(() => true),
+    start: vi.fn(() => Promise.resolve()),
+    stop: vi.fn(() => Promise.resolve()),
+    restart: vi.fn(() => Promise.resolve()),
+    request: vi.fn(),
+    getWorkspaceState: vi.fn(() => workspaceState),
+    getWorkspaceLoaderStore: vi.fn(() => workspaceLoaderStore),
+    getDiagnosticsStore: vi.fn(() => ({})),
+    getDiagnosticProviderStore: vi.fn(() => ({})),
+    getWindowLogStore: vi.fn(() => ({ getMessages: vi.fn() })),
+    executeWithCursorContext: vi.fn(),
+    executeWithDocumentLifecycle: vi.fn(),
+    claimDocument: vi.fn((filePath: string) => filePath),
+    releaseDocument: vi.fn(() => null),
+    listOwnedDocuments: vi.fn(() => []),
+    clearOwnedDocuments: vi.fn(() => []),
+    getStatusSnapshot: vi.fn(() => ({
+      sessionKey: 'typescript::/test/workspace',
+      profileName: 'typescript',
+      state: 'ready' as const,
+      command: 'typescript-language-server --stdio',
+      workspacePath: '/test/workspace',
+      lastError: null,
+      pid: 1234,
+      extensions: ['.ts'],
+      preloadFiles: [],
+      diagnosticsStrategy: 'push' as const,
+      workspaceLoader: null,
+      workspaceReady: true,
+      workspaceLoading: false,
+      windowLogCount: 0,
+    })),
     ...overrides,
-  } as LspContext;
+  } as LspSession;
 }
 
 describe('Validation Utilities', () => {
@@ -111,59 +174,6 @@ describe('Validation Utilities', () => {
       }
     });
 
-    it('should return invalid when workspace loader is still loading', () => {
-      const ctx = createMockContext({
-        workspaceLoaderStore: {
-          state: { type: 'roslyn', ready: false },
-          loader: null,
-          setState: vi.fn(),
-          setLoader: vi.fn(),
-          getState: vi.fn(() => ({ type: 'roslyn', ready: false })),
-          getLoader: vi.fn(() => null),
-          updateState: vi.fn(),
-          isReady: vi.fn(() => false),
-        } as LspContext['workspaceLoaderStore'],
-        workspaceState: {
-          isReady: true,
-          isLoading: false,
-          loadingStartedAt: new Date('2024-01-01T10:00:00Z'),
-        },
-      });
-
-      const result = validateWorkspaceReady(ctx);
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.error.errorCode).toBe(
-          ValidationErrorCode.WorkspaceNotReady
-        );
-        expect(result.error.message).toContain('still loading');
-        expect(result.error.message).not.toContain('2024-01-01T10:00:00.000Z');
-      }
-    });
-
-    it('should ignore loader readiness when no workspace loader state exists', () => {
-      const ctx = createMockContext({
-        workspaceLoaderStore: {
-          state: null,
-          loader: null,
-          setState: vi.fn(),
-          setLoader: vi.fn(),
-          getState: vi.fn(() => null),
-          getLoader: vi.fn(() => null),
-          updateState: vi.fn(),
-          isReady: vi.fn(() => false),
-        } as LspContext['workspaceLoaderStore'],
-        workspaceState: {
-          isReady: true,
-          isLoading: false,
-          loadingStartedAt: undefined,
-        },
-      });
-
-      const result = validateWorkspaceReady(ctx);
-      expect(result.valid).toBe(true);
-    });
-
     it('should return invalid when workspace is not ready', () => {
       const ctx = createMockContext({
         workspaceState: {
@@ -181,6 +191,48 @@ describe('Validation Utilities', () => {
         );
         expect(result.error.message).toContain('not ready');
       }
+    });
+
+    it('should return invalid when workspace loader state exists but is not ready', () => {
+      const ctx = createMockContext({
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          loadingStartedAt: undefined,
+        },
+        workspaceLoaderState: {
+          type: 'roslyn',
+          ready: false,
+        },
+        workspaceLoaderReady: false,
+      });
+
+      const result = validateWorkspaceReady(ctx);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.error.errorCode).toBe(
+          ValidationErrorCode.WorkspaceNotReady
+        );
+        expect(result.error.message).toContain('still loading');
+      }
+    });
+
+    it('should return valid when workspace loader state exists and is ready', () => {
+      const ctx = createMockContext({
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          loadingStartedAt: undefined,
+        },
+        workspaceLoaderState: {
+          type: 'roslyn',
+          ready: true,
+        },
+        workspaceLoaderReady: true,
+      });
+
+      const result = validateWorkspaceReady(ctx);
+      expect(result.valid).toBe(true);
     });
   });
 

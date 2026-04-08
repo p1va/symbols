@@ -7,23 +7,19 @@ import {
   createLspError,
   DiagnosticEntry,
   ErrorCode,
-  FileRequest,
-  LspContext,
-  LspOperationError,
-  RenameRequest,
   Result,
-  SearchRequest,
-  SymbolPositionRequest,
-  toZeroBased,
   tryResult,
   tryResultAsync,
-  ValidationError,
-  ValidationErrorCode,
   DiagnosticsStore,
   DiagnosticProviderStore,
   DiagnosticProvider,
-  LspClient,
 } from '../../types.js';
+import {
+  PreparedFileRequest,
+  PreparedRenameRequest,
+  PreparedSymbolPositionRequest,
+  PreparedWorkspaceRequest,
+} from '../../preparation.js';
 import logger from '../../utils/logger.js';
 import {
   CompletionItem,
@@ -50,104 +46,52 @@ import {
   WorkspaceSymbol,
   WorkspaceSymbolParams,
 } from '../../types/lsp.js';
-import {
-  validateFileRequest,
-  validateSymbolPositionRequest,
-  validateWorkspaceOperation,
-} from '../../validation.js';
-import {
-  executeWithCursorContext,
-  executeWithExplicitLifecycle,
-  OperationWithContextResult,
-} from '../file-lifecycle/index.js';
 import { CompletionTriggerKind } from 'vscode-languageserver-protocol';
-
-// Helper to convert ValidationError to LspOperationError
-function validationErrorToLspError(
-  validationError: ValidationError
-): LspOperationError {
-  // Convert ValidationErrorCode to ErrorCode where possible
-  let errorCode: ErrorCode;
-  switch (validationError.errorCode) {
-    case ValidationErrorCode.InvalidPath:
-      errorCode = ErrorCode.FileNotFound;
-      break;
-    case ValidationErrorCode.PositionOutOfBounds:
-      errorCode = ErrorCode.InvalidPosition;
-      break;
-    case ValidationErrorCode.WorkspaceNotReady:
-      errorCode = ErrorCode.WorkspaceLoadInProgress;
-      break;
-    default:
-      errorCode = ErrorCode.LSPError;
-      break;
-  }
-  return createLspError(
-    errorCode,
-    validationError.message,
-    validationError.originalError
-  );
-}
+import type {
+  CursorContextOperationResult,
+  LspSession,
+  SessionDocumentScope,
+} from '../../runtime/lsp-session.js';
 
 // The 8 MCP tools we need to implement:
 
 export async function inspectSymbol(
-  ctx: LspContext,
-  request: SymbolPositionRequest
-): Promise<Result<OperationWithContextResult<SymbolInspection>>> {
+  session: LspSession,
+  prepared: PreparedSymbolPositionRequest
+): Promise<Result<CursorContextOperationResult<SymbolInspection>>> {
   logger.info(
-    `Inspect for ${request.file} at ${request.position.line}:${request.position.character}`
+    `Inspect for ${prepared.filePath} at ${prepared.position.line}:${prepared.position.character}`
   );
 
-  // Validate request
-  const validation = await validateSymbolPositionRequest(ctx, request);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const { client, preloadedFiles, workspacePath } = ctx;
-  const filePath = validation.absolutePath!;
-  const oneBasedPosition = request.position;
-
-  return await executeWithCursorContext(
+  return await session.executeWithCursorContext(
     'inspect',
-    client,
-    filePath,
-    oneBasedPosition,
-    preloadedFiles,
+    prepared.filePath,
+    prepared.position,
     'transient',
-    async (uri) => {
+    async (scope) => {
       return await tryResultAsync(
         async () => {
-          // Convert to 0-based position for LSP
-          const lspPosition = toZeroBased(oneBasedPosition);
-
-          // Create typed LSP request parameters
           const positionParams: TextDocumentPositionParams = {
-            textDocument: { uri },
-            position: lspPosition,
+            textDocument: { uri: scope.uri },
+            position: prepared.lspPosition,
           };
 
-          // Send multiple LSP requests for comprehensive symbol information
           const [
             hoverResult,
             definitionResult,
             typeDefinitionResult,
             implementationResult,
           ] = await Promise.allSettled([
-            client.connection.sendRequest('textDocument/hover', positionParams),
-            client.connection.sendRequest(
+            scope.request<Hover>('textDocument/hover', positionParams),
+            scope.request<Location | Location[]>(
               'textDocument/definition',
               positionParams
             ),
-            client.connection.sendRequest(
+            scope.request<Location | Location[]>(
               'textDocument/typeDefinition',
               positionParams
             ),
-            client.connection.sendRequest(
+            scope.request<Location | Location[]>(
               'textDocument/implementation',
               positionParams
             ),
@@ -155,20 +99,18 @@ export async function inspectSymbol(
 
           const inspectData: SymbolInspection = {
             hover:
-              hoverResult.status === 'fulfilled'
-                ? (hoverResult.value as Hover)
-                : null,
+              hoverResult.status === 'fulfilled' ? hoverResult.value : null,
             definition:
               definitionResult.status === 'fulfilled'
-                ? (definitionResult.value as Location | Location[])
+                ? definitionResult.value
                 : null,
             typeDefinition:
               typeDefinitionResult.status === 'fulfilled'
-                ? (typeDefinitionResult.value as Location | Location[])
+                ? typeDefinitionResult.value
                 : null,
             implementation:
               implementationResult.status === 'fulfilled'
-                ? (implementationResult.value as Location | Location[])
+                ? implementationResult.value
                 : null,
           };
 
@@ -210,52 +152,31 @@ export async function inspectSymbol(
             error instanceof Error ? error : undefined
           )
       );
-    },
-    undefined, // configPath - use default config loading
-    workspacePath
+    }
   );
 }
 
 export async function findReferences(
-  ctx: LspContext,
-  request: SymbolPositionRequest
-): Promise<Result<OperationWithContextResult<SymbolReference[]>>> {
-  // Validate request
-  const validation = await validateSymbolPositionRequest(ctx, request);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const { client, preloadedFiles, workspacePath } = ctx;
-  const filePath = validation.absolutePath!;
-  const oneBasedPosition = request.position;
-
-  return await executeWithCursorContext(
+  session: LspSession,
+  prepared: PreparedSymbolPositionRequest
+): Promise<Result<CursorContextOperationResult<SymbolReference[]>>> {
+  return await session.executeWithCursorContext(
     'references',
-    client,
-    filePath,
-    oneBasedPosition,
-    preloadedFiles,
+    prepared.filePath,
+    prepared.position,
     'transient',
-    async (uri) => {
+    async (scope) => {
       return await tryResultAsync(
         async () => {
-          // Convert to 0-based position for LSP
-          const lspPosition = toZeroBased(oneBasedPosition);
-
-          // Send textDocument/references request to LSP
           const params: ReferenceParams = {
-            textDocument: { uri },
-            position: lspPosition,
+            textDocument: { uri: scope.uri },
+            position: prepared.lspPosition,
             context: {
               includeDeclaration: true,
             },
           };
 
-          const references: Location[] = await client.connection.sendRequest(
+          const references: Location[] = await scope.request(
             'textDocument/references',
             params
           );
@@ -282,56 +203,32 @@ export async function findReferences(
             error instanceof Error ? error : undefined
           )
       );
-    },
-    undefined, // configPath - use default config loading
-    workspacePath
+    }
   );
 }
 
 export async function completion(
-  ctx: LspContext,
-  request: SymbolPositionRequest
-): Promise<Result<OperationWithContextResult<CompletionResult[]>>> {
-  // Validate request
-  const validation = await validateSymbolPositionRequest(ctx, request);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const { client, preloadedFiles, workspacePath } = ctx;
-  const filePath = validation.absolutePath!;
-  const oneBasedPosition = request.position;
-
-  return await executeWithCursorContext(
+  session: LspSession,
+  prepared: PreparedSymbolPositionRequest
+): Promise<Result<CursorContextOperationResult<CompletionResult[]>>> {
+  return await session.executeWithCursorContext(
     'completion',
-    client,
-    filePath,
-    oneBasedPosition,
-    preloadedFiles,
+    prepared.filePath,
+    prepared.position,
     'transient',
-    async (uri) => {
+    async (scope) => {
       return await tryResultAsync(
         async () => {
-          // Convert to 0-based position for LSP
-          const lspPosition = toZeroBased(oneBasedPosition);
-
-          // Send textDocument/completion request to LSP
           const params: CompletionParams = {
-            textDocument: { uri },
-            position: lspPosition,
+            textDocument: { uri: scope.uri },
+            position: prepared.lspPosition,
             context: {
               triggerKind: CompletionTriggerKind.Invoked,
             },
           };
 
           const completionResult: CompletionList | CompletionItem[] =
-            await client.connection.sendRequest(
-              'textDocument/completion',
-              params
-            );
+            await scope.request('textDocument/completion', params);
 
           let completions: CompletionItem[] = [];
 
@@ -383,36 +280,22 @@ export async function completion(
             error instanceof Error ? error : undefined
           )
       );
-    },
-    undefined, // configPath - use default config loading
-    workspacePath
+    }
   );
 }
 
 export async function searchSymbols(
-  ctx: LspContext,
-  request: SearchRequest
+  session: LspSession,
+  prepared: PreparedWorkspaceRequest
 ): Promise<Result<SymbolSearchResult[]>> {
-  // Validate workspace readiness
-  const validation = validateWorkspaceOperation(ctx);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const { client } = ctx;
-
   return await tryResultAsync(
     async () => {
-      // Send workspace symbol request to LSP
       const params: WorkspaceSymbolParams = {
-        query: request.query,
+        query: prepared.query,
       };
 
       const symbols: WorkspaceSymbol[] | SymbolInformation[] =
-        await client.connection.sendRequest('workspace/symbol', params);
+        await session.request('workspace/symbol', params);
 
       // Transform LSP response to our format
       const results: SymbolSearchResult[] = Array.isArray(symbols)
@@ -464,36 +347,19 @@ export async function searchSymbols(
 }
 
 export async function outlineSymbols(
-  ctx: LspContext,
-  request: FileRequest
+  session: LspSession,
+  prepared: PreparedFileRequest
 ): Promise<Result<FlattenedSymbol[]>> {
-  // Validate request
-  const validation = validateFileRequest(ctx, request);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const { client, preloadedFiles, workspacePath } = ctx;
-
-  // Use absolute path from validation
-  const filePath = validation.absolutePath!;
-
-  // Execute with explicit file lifecycle management
-  return await executeWithExplicitLifecycle(
-    client,
-    filePath,
-    preloadedFiles,
-    'transient', // Always read fresh content from disk
-    async (uri): Promise<Result<FlattenedSymbol[]>> => {
+  return await session.executeWithDocumentLifecycle(
+    prepared.filePath,
+    'transient',
+    async (scope): Promise<Result<FlattenedSymbol[]>> => {
       return await tryResultAsync(
-        async () => {
-          // Use shared utility to get flattened symbols with proper typing
-          const symbols = await getDocumentSymbols(client, uri);
-          return symbols;
-        },
+        async () =>
+          await getDocumentSymbols(
+            async (method, params) => await scope.request(method, params),
+            scope.uri
+          ),
         (error) =>
           createLspError(
             ErrorCode.LSPError,
@@ -501,59 +367,40 @@ export async function outlineSymbols(
             error instanceof Error ? error : undefined
           )
       );
-    },
-    undefined, // configPath - use default config loading
-    workspacePath
+    }
   );
 }
 
 export async function getDiagnostics(
-  ctx: LspContext,
-  request: FileRequest
+  session: LspSession,
+  prepared: PreparedFileRequest
 ): Promise<Result<DiagnosticEntry[]>> {
-  // Validate request
-  const validation = validateFileRequest(ctx, request);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const {
-    client,
-    preloadedFiles,
-    diagnosticsStore,
-    diagnosticProviderStore,
-    lspName,
-    lspConfig,
-  } = ctx;
-  const filePath = validation.absolutePath!;
+  const diagnosticsStore = session.getDiagnosticsStore();
+  const diagnosticProviderStore = session.getDiagnosticProviderStore();
+  const profile = session.getProfile();
+  const lspName = profile.name;
+  const lspConfig = profile.config;
+  const filePath = prepared.filePath;
 
   // Determine diagnostic strategy from LSP configuration
   const strategy = lspConfig?.diagnostics?.strategy || 'push';
 
   logger.debug('Using diagnostic strategy', { strategy, lspName, filePath });
 
-  // Execute with explicit file lifecycle management
-  return await executeWithExplicitLifecycle(
-    client,
+  return await session.executeWithDocumentLifecycle(
     filePath,
-    preloadedFiles,
     'transient',
-    async (uri): Promise<Result<DiagnosticEntry[]>> => {
+    async (scope): Promise<Result<DiagnosticEntry[]>> => {
       return await tryResultAsync(
         async () => {
           if (strategy === 'pull') {
-            // Pull strategy: request diagnostics from LSP server
             return await getPullDiagnostics(
-              client,
+              async (method, params) => await scope.request(method, params),
               diagnosticProviderStore,
-              uri
+              scope.uri
             );
           } else {
-            // Push strategy: wait for and retrieve diagnostics from store
-            return await getPushDiagnostics(diagnosticsStore, uri);
+            return await getPushDiagnostics(diagnosticsStore, scope.uri);
           }
         },
         (error) =>
@@ -592,7 +439,7 @@ async function getPushDiagnostics(
 }
 
 async function getPullDiagnostics(
-  client: LspClient,
+  request: SessionDocumentScope['request'],
   diagnosticProviderStore: DiagnosticProviderStore,
   uri: string
 ): Promise<DiagnosticEntry[]> {
@@ -622,10 +469,7 @@ async function getPullDiagnostics(
         // previousResultId omitted for first request
       };
 
-      const diagnosticReport = await client.connection.sendRequest(
-        'textDocument/diagnostic',
-        params
-      );
+      const diagnosticReport = await request('textDocument/diagnostic', params);
 
       // Handle different types of diagnostic reports
       if ((diagnosticReport as { kind?: string }).kind === 'full') {
@@ -686,60 +530,43 @@ async function getPullDiagnostics(
 }
 
 export async function rename(
-  ctx: LspContext,
-  request: RenameRequest
-): Promise<Result<OperationWithContextResult<RenameResult>>> {
-  // Validate request (RenameRequest extends SymbolPositionRequest)
-  const validation = await validateSymbolPositionRequest(ctx, request);
-  if (!validation.valid) {
-    return {
-      ok: false,
-      error: validationErrorToLspError(validation.error),
-    };
-  }
-
-  const { client, preloadedFiles, workspacePath } = ctx;
-  const filePath = validation.absolutePath!;
-  const oneBasedPosition = request.position;
-
-  return await executeWithCursorContext(
+  session: LspSession,
+  prepared: PreparedRenameRequest
+): Promise<Result<CursorContextOperationResult<RenameResult>>> {
+  return await session.executeWithCursorContext(
     'rename',
-    client,
-    filePath,
-    oneBasedPosition,
-    preloadedFiles,
+    prepared.filePath,
+    prepared.position,
     'transient',
-    async (uri) => {
+    async (scope) => {
       return await tryResultAsync(
         async () => {
-          // Convert to 0-based position for LSP
-          const lspPosition = toZeroBased(oneBasedPosition);
-
-          // Send textDocument/rename request to LSP
           const params: RenameParams = {
-            textDocument: { uri },
-            position: lspPosition,
-            newName: request.newName,
+            textDocument: { uri: scope.uri },
+            position: prepared.lspPosition,
+            newName: prepared.newName,
           };
 
-          const workspaceEdit: WorkspaceEdit =
-            await client.connection.sendRequest('textDocument/rename', params);
+          const workspaceEdit: WorkspaceEdit = await scope.request(
+            'textDocument/rename',
+            params
+          );
 
-          if (
-            !workspaceEdit ||
-            typeof workspaceEdit !== 'object' ||
-            !('changes' in workspaceEdit) ||
-            !workspaceEdit.changes
-          ) {
+          if (!workspaceEdit || typeof workspaceEdit !== 'object') {
             return {};
           }
 
           // Transform LSP WorkspaceEdit response to our format
           const changes: RenameResult = {};
-          const workspaceChanges = workspaceEdit.changes;
 
-          for (const [fileUri, edits] of Object.entries(workspaceChanges)) {
-            changes[fileUri] = edits.map((edit) => ({
+          const addEdits = (
+            fileUri: string,
+            edits: Array<{
+              range: Range;
+              newText: string;
+            }>
+          ) => {
+            const fileChanges = edits.map((edit) => ({
               range: edit.range,
               newText: edit.newText,
               // Convert positions back to 1-based for user display
@@ -748,6 +575,50 @@ export async function rename(
               endLine: edit.range.end.line + 1,
               endCharacter: edit.range.end.character + 1,
             }));
+
+            changes[fileUri] = [...(changes[fileUri] || []), ...fileChanges];
+          };
+
+          if ('changes' in workspaceEdit && workspaceEdit.changes) {
+            for (const [fileUri, edits] of Object.entries(workspaceEdit.changes)) {
+              addEdits(fileUri, edits);
+            }
+          }
+
+          if (
+            'documentChanges' in workspaceEdit &&
+            Array.isArray(workspaceEdit.documentChanges)
+          ) {
+            for (const change of workspaceEdit.documentChanges) {
+              if (!change || typeof change !== 'object') {
+                continue;
+              }
+
+              if (!('textDocument' in change) || !('edits' in change)) {
+                continue;
+              }
+
+              const fileUri = change.textDocument?.uri;
+              const edits = Array.isArray(change.edits) ? change.edits : [];
+              if (!fileUri || edits.length === 0) {
+                continue;
+              }
+
+              addEdits(fileUri, edits);
+            }
+          }
+
+          if (Object.keys(changes).length === 0) {
+            logger.info('Rename returned no file edits', {
+              hasChanges:
+                'changes' in workspaceEdit &&
+                !!workspaceEdit.changes &&
+                Object.keys(workspaceEdit.changes).length > 0,
+              hasDocumentChanges:
+                'documentChanges' in workspaceEdit &&
+                Array.isArray(workspaceEdit.documentChanges) &&
+                workspaceEdit.documentChanges.length > 0,
+            });
           }
 
           return changes;
@@ -759,14 +630,12 @@ export async function rename(
             error instanceof Error ? error : undefined
           )
       );
-    },
-    undefined, // configPath - use default config loading
-    workspacePath
+    }
   );
 }
 
-export function logs(ctx: LspContext): Result<LogMessageResult[]> {
-  const { windowLogStore } = ctx;
+export function logs(session: LspSession): Result<LogMessageResult[]> {
+  const windowLogStore = session.getWindowLogStore();
 
   // Using the new tryResult helper to eliminate try/catch boilerplate
   return tryResult(

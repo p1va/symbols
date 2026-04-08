@@ -3,7 +3,8 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { LspContext, createOneBasedPosition } from '../types.js';
+import { createOneBasedPosition } from '../types.js';
+import { prepareSymbolPositionRequest } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
@@ -12,27 +13,21 @@ import { createSignaturePreview } from './enrichment.js';
 import { formatFilePath } from './utils.js';
 import { Hover, Location } from 'vscode-languageserver-protocol';
 import { validateSymbolPosition } from './validation.js';
+import type { LspManager } from '../runtime/lsp-manager.js';
 
-export function registerInspectTool(
-  server: McpServer,
-  createContext: () => LspContext
-) {
+export function registerInspectTool(server: McpServer, manager: LspManager) {
   server.registerTool(
     'inspect',
     {
       title: 'Inspect',
       description:
-        'Inspects a symbol (either defined in the codebase or imported from a library or framework) and returns documentation, signature info, code locations like definition, implementation, type declaration. IMPORTANT: As a follow-up consider using the inspect tool present on this MCP server for further discovery',
+        'Inspect the symbol at a file position and return documentation, signature details, and related code locations such as definitions, implementations, and type declarations.',
       inputSchema: symbolPositionSchema,
     },
     async (request) => {
-      const ctx = createContext();
-      if (!ctx.client) throw new Error('LSP client not initialized');
-
-      // Validate and parse request arguments
       const validatedRequest = validateSymbolPosition(request);
+      const session = await manager.getSessionForFile(validatedRequest.file);
 
-      // Convert raw request to branded position type
       const symbolRequest = {
         file: validatedRequest.file,
         position: createOneBasedPosition(
@@ -41,20 +36,23 @@ export function registerInspectTool(
         ),
       };
 
-      const result = await LspOperations.inspectSymbol(ctx, symbolRequest);
+      const prepared = await prepareSymbolPositionRequest(
+        session,
+        symbolRequest
+      );
+      if (!prepared.ok) throw new Error(prepared.error.message);
+
+      const result = await LspOperations.inspectSymbol(session, prepared.data);
       if (!result.ok) throw new Error(result.error.message);
 
-      // Format response with cursor context
       const { result: inspectData, cursorContext } = result.data;
 
       const sections: string[] = [];
 
-      // Always add cursor context first
       if (cursorContext) {
         sections.push(formatCursorContext(cursorContext));
       }
 
-      // Add hover information if available
       if (inspectData.hover && inspectData.hover.contents) {
         const hoverContent = extractHoverContent(inspectData.hover);
         if (hoverContent) {
@@ -62,7 +60,6 @@ export function registerInspectTool(
         }
       }
 
-      // Add definition locations if available
       if (
         inspectData.definition &&
         Array.isArray(inspectData.definition) &&
@@ -75,7 +72,6 @@ export function registerInspectTool(
         sections.push(definitionText);
       }
 
-      // Add type definition locations if available
       if (
         inspectData.typeDefinition &&
         Array.isArray(inspectData.typeDefinition) &&
@@ -88,7 +84,6 @@ export function registerInspectTool(
         sections.push(typeDefText);
       }
 
-      // Add implementation locations if available
       if (
         inspectData.implementation &&
         Array.isArray(inspectData.implementation) &&
@@ -121,12 +116,10 @@ function extractHoverContent(hover: Hover): string | null {
 
   const contents = hover.contents;
 
-  // Handle different hover content formats according to LSP spec
   if (typeof contents === 'string') {
     return contents.trim();
   }
 
-  // Handle MarkupContent (most common with TypeScript)
   if (
     typeof contents === 'object' &&
     'kind' in contents &&
@@ -136,27 +129,24 @@ function extractHoverContent(hover: Hover): string | null {
     return markupContent.value.trim();
   }
 
-  // Handle array of content pieces (legacy MarkedString array or mixed content)
   if (Array.isArray(contents)) {
     return contents
       .map((item) => {
         if (typeof item === 'string') return item;
         if (typeof item === 'object' && 'value' in item) {
           const contentItem = item as { language?: string; value: string };
-          // For code blocks, preserve them but clean up formatting
           if (contentItem.language) {
-            return contentItem.value; // Return raw code without fences
+            return contentItem.value;
           }
           return contentItem.value;
         }
         return JSON.stringify(item);
       })
-      .filter(Boolean) // Remove empty strings
+      .filter(Boolean)
       .join('\n\n')
       .trim();
   }
 
-  // Handle single content object (could be legacy MarkedString or other format)
   if (typeof contents === 'object' && 'value' in contents) {
     const contentObject = contents as { language?: string; value: string };
     return contentObject.value.trim();
@@ -174,7 +164,6 @@ async function formatLocationGroup(
 ): Promise<string> {
   if (!locations || locations.length === 0) return '';
 
-  // Convert 1-based display positions back to 0-based LSP positions for enrichment
   const symbolLocations: Location[] = locations.map((location) => ({
     uri: location.uri,
     range: {
@@ -189,10 +178,8 @@ async function formatLocationGroup(
     },
   }));
 
-  // Enrich with code snippets
   const enrichmentResults = await enrichSymbolLocations(symbolLocations);
 
-  // Group by file
   const fileGroups = new Map<
     string,
     Array<{
@@ -205,7 +192,7 @@ async function formatLocationGroup(
   enrichmentResults.forEach((result, index: number) => {
     const location = symbolLocations[index];
     const originalLocation = locations[index];
-    if (!location || !originalLocation) return; // Skip if location is undefined
+    if (!location || !originalLocation) return;
 
     const filePath = formatFilePath(location.uri);
 
@@ -220,33 +207,26 @@ async function formatLocationGroup(
     });
   });
 
-  // Format output
-  const totalCount = locations.length;
-
-  // Simple, clear title without dynamic symbol names
-  const contextualTitle = `${groupTitle}: ${totalCount} location${totalCount === 1 ? '' : 's'}`;
-
-  let result = contextualTitle;
+  let result = `${groupTitle} (${locations.length} location${locations.length === 1 ? '' : 's'})`;
 
   for (const [filePath, fileLocations] of fileGroups) {
-    result += `\n${filePath} (${fileLocations.length} location${fileLocations.length === 1 ? '' : 's'})\n`;
+    result += `\n\n${filePath} (${fileLocations.length})\n`;
 
-    for (const { originalLocation, codeSnippet } of fileLocations) {
-      const signaturePreview = codeSnippet
-        ? createSignaturePreview(codeSnippet, 100)
-        : null;
+    fileLocations.sort(
+      (left, right) =>
+        left.location.range.start.line - right.location.range.start.line
+    );
 
-      // Use original locations which are already 1-based for display
-      const line = originalLocation.range.start.line;
-      const char = originalLocation.range.start.character;
+    for (const entry of fileLocations) {
+      const line = entry.originalLocation.range.start.line;
+      const character = entry.originalLocation.range.start.character;
+      result += `  @${line}:${character}`;
 
-      result += `  @${line}:${char}`;
-
-      if (signaturePreview) {
-        // Follow search tool format: position on line, code snippet indented on next line
-        result += `\n    \`${signaturePreview}\``;
+      if (entry.codeSnippet) {
+        result += `\n    \`${createSignaturePreview(entry.codeSnippet.trim(), 100)}\``;
       }
-      result += `\n`;
+
+      result += '\n';
     }
   }
 

@@ -16,7 +16,14 @@ describe('config command parsing', () => {
   });
 
   it('should parse config init --global --force', () => {
-    const result = parseCliArgs(['node', 'symbols', 'config', 'init', '--global', '--force']);
+    const result = parseCliArgs([
+      'node',
+      'symbols',
+      'config',
+      'init',
+      '--global',
+      '--force',
+    ]);
 
     expect(result.subcommandArgs.global).toBe(true);
     expect(result.subcommandArgs.force).toBe(true);
@@ -36,17 +43,16 @@ Testing `handleConfigInit()`, `handleConfigShow()`, `handleConfigPath()` require
 
 ```typescript
 // File System Operations (lines 589-610)
-- fs.existsSync(configPath)        // Check if config exists
-- fs.mkdirSync(configDir)          // Create directory
-- fs.readFileSync(defaultConfigPath) // Read template
-- fs.writeFileSync(configPath)     // Write config file
-
-// Other Dependencies
-- getAppPaths()                    // Get system paths
-- process.cwd()                    // Current directory
-- process.exit(1)                  // Exit on error
-- console.log()                    // Output messages
-- console.error()                  // Error messages
+-fs.existsSync(configPath) - // Check if config exists
+  fs.mkdirSync(configDir) - // Create directory
+  fs.readFileSync(defaultConfigPath) - // Read template
+  fs.writeFileSync(configPath) - // Write config file
+  // Other Dependencies
+  getAppPaths() - // Get system paths
+  process.cwd() - // Current directory
+  process.exit(1) - // Exit on error
+  console.log() - // Output messages
+  console.error(); // Error messages
 ```
 
 #### Test Example with Mocking
@@ -75,7 +81,9 @@ vi.mock('../../src/utils/app-paths.js', () => ({
 
 // Mock console
 const mockConsoleLog = vi.spyOn(console, 'log').mockImplementation(() => {});
-const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+const mockConsoleError = vi
+  .spyOn(console, 'error')
+  .mockImplementation(() => {});
 
 // Mock process.exit to throw instead
 const mockExit = vi.spyOn(process, 'exit').mockImplementation((code) => {
@@ -103,10 +111,9 @@ describe('handleConfigInit', () => {
     });
 
     // Verify directory was created
-    expect(fs.mkdirSync).toHaveBeenCalledWith(
-      '/tmp/test-project',
-      { recursive: true }
-    );
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/test-project', {
+      recursive: true,
+    });
 
     // Verify file was written
     expect(fs.writeFileSync).toHaveBeenCalledWith(
@@ -186,19 +193,19 @@ describe('handleConfigInit', () => {
 #### `handleConfigShow()` Dependencies
 
 ```typescript
-- loadLspConfig(configPath)  // Reads YAML config files
-- console.log()              // Output configuration
-- console.error()            // Error messages
-- process.exit(1)            // Exit on error
+-loadLspConfig(configPath) - // Reads YAML config files
+  console.log() - // Output configuration
+  console.error() - // Error messages
+  process.exit(1); // Exit on error
 ```
 
 #### `handleConfigPath()` Dependencies
 
 ```typescript
-- getAppPaths()              // Get system paths
-- process.cwd()              // Current directory
-- fs.existsSync()            // Check if files exist (line 674+)
-- console.log()              // Output paths
+-getAppPaths() - // Get system paths
+  process.cwd() - // Current directory
+  fs.existsSync() - // Check if files exist (line 674+)
+  console.log(); // Output paths
 ```
 
 ---
@@ -226,6 +233,7 @@ The PR review asked for testing "complex command line args logic" - this refers 
 **For `parseCliArgs()` tests**: NO, no mocking needed! Parsing doesn't touch the file system.
 
 **For `handleConfigInit()` tests**: YES, need to mock:
+
 - `fs.*` functions (existsSync, mkdirSync, readFileSync, writeFileSync)
 - `getAppPaths()`
 - `process.cwd()`
@@ -273,11 +281,13 @@ describe('handleConfigInit - integration tests', () => {
 ```
 
 **Pros:**
+
 - Tests real behavior
 - No complex mocking
 - Catches actual file system issues
 
 **Cons:**
+
 - Slower than unit tests
 - Requires cleanup
 - Still need to mock console and process.exit
@@ -286,13 +296,13 @@ describe('handleConfigInit - integration tests', () => {
 
 ## Summary Table
 
-| Test Type | Mocking Required? | What to Mock | Effort | Priority |
-|-----------|-------------------|--------------|--------|----------|
-| `parseCliArgs()` config | ❌ NO | Nothing! | Low | **High** (PR request) |
-| `parseCliArgs()` run | ⚠️ Minimal | `listAvailableLsps` | Low | **High** (PR request) |
-| `parseCliArgs()` start | ⚠️ Minimal | `listAvailableLsps` | Low | **High** (PR request) |
-| `handleConfigInit()` | ✅ YES | fs, console, process | High | Medium |
-| `handleConfigShow()` | ✅ YES | loadLspConfig, console | Medium | Low |
-| `handleConfigPath()` | ✅ YES | fs, getAppPaths, console | Medium | Low |
+| Test Type               | Mocking Required? | What to Mock             | Effort | Priority              |
+| ----------------------- | ----------------- | ------------------------ | ------ | --------------------- |
+| `parseCliArgs()` config | ❌ NO             | Nothing!                 | Low    | **High** (PR request) |
+| `parseCliArgs()` run    | ⚠️ Minimal        | `listAvailableLsps`      | Low    | **High** (PR request) |
+| `parseCliArgs()` start  | ⚠️ Minimal        | `listAvailableLsps`      | Low    | **High** (PR request) |
+| `handleConfigInit()`    | ✅ YES            | fs, console, process     | High   | Medium                |
+| `handleConfigShow()`    | ✅ YES            | loadLspConfig, console   | Medium | Low                   |
+| `handleConfigPath()`    | ✅ YES            | fs, getAppPaths, console | Medium | Low                   |
 
 **Recommendation**: Focus on `parseCliArgs()` tests first - this directly addresses the PR feedback with minimal mocking!

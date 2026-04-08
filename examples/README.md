@@ -51,6 +51,7 @@ The `extensions` field is **optional** and **merged with built-in defaults**:
 - **Override**: Your custom extensions take precedence over defaults when there's a conflict
 
 **Example - No extensions needed:**
+
 ```yaml
 language-servers:
   typescript:
@@ -59,12 +60,13 @@ language-servers:
 ```
 
 **Example - Adding custom extensions:**
+
 ```yaml
 language-servers:
   typescript:
     command: typescript-language-server --stdio
     extensions:
-      '.config.ts': 'typescript'  # Add custom extension
+      '.config.ts': 'typescript' # Add custom extension
       # All defaults (.ts, .js, .tsx, etc.) still work!
 ```
 

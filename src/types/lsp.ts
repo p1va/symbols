@@ -57,7 +57,12 @@ import type {
   SemanticTokens,
 } from 'vscode-languageserver-protocol';
 import logger from '../utils/logger.js';
-import { LspClient } from '../types.js';
+import type { LspClient } from '../types.js';
+
+type SendLspRequest = <TResult, TParams = unknown>(
+  method: string,
+  params: TParams
+) => Promise<TResult>;
 
 // Re-export the official types
 export type {
@@ -106,19 +111,19 @@ export type SymbolKindValue = (typeof SymbolKind)[keyof typeof SymbolKind];
 // These represent structured data that flows from LspOperations to MCP tools
 
 /** Position information with 1-based coordinates for display */
-export interface DisplayPosition {
+interface DisplayPosition {
   line: number;
   character: number;
 }
 
 /** Range information with 1-based coordinates for display */
-export interface DisplayRange {
+interface DisplayRange {
   start: DisplayPosition;
   end: DisplayPosition;
 }
 
 /** Location information for display */
-export interface DisplayLocation {
+interface DisplayLocation {
   uri: string;
   range: DisplayRange;
 }
@@ -195,12 +200,12 @@ export interface SemanticToken {
 
 // The textDocument/documentSymbol response can be either format
 // Use discriminated union based on the presence of location vs range
-export type DocumentSymbolResult =
+type DocumentSymbolResult =
   | { type: 'symbolInformation'; symbols: SymbolInformation[] }
   | { type: 'documentSymbol'; symbols: DocumentSymbol[] };
 
 // Utility function with refined checks
-export function parseDocumentSymbolResponse(
+function parseDocumentSymbolResponse(
   response: DocumentSymbol[] | SymbolInformation[]
 ): DocumentSymbolResult {
   logger.info(
@@ -250,7 +255,7 @@ export interface FlattenedSymbol {
 
 // Utility function to get and flatten document symbols with proper typing
 export async function getDocumentSymbols(
-  client: LspClient,
+  request: SendLspRequest,
   uri: string
 ): Promise<FlattenedSymbol[]> {
   logger.info(`getDocumentSymbols called for ${uri}`);
@@ -258,8 +263,10 @@ export async function getDocumentSymbols(
     textDocument: { uri },
   };
 
-  const rawSymbols: DocumentSymbol[] | SymbolInformation[] =
-    await client.connection.sendRequest('textDocument/documentSymbol', params);
+  const rawSymbols: DocumentSymbol[] | SymbolInformation[] = await request(
+    'textDocument/documentSymbol',
+    params
+  );
 
   const symbolResult = parseDocumentSymbolResponse(rawSymbols);
 
@@ -310,7 +317,7 @@ export async function getDocumentSymbols(
 /**
  * Decodes semantic tokens from the LSP relative format into absolute positions
  */
-export function decodeSemanticTokens(
+function decodeSemanticTokens(
   data: number[],
   tokenTypes: string[],
   tokenModifiers: string[],

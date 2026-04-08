@@ -1,5 +1,5 @@
 /**
- * Pure helper functions for file lifecycle operations
+ * Low-level didOpen/didClose transport helpers used by LspSession.
  */
 
 import {
@@ -9,42 +9,12 @@ import {
 
 import {
   LspClient,
-  PreloadedFiles,
   Result,
+  SessionDocuments,
   createLspError,
   ErrorCode,
   tryResultAsync,
 } from '../../types.js';
-
-import { FileLifecycleStrategy } from './manager.js';
-
-/**
- * Determine if a file should be closed based on strategy and current state
- */
-export function decideShouldClose(
-  strategy: FileLifecycleStrategy,
-  wasAlreadyOpen: boolean,
-  isPreloaded: boolean = false
-): boolean {
-  switch (strategy) {
-    case 'transient':
-      // Special case: if file is preloaded, don't close it after operation
-      // (we want fresh content but keep project alive)
-      if (isPreloaded) {
-        return false;
-      }
-      // Always close non-preloaded transient files
-      return true;
-    case 'persistent':
-      // Never close persistent files
-      return false;
-    case 'respect_existing':
-      // Only close if we opened it (it wasn't already open)
-      return !wasAlreadyOpen;
-    default:
-      return false;
-  }
-}
 
 /**
  * Force close a file without checking strategy
@@ -52,7 +22,7 @@ export function decideShouldClose(
 export async function forceCloseFile(
   client: LspClient,
   uri: string,
-  preloadedFiles: PreloadedFiles
+  sessionDocuments: SessionDocuments
 ): Promise<Result<void>> {
   return await tryResultAsync(
     async () => {
@@ -66,9 +36,9 @@ export async function forceCloseFile(
       );
 
       // Update preloaded files state
-      const preloaded = preloadedFiles.get(uri);
-      if (preloaded) {
-        preloaded.isOpen = false;
+      const document = sessionDocuments.get(uri);
+      if (document) {
+        document.isOpen = false;
       }
     },
     (error) =>
@@ -89,7 +59,7 @@ export async function openFile(
   content: string,
   version: number,
   languageId: string,
-  preloadedFiles: PreloadedFiles
+  sessionDocuments: SessionDocuments
 ): Promise<Result<void>> {
   return await tryResultAsync(
     async () => {
@@ -108,11 +78,11 @@ export async function openFile(
       );
 
       // Update preloaded files state
-      const preloaded = preloadedFiles.get(uri);
-      if (preloaded) {
-        preloaded.isOpen = true;
+      const document = sessionDocuments.get(uri);
+      if (document) {
+        document.isOpen = true;
       } else {
-        preloadedFiles.set(uri, {
+        sessionDocuments.set(uri, {
           uri,
           content,
           version,
@@ -135,7 +105,7 @@ export async function openFile(
 export async function closeFile(
   client: LspClient,
   uri: string,
-  preloadedFiles: PreloadedFiles
+  sessionDocuments: SessionDocuments
 ): Promise<Result<void>> {
   return await tryResultAsync(
     async () => {
@@ -149,9 +119,9 @@ export async function closeFile(
       );
 
       // Update preloaded files state
-      const preloaded = preloadedFiles.get(uri);
-      if (preloaded) {
-        preloaded.isOpen = false;
+      const document = sessionDocuments.get(uri);
+      if (document) {
+        document.isOpen = false;
       }
     },
     (error) =>

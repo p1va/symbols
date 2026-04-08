@@ -1,0 +1,876 @@
+# Installation
+
+## Manual Installation
+
+### Quickstart (`run` command)
+
+Use the `run` command to start the MCP server with the desired Language Server command defined inline.
+
+`npx -y "@p1va/symbols" run [run options] <lsp-cmd> [lsp args]`
+
+See below configurations for the Language Servers tested. Other stdio Language Servers _should_ work too. For simplicity examples follow Claude Code schema.
+
+<details>
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-3670A0?&logo=python&logoColor=ffdd54" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Pyright</b>
+</summary>
+
+### Pyright
+
+#### Installation
+
+`npm install -g pyright`
+
+#### Verify Installation
+
+`pyright-langserver` should be available
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        "pyright-langserver",
+        "--stdio",
+      ],
+    },
+  },
+}
+```
+
+> ℹ️ If you'd rather avoid installing **pyright** globally and are fine with a slower start up, you can substitute `pyright-langserver --stdio` in the JSON above with `npx -y -p pyright pyright-langserver --stdio`
+
+#### Troubleshooting
+
+**Virtual Env not found**
+
+If `language-servers://profiles/{name}/logs` includes errors or the `diagnostics` tool only reports module import errors even when none appear in the IDE these might be signs of Pyright not detecting the virtual environment.
+
+You can update your `pyproject.toml` to correctly point it to the virtual environment location.
+
+```toml
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+```
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-%23007ACC.svg?logo=typescript&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>TypeScript</b>
+</summary>
+
+### TypeScript Language Server
+
+#### Installation
+
+`npm install -g typescript-language-server`
+
+#### Verify Installation
+
+`typescript-language-server --version`
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        "typescript-language-server",
+        "--stdio",
+      ],
+      "env": {
+        // Keep at least one code file open for search to work
+        "SYMBOLS_PRELOAD_FILES": "src/index.ts",
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+> ℹ️ If you'd rather avoid installing **typescript-language-server** globally and are fine with a slower start up, you can substitute `typescript-language-server --stdio` in the JSON above with `npx -y typescript-language-server --stdio`
+
+#### Troubleshooting
+
+**Search: No results**
+
+For the search functionality to work the TS Language Server needs to compute the codebase index and keep in memory.
+This is done by keeping at least one code file open at any time. Use the `SYMBOLS_PRELOAD_FILES="src/index.ts` variable with paths to a few files.
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-blueviolet?logo=dotnet" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Roslyn</b>
+</summary>
+
+### Roslyn Language Server
+
+#### Installation
+
+The official C# Language Server is distributed over the [VS IDE NuGet feed](https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json) as a self-contained executable.
+
+To facilitate download and extraction we use the `dotnet` CLI with a temporary project file named `ServerDownload.csproj` with the following content:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageNameBase>Microsoft.CodeAnalysis.LanguageServer</PackageNameBase>
+    <PackageVersion>5.0.0-1.25353.13</PackageVersion>
+    <RestorePackagesPath  Condition=" '$(RestorePackagesPath)' == '' ">/tmp/lsp-download</RestorePackagesPath>
+    <ServerPath Condition=" '$(DownloadPath)' == '' ">./LspServer/</ServerPath>
+    <TargetFramework>net9.0</TargetFramework>
+    <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <RestoreSources>https://api.nuget.org/v3/index.json;https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json</RestoreSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageDownload Include="$(PackageNameBase).$(Platform)" version="[$(PackageVersion)]" />
+  </ItemGroup>
+  <Target Name="SimplifyPath" AfterTargets="Restore">
+    <PropertyGroup>
+      <PackageIdFolderName>$(PackageNameBase.ToLower()).$(Platform.ToLower())</PackageIdFolderName>
+      <PackageContentPath>$(RestorePackagesPath)/$(PackageIdFolderName)/$(PackageVersion)/content/LanguageServer/$(Platform)/</PackageContentPath>
+    </PropertyGroup>
+    <ItemGroup>
+      <ServerFiles Include="$(PackageContentPath)**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ServerFiles)" DestinationFolder="$(ServerPath)%(RecursiveDir)" />
+    <RemoveDir Directories="$(RestorePackagesPath)" />
+  </Target>
+</Project>
+```
+
+We then pick the platform identifier matching the machine from this list:
+
+`win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `linux-musl-x64`, `linux-musl-arm64`, `osx-x64`, `osx-arm64` or `neutral`
+
+And finally restore the temporary project to trigger the download of the Language Server.
+
+Adjust both `RestorePackagesPath` and `ServerPath` to work on your machine and keep track of the latter.
+
+```sh
+dotnet restore ServerDownload.csproj \
+  /p:Platform=your-platform-id \
+  /p:RestorePackagesPath=/tmp/your/download/location \
+  /p:ServerPath=$HOME/.csharp-lsp
+```
+
+#### Verify Installation
+
+To verify the outcome of the installation we run the command below
+
+```sh
+$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        // Adjust this to your installation path
+        "dotnet",
+        "$HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll",
+        "--logLevel=Information",
+        "--extensionLogDirectory=$HOME/.csharp-lsp/logs",
+        "--stdio",
+      ],
+      "env": {
+        "SYMBOLS_WORKSPACE_LOADER": "roslyn",
+      },
+    },
+  },
+}
+```
+
+> ℹ️ Roslyn Language Server is also provided with the C# Dev Kit extension for VS Code however the launch command is a bit more complicated and changes each time the extension is updated. If wanting to try it i suggest trying the other modality (`config init` \* `start`) which brings a template for the launch command
+
+#### Troubleshooting
+
+**Search: No Results Found**
+
+If `search` doesn't find results before a file was read for the first time it's possible to warm up by pre-loading a few files from different projects with
+`"SYMBOLS_PRELOAD_FILES": "src/Project/Program.cs"`
+
+**Linux: Max Number of Inotify Instances Reached**
+
+If on Linux LSP logs suggest that the maximum number of inotify per user instances has been reached it's possible to increase it with a value greater than the actual
+
+`sudo sysctl fs.inotify.max_user_instances=512`
+
+This allows the Language Server to keep monitoring files in the Solution/Project
+
+Additionally JetBrains has more details on [this issue](https://youtrack.jetbrains.com/articles/SUPPORT-A-1715/Inotify-Watches-Limit-Linux)
+
+</details>
+
+<details>
+  
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-%2300599C.svg?logo=c%2B%2B&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Clang</b>
+</summary>
+
+### Clang for C/C++
+
+#### Verify Installation
+
+`clangd --help` is available
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        "clangd",
+        "--background-index",
+        // Provide here more clangd args if needed
+        // e.g. --compile-commands-dir path/to/dir
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+        "SYMBOLS_PRELOAD_FILES": "path/to/file.cpp",
+      },
+    },
+  },
+}
+```
+
+#### Troubleshooting
+
+**General Errors**
+
+Ensure either `compile_commands.json` is found in the working directory or provide its directory path with `--compile-commands-dir=path/to/dir`
+
+**Search: No Results Found**
+
+Index is generate when the first file is opened. To warm up is possible to pre load and keep a one or more files opened by providing a list in ` SYMBOLS_PRELOAD_FILES`
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-7F52FF?logo=kotlin&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Kotlin</b>
+</summary>
+
+### Kotlin LSP
+
+#### Installation
+
+```sh
+brew install JetBrains/utils/kotlin-lsp
+```
+
+#### Verify Installation
+
+```sh
+kotlin-lsp --help
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "kotlin-lsp",
+        "--stdio",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [Kotlin LSP](https://github.com/Kotlin/kotlin-lsp)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-2C2D72?logo=lua&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Lua</b>
+</summary>
+
+### Lua Language Server
+
+#### Installation
+
+```sh
+# macOS
+brew install lua-language-server
+
+# Ubuntu/Debian (via snap)
+sudo snap install lua-language-server --classic
+
+# Arch Linux
+sudo pacman -S lua-language-server
+
+# Fedora
+sudo dnf install lua-language-server
+```
+
+#### Verify Installation
+
+```sh
+lua-language-server --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "lua-language-server",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [Lua Language Server GitHub](https://github.com/LuaLS/lua-language-server)
+- [LuaLS Documentation](https://luals.github.io/)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-777BB4?logo=php&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>PHP</b>
+</summary>
+
+### PHP Language Server
+
+#### Installation
+
+```sh
+npm install -g intelephense
+```
+
+#### Verify Installation
+
+```sh
+intelephense --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "intelephense",
+        "--stdio",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [Intelephense Website](https://intelephense.com/)
+- [Intelephense on npm](https://www.npmjs.com/package/intelephense)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-CC342D?logo=ruby&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Ruby</b>
+</summary>
+
+### Ruby LSP
+
+#### Installation
+
+```sh
+gem install ruby-lsp
+```
+
+Or add it to your `Gemfile`:
+
+```ruby
+gem 'ruby-lsp', group: :development
+```
+
+Then run:
+
+```sh
+bundle install
+```
+
+#### Verify Installation
+
+```sh
+ruby-lsp --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "ruby-lsp",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+> ℹ️ If the project is Bundler-managed and the global binary is not a good fit, use `bundle exec ruby-lsp` as the server command instead.
+
+#### More Information
+
+- [Ruby LSP Website](https://shopify.github.io/ruby-lsp/)
+- [GitHub Repository](https://github.com/Shopify/ruby-lsp)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-FA7343?logo=swift&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Swift</b>
+</summary>
+
+### SourceKit-LSP
+
+#### Installation
+
+SourceKit-LSP ships with the Swift toolchain.
+
+```sh
+# macOS
+brew install swift
+```
+
+On Linux, install Swift from [swift.org](https://www.swift.org/download/).
+
+#### Verify Installation
+
+```sh
+sourcekit-lsp --help
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        "-w",
+        "optional/path/to/workspace",
+        "sourcekit-lsp",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+#### More Information
+
+- [SourceKit-LSP GitHub](https://github.com/apple/sourcekit-lsp)
+- [Swift.org](https://www.swift.org/)
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-%2300ADD8.svg?logo=go&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Gopls</b>
+</summary>
+
+### Gopls
+
+#### Installation
+
+```sh
+go install golang.org/x/tools/gopls@latest
+```
+
+#### Verify Installation
+
+```sh
+gopls version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        "gopls",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+        // Adjust these to your machine
+        "GOPATH": "$HOME/go",
+        "GOCACHE": "$HOME/.cache/go-build",
+        "GOMODCACHE": "$HOME/go/pkg/mod",
+      },
+    },
+  },
+}
+```
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-%23000000.svg?logo=rust&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Rust-analyzer</b>
+</summary>
+
+### Rust-analyzer
+
+#### Installation
+
+```sh
+rustup component add rust-analyzer
+```
+
+#### Verify Installation
+
+```sh
+rust-analyzer --version
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        "rust-analyzer",
+      ],
+    },
+  },
+}
+```
+
+</details>
+
+<details>
+  
+<summary>
+  &nbsp;
+  <picture>
+    <img src="https://img.shields.io/badge/-ED8B00?logo=openjdk&logoColor=white" valign="middle">
+  </picture>
+  &nbsp;
+  <b>Eclipse JDT</b>
+</summary>
+
+### Eclipse JDT Language Server
+
+#### Installation
+
+Follow installation instructions on the [Project's GitHub README](https://github.com/eclipse-jdtls/eclipse.jdt.ls?tab=readme-ov-file#installation)
+
+#### Verify Installation
+
+Adjust to your installation path and test
+
+```sh
+$HOME/.java-lsp/jdtls/bin/jdtls --help
+```
+
+#### Configuration
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "run",
+        // Adjust this or remove it (defaults to current directory)
+        "-w",
+        "optional/path/to/workspace",
+        "$HOME/.java-lsp/jdtls/bin/jdtls",
+        "-configuration",
+        "$HOME/.cache/jdtls/config",
+        "-data",
+        "$HOME/.cache/jdtls/workspace/$SYMBOLS_WORKSPACE_NAME",
+      ],
+      "env": {
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+      },
+    },
+  },
+}
+```
+
+</details>
+
+### Auto-detection (`config` & `start` commands)
+
+If you prefer to keep your MCP config minimal and portable, it's possible to move Language Server definitions out to a dedicated file and have the MCP server read from there and auto-detect which Language Server to launch depending on the codebase.
+
+<details>
+
+<summary>
+  &nbsp;
+  🆕
+  &nbsp;
+  <b>1. <code>config init</code></b>
+</summary>
+
+#### Initialize Config
+
+**User-wide**
+
+To create a user-wide config file run the following command
+
+`npx -y "@p1va/symbols@latest" config init --global`
+
+This will create a configuration file to be found at:
+
+- On Linux: `~/.config/symbols-nodejs/language-servers.yaml`
+- On MacOS: `~/Library/Preferences/symbols-nodejs/language-servers.yaml`
+- On Windows: `%APPDATA%\symbols-nodejs\Config\language-servers.yaml`
+
+**Workspace (Defaults to Current Directory)**
+
+To create a workspace config file run this instead
+
+`npx -y "@p1va/symbols@latest" config init -w path/to/workspace`
+
+- Will initialize `path/to/workspace/language-servers.yaml`
+
+`npx -y "@p1va/symbols@latest" config init`
+
+- Will initialize `./language-servers.yaml`
+- The generated file enables TypeScript and Pyright by default and includes commented examples for additional language servers such as Roslyn, Clangd, Go, Rust, Java, Kotlin, Lua, PHP, Ruby, and Swift.
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  ⚙️
+  &nbsp;
+  <b>2. <code>config show</code></b>
+</summary>
+
+#### Tweak Config
+
+Use your editor (here i use `code`) to tweak the generated config file and comment, uncomment or add new language servers.
+
+`code $(npx -y @p1va/symbols config path)`
+
+If a profile defines `extensions`, that map is authoritative for routing. Built-in profile fallback mappings are only used when `extensions` is omitted entirely, so if you want to keep the generated defaults and add another extension, copy the full generated map into the profile and extend it there.
+
+#### Show Active Config
+
+Finally run the command in your workspace (e.g. where you launch Claude Code) to see that the changes are being applied
+
+`npx -y @p1va/symbols config show`
+
+`npx -y @p1va/symbols config show -w path/to/workspace`
+
+`npx -y @p1va/symbols config show -c path/to/config.yaml`
+
+</details>
+
+<details>
+
+<summary>
+  &nbsp;
+  ⚡️
+  &nbsp;
+  <b>3. <code>start</code></b>
+</summary>
+
+Update your MCP configuration with this MCP server. File-backed tools route by extension, while workspace-wide search only considers profiles whose `workspace_files` match files at the workspace root.
+
+```jsonc
+{
+  "mcpServers": {
+    "language-servers": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "start",
+        // Defaults to current directory
+        "-w",
+        "optional/path/to/workspace",
+        // Defaults to language-servers.yaml in current workspace
+        "-c",
+        "optional/path/to/config.yaml",
+      ],
+    },
+  },
+}
+```
+
+</details>

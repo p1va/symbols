@@ -5,7 +5,12 @@
  * what symbol was targeted at a specific position.
  */
 
-import { LspClient, OneBasedPosition, toZeroBased } from '../types.js';
+import {
+  LspClient,
+  OneBasedPosition,
+  SessionDocuments,
+  toZeroBased,
+} from '../types.js';
 import {
   getDocumentSymbols,
   SymbolKindValue,
@@ -28,7 +33,7 @@ export interface CursorContext {
   snippet: string; // Text snippet showing cursor position with | marker
 }
 
-export interface SymbolAtPosition {
+interface SymbolAtPosition {
   name: string;
   kind: SymbolKindValue;
   containerName?: string;
@@ -151,7 +156,11 @@ async function findSymbolAtPosition(
     );
 
     // Get flattened symbols using shared utility
-    const symbols = await getDocumentSymbols(client, uri);
+    const symbols = await getDocumentSymbols(
+      async (method, params) =>
+        await client.connection.sendRequest(method, params),
+      uri
+    );
     logger.info(`Found ${symbols.length} document symbols`);
 
     if (symbols.length === 0) {
@@ -280,17 +289,12 @@ function createTextSnippet(
 }
 
 /**
- * Gets file content from either preloaded files or by reading from filesystem
+ * Gets file content from either session documents or by reading from filesystem.
  */
-// Define interface for preloaded file data
-interface PreloadedFile {
-  content: string;
-  // Add other properties as needed
-}
 
 async function getFileContent(
   uri: string,
-  preloadedFiles: Map<string, PreloadedFile>,
+  sessionDocuments: SessionDocuments,
   filePath: string
 ): Promise<string | null> {
   try {
@@ -298,8 +302,8 @@ async function getFileContent(
     const fs = await import('fs');
     return await fs.promises.readFile(filePath, 'utf8');
   } catch {
-    // Fallback to preloaded content if file read fails
-    for (const [fileUri, fileData] of preloadedFiles.entries()) {
+    // Fallback to session document content if file read fails
+    for (const [fileUri, fileData] of sessionDocuments.entries()) {
       if (fileUri === uri) {
         return fileData.content;
       }
@@ -317,10 +321,10 @@ export async function generateCursorContext(
   uri: string,
   filePath: string,
   position: OneBasedPosition, // 1-based user position
-  preloadedFiles: Map<string, PreloadedFile>
+  sessionDocuments: SessionDocuments
 ): Promise<CursorContext | null> {
   // Get file content
-  const fileContent = await getFileContent(uri, preloadedFiles, filePath);
+  const fileContent = await getFileContent(uri, sessionDocuments, filePath);
   if (!fileContent) {
     return null;
   }
