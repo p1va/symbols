@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'path';
 import {
   resolveStartConfig,
@@ -129,6 +130,18 @@ function getUnsupportedFileMessage(filePath: string): string {
     `No configured LSP profile handles ${extensionMessage} for '${filePath}'. ` +
     'Add an explicit extension mapping for this file type or choose a supported file.'
   );
+}
+
+function matchesWorkspaceFilePattern(
+  workspaceFile: string,
+  pattern: string
+): boolean {
+  if (!pattern.includes('*')) {
+    return workspaceFile === pattern;
+  }
+
+  const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
+  return regex.test(workspaceFile);
 }
 
 export function createLspManager(): LspManager {
@@ -499,6 +512,39 @@ export function createLspManager(): LspManager {
     return null;
   }
 
+  function profileMatchesWorkspaceMarkers(profile: LspSessionProfile): boolean {
+    if (profile.config.workspace_files.length === 0) {
+      return false;
+    }
+
+    try {
+      const workspaceEntries = fs.readdirSync(profile.workspacePath);
+      return profile.config.workspace_files.some((pattern) =>
+        workspaceEntries.some((entry) =>
+          matchesWorkspaceFilePattern(entry, pattern)
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function resolveSearchTargetSessions(): LspSession[] {
+    if (profiles.size === 0) {
+      return [...sessions.values()];
+    }
+
+    if (mode === 'run') {
+      return [...profiles.values()].map((profile) => getOrCreateSession(profile));
+    }
+
+    const relevantProfiles = [...profiles.values()].filter((profile) => {
+      return profileMatchesWorkspaceMarkers(profile);
+    });
+
+    return relevantProfiles.map((profile) => getOrCreateSession(profile));
+  }
+
   async function startSession(session: LspSession): Promise<LspSession> {
     await session.start();
     syncDocumentOwnersFromSession(session);
@@ -723,10 +769,7 @@ export function createLspManager(): LspManager {
     async getSearchSessions(): Promise<LspSession[]> {
       ensureProfilesLoaded();
 
-      const targetSessions =
-        profiles.size > 0
-          ? [...profiles.values()].map((profile) => getOrCreateSession(profile))
-          : [...sessions.values()];
+      const targetSessions = resolveSearchTargetSessions();
 
       if (targetSessions.length === 0) {
         throw new Error(issues[0] || getNoProfilesMessage());

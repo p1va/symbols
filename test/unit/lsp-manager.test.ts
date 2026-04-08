@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createLspManager } from '../../src/runtime/lsp-manager.js';
@@ -209,9 +211,15 @@ function createMockSessionRecord(
 }
 
 describe('LspManager routing', () => {
-  const workspacePath = '/workspace';
+  let workspacePath: string;
   const sessionRecords = new Map<string, MockSessionRecord>();
   let configuredProfiles: Record<string, ParsedLspConfig>;
+
+  function writeWorkspaceFile(relativePath: string, content = ''): void {
+    const absolutePath = path.join(workspacePath, relativePath);
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.writeFileSync(absolutePath, content, 'utf8');
+  }
 
   function emitDocumentClaim(profileName: string, filePath: string): void {
     const record = sessionRecords.get(profileName);
@@ -247,6 +255,9 @@ describe('LspManager routing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionRecords.clear();
+    workspacePath = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'symbols-lsp-manager-')
+    );
     configuredProfiles = {
       alpha: createParsedConfig('alpha', {
         '.ts': 'typescript',
@@ -279,7 +290,7 @@ describe('LspManager routing', () => {
         'language-servers': configuredProfiles,
       },
       source: {
-        path: '/workspace/language-servers.yaml',
+        path: path.join(workspacePath, 'language-servers.yaml'),
         type: 'workspace',
         description: 'Found in workspace directory',
       },
@@ -305,6 +316,10 @@ describe('LspManager routing', () => {
         return record.session;
       }
     );
+  });
+
+  afterEach(() => {
+    fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
   it('reuses the session that already owns an open document', async () => {
@@ -397,8 +412,136 @@ describe('LspManager routing', () => {
     } as StartCommandArgs);
 
     expect(manager.getStatus().configPath).toBe(
-      '/workspace/language-servers.yaml'
+      path.join(workspacePath, 'language-servers.yaml')
     );
+  });
+
+  it('starts only search profiles that match the current workspace', async () => {
+    configuredProfiles = {
+      csharp: {
+        ...createParsedConfig('csharp', {
+          '.cs': 'csharp',
+        }),
+        workspace_files: ['*.csproj', '*.sln'],
+      },
+      typescript: {
+        ...createParsedConfig('typescript', {
+          '.ts': 'typescript',
+          '.tsx': 'typescriptreact',
+          '.js': 'javascript',
+          '.json': 'json',
+        }),
+        workspace_files: ['package.json', 'tsconfig.json'],
+      },
+    };
+
+    writeWorkspaceFile('src/Program.cs', 'class Program {}');
+    writeWorkspaceFile('app.csproj', '<Project />');
+
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    const sessions = await manager.getSearchSessions();
+
+    expect(sessions.map((session) => session.getProfile().name)).toEqual([
+      'csharp',
+    ]);
+    expect(sessionRecords.get('csharp')?.startMock).toHaveBeenCalledTimes(1);
+    expect(
+      sessionRecords.get('typescript')?.startMock
+    ).not.toHaveBeenCalled();
+  });
+
+  it('starts every profile whose workspace markers match the current workspace', async () => {
+    configuredProfiles = {
+      csharp: {
+        ...createParsedConfig('csharp', {
+          '.cs': 'csharp',
+        }),
+        workspace_files: ['*.csproj', '*.sln'],
+      },
+      typescript: {
+        ...createParsedConfig('typescript', {
+          '.ts': 'typescript',
+          '.tsx': 'typescriptreact',
+          '.js': 'javascript',
+          '.json': 'json',
+        }),
+        workspace_files: ['package.json', 'tsconfig.json'],
+      },
+    };
+
+    writeWorkspaceFile('src/Program.cs', 'class Program {}');
+    writeWorkspaceFile('app.csproj', '<Project />');
+    writeWorkspaceFile('package.json', '{}');
+
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    const sessions = await manager.getSearchSessions();
+
+    expect(sessions.map((session) => session.getProfile().name)).toEqual([
+      'csharp',
+      'typescript',
+    ]);
+    expect(sessionRecords.get('csharp')?.startMock).toHaveBeenCalledTimes(1);
+    expect(sessionRecords.get('typescript')?.startMock).toHaveBeenCalledTimes(
+      1
+    );
+  });
+
+  it('does not start profiles for search based only on matching file extensions', async () => {
+    configuredProfiles = {
+      typescript: {
+        ...createParsedConfig('typescript', {
+          '.ts': 'typescript',
+          '.tsx': 'typescriptreact',
+        }),
+        workspace_files: ['package.json', 'tsconfig.json'],
+      },
+    };
+
+    writeWorkspaceFile('src/index.ts', 'export const value = 1;');
+
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    } as StartCommandArgs);
+
+    await expect(manager.getSearchSessions()).rejects.toThrow(
+      'No LSP profiles are currently configured.'
+    );
+    expect(
+      sessionRecords.get('typescript')?.startMock
+    ).not.toHaveBeenCalled();
+  });
+
+  it('still starts the explicit direct-command profile for search in run mode', async () => {
+    const manager = createLspManager();
+    await manager.configureForRun({
+      command: 'run',
+      workspace: workspacePath,
+      directCommand: {
+        commandName: 'direct-lsp',
+        commandArgs: ['--stdio'],
+      },
+    } as RunCommandArgs);
+
+    const sessions = await manager.getSearchSessions();
+
+    expect(sessions.map((session) => session.getProfile().name)).toEqual([
+      'direct-command',
+    ]);
+    expect(
+      sessionRecords.get('direct-command')?.startMock
+    ).toHaveBeenCalledTimes(1);
   });
 
   it('reports untouched configured profiles as not_started', async () => {

@@ -552,21 +552,21 @@ export async function rename(
             params
           );
 
-          if (
-            !workspaceEdit ||
-            typeof workspaceEdit !== 'object' ||
-            !('changes' in workspaceEdit) ||
-            !workspaceEdit.changes
-          ) {
+          if (!workspaceEdit || typeof workspaceEdit !== 'object') {
             return {};
           }
 
           // Transform LSP WorkspaceEdit response to our format
           const changes: RenameResult = {};
-          const workspaceChanges = workspaceEdit.changes;
 
-          for (const [fileUri, edits] of Object.entries(workspaceChanges)) {
-            changes[fileUri] = edits.map((edit) => ({
+          const addEdits = (
+            fileUri: string,
+            edits: Array<{
+              range: Range;
+              newText: string;
+            }>
+          ) => {
+            const fileChanges = edits.map((edit) => ({
               range: edit.range,
               newText: edit.newText,
               // Convert positions back to 1-based for user display
@@ -575,6 +575,50 @@ export async function rename(
               endLine: edit.range.end.line + 1,
               endCharacter: edit.range.end.character + 1,
             }));
+
+            changes[fileUri] = [...(changes[fileUri] || []), ...fileChanges];
+          };
+
+          if ('changes' in workspaceEdit && workspaceEdit.changes) {
+            for (const [fileUri, edits] of Object.entries(workspaceEdit.changes)) {
+              addEdits(fileUri, edits);
+            }
+          }
+
+          if (
+            'documentChanges' in workspaceEdit &&
+            Array.isArray(workspaceEdit.documentChanges)
+          ) {
+            for (const change of workspaceEdit.documentChanges) {
+              if (!change || typeof change !== 'object') {
+                continue;
+              }
+
+              if (!('textDocument' in change) || !('edits' in change)) {
+                continue;
+              }
+
+              const fileUri = change.textDocument?.uri;
+              const edits = Array.isArray(change.edits) ? change.edits : [];
+              if (!fileUri || edits.length === 0) {
+                continue;
+              }
+
+              addEdits(fileUri, edits);
+            }
+          }
+
+          if (Object.keys(changes).length === 0) {
+            logger.info('Rename returned no file edits', {
+              hasChanges:
+                'changes' in workspaceEdit &&
+                !!workspaceEdit.changes &&
+                Object.keys(workspaceEdit.changes).length > 0,
+              hasDocumentChanges:
+                'documentChanges' in workspaceEdit &&
+                Array.isArray(workspaceEdit.documentChanges) &&
+                workspaceEdit.documentChanges.length > 0,
+            });
           }
 
           return changes;

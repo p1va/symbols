@@ -369,6 +369,59 @@ describe('LSP operations', () => {
     });
   });
 
+  it('rename also handles WorkspaceEdit.documentChanges responses', async () => {
+    const { session } = createMockSession({
+      requestImpl: () =>
+        Promise.resolve({
+          documentChanges: [
+            {
+              textDocument: {
+                uri: TEST_URI,
+                version: 1,
+              },
+              edits: [
+                {
+                  range: {
+                    start: { line: 1, character: 2 },
+                    end: { line: 1, character: 6 },
+                  },
+                  newText: 'Renamed',
+                },
+              ],
+            },
+          ],
+        }),
+    });
+
+    const result = await rename(session, {
+      filePath: TEST_FILE_PATH,
+      position: createOneBasedPosition(2, 3),
+      lspPosition: { line: 1, character: 2 },
+      newName: 'Renamed',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data.result).toEqual({
+      [TEST_URI]: [
+        {
+          range: {
+            start: { line: 1, character: 2 },
+            end: { line: 1, character: 6 },
+          },
+          newText: 'Renamed',
+          startLine: 2,
+          startCharacter: 3,
+          endLine: 2,
+          endCharacter: 7,
+        },
+      ],
+    });
+  });
+
   it('logs returns messages from the window log store', () => {
     const messages: LogMessage[] = [
       { type: 1, message: 'Error' },
