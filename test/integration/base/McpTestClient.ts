@@ -368,8 +368,4 @@ export class McpTestClient {
   ): Promise<ToolCallResult> {
     return this.callTool('rename', { ...position, newName });
   }
-
-  async getLogs(): Promise<ToolCallResult> {
-    return this.callTool('logs', {});
-  }
 }

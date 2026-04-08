@@ -15,17 +15,14 @@ The server offers a minimal set of tools, resources and skills intended to be si
 
 ### Tools
 
-- **`Request`**:
-  - **`outline`**: returns an outline of code symbols in a file, optionally with a small code snippet
-  - **`inspect`**: returns docs, signature, declaration, and implementation locations for a symbol, including third-party symbols
-  - **`search`**: returns matching symbols across the codebase
-  - **`references`**: finds all references of a symbol across the codebase
-  - **`rename`**: renames all references of a symbol across the codebase
-  - **`diagnostics`**: returns active diagnostics in a given file
-  - **`completion`**: returns contextual completions at a given location
-
-- **`Control`**:
-  - **`setup`**: reloads the effective config and reapplies it to currently running language servers
+- **`outline`**: returns an outline of code symbols in a file, optionally with a small code snippet
+- **`inspect`**: returns docs, signature, declaration, and implementation locations for a symbol, including third-party symbols
+- **`search`**: returns matching symbols across the codebase
+- **`references`**: finds all references of a symbol across the codebase
+- **`rename`**: renames all references of a symbol across the codebase
+- **`diagnostics`**: returns active diagnostics in a given file
+- **`completion`**: returns contextual completions at a given location
+- **`setup`**: reloads the effective config and reapplies it to currently running language servers
 
 ### Resources
 

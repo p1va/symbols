@@ -51,15 +51,6 @@ export const renameSchema = {
     .describe('Replacement name to use for the symbol at the given position.'),
 } as const;
 
-export const logsSchema = {
-  profile: z
-    .string()
-    .optional()
-    .describe(
-      'Optional LSP profile name. When provided, only logs for that profile are returned.'
-    ),
-} as const;
-
 export const setupSchema = {
   action: z
     .enum(['reload'])

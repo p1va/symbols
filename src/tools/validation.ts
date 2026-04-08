@@ -6,7 +6,6 @@ import { z } from 'zod';
 import {
   diagnosticsSchema,
   fileSchema,
-  logsSchema,
   renameSchema,
   searchSchema,
   setupSchema,
@@ -18,7 +17,6 @@ const symbolPositionZodSchema = z.object(symbolPositionSchema);
 const fileZodSchema = z.object(fileSchema);
 const searchZodSchema = z.object(searchSchema);
 const renameZodSchema = z.object(renameSchema);
-const logsZodSchema = z.object(logsSchema);
 const setupZodSchema = z.object(setupSchema);
 const diagnosticsZodSchema = z.object(diagnosticsSchema);
 
@@ -27,7 +25,6 @@ type SymbolPositionRequest = z.infer<typeof symbolPositionZodSchema>;
 type FileRequest = z.infer<typeof fileZodSchema>;
 type SearchRequest = z.infer<typeof searchZodSchema>;
 type RenameRequest = z.infer<typeof renameZodSchema>;
-type LogsRequest = z.infer<typeof logsZodSchema>;
 type SetupRequest = z.infer<typeof setupZodSchema>;
 type DiagnosticsRequest = z.infer<typeof diagnosticsZodSchema>;
 
@@ -59,13 +56,6 @@ export function validateSearch(request: unknown): SearchRequest {
  */
 export function validateRename(request: unknown): RenameRequest {
   return renameZodSchema.parse(request);
-}
-
-/**
- * Validates and parses log arguments
- */
-export function validateLogs(request: unknown): LogsRequest {
-  return logsZodSchema.parse(request);
 }
 
 /**

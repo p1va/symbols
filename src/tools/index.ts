@@ -8,7 +8,6 @@ import type { LspManager } from '../runtime/lsp-manager.js';
 import { registerInspectTool } from './inspect.js';
 import { registerReferencesTool } from './references.js';
 import { registerCompletionTool } from './completion.js';
-import { registerWindowLogsTool } from './logs.js';
 import { registerRenameTool } from './rename.js';
 import { registerSearchTool } from './search.js';
 import { registerOutlineTool } from './outline.js';
@@ -23,7 +22,6 @@ export function registerAllTools(server: McpServer, manager: LspManager) {
   registerInspectTool(server, manager);
   registerReferencesTool(server, manager);
   registerCompletionTool(server, manager);
-  registerWindowLogsTool(server, manager);
   registerRenameTool(server, manager);
   registerSearchTool(server, manager);
   registerOutlineTool(server, manager);

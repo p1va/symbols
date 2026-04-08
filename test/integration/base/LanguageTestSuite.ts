@@ -97,7 +97,7 @@ export abstract class LanguageTestSuite {
   protected addCommonTests(): void {
     test('Should list all tools', async () => {
       const tools = await this.client.listTools();
-      const expectedCount = this.config.expectedToolCount || 9;
+      const expectedCount = this.config.expectedToolCount || 8;
 
       expect(tools).toHaveLength(expectedCount);
       expect(tools.map((t) => t.name)).toContain('setup');
@@ -108,7 +108,6 @@ export abstract class LanguageTestSuite {
       expect(tools.map((t) => t.name)).toContain('completion');
       expect(tools.map((t) => t.name)).toContain('search');
       expect(tools.map((t) => t.name)).toContain('rename');
-      expect(tools.map((t) => t.name)).toContain('logs');
     });
 
     test('Should read file symbols', async () => {
@@ -213,13 +212,6 @@ export abstract class LanguageTestSuite {
         expect(Array.isArray(result.content)).toBe(true);
       });
     }
-
-    test('Should get logs', async () => {
-      const result = await this.client.getLogs();
-
-      expect(result.isError).toBe(false);
-      expect(result.content).toBeDefined();
-    });
   }
 
   /**
