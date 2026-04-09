@@ -22,6 +22,7 @@ The MCP server provides the following tools:
 - Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__outline`
 - **`mcp__symbols__completion`**: suggests a list of completions
 - Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
+- Use **`mcp__symbols__call_hierarchy`** when you need incoming or outgoing call relationships for a callable symbol
 - Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase
 - Use **`mcp__symbols__diagnostics`** to retrieve active diagnostics for a given document
 
@@ -35,9 +36,9 @@ The MCP server provides the following tools:
 
 ### 2. **Tools Layer** (`src/tools/`)
 
-- **Tool Registration**: `src/tools/index.ts` - Registers all 8 MCP tools
+- **Tool Registration**: `src/tools/index.ts` - Registers all 9 MCP tools
 - **Individual Tools**: Each tool has its own file with registration and formatting logic
-- **Tool Types**: read, inspect, search, references, completion, rename, diagnostics, logs
+- **Tool Types**: outline, inspect, search, references, call_hierarchy, completion, rename, diagnostics, logs
 
 ### 3. **LSP Operations** (`src/lsp/operations/`)
 
@@ -49,16 +50,17 @@ The MCP server provides the following tools:
 - **Stores**: `src/state/stores.ts` - DiagnosticsStore, WindowLogStore, WorkspaceState
 - **Coordination**: `src/state/index.ts` - State management coordination
 
-## The 8 MCP Tools (✅ Implemented)
+## The 9 MCP Tools (✅ Implemented)
 
 1. **`outline`** - Get an outline of document symbols
 2. **`inspect`** - Comprehensive symbol info (hover + all navigation)
 3. **`references`** - Find all uses of a symbol across the codebase
-4. **`completion`** - Code completion suggestions at cursor position
-5. **`search`** - Search symbols across workspace by query
-6. **`rename`** - Rename symbol across entire codebase
-7. **`diagnostics`** - Get errors/warnings for a file
-8. **`logs`** - Access LSP server log messages
+4. **`call_hierarchy`** - Inspect incoming and outgoing call relationships
+5. **`completion`** - Code completion suggestions at cursor position
+6. **`search`** - Search symbols across workspace by query
+7. **`rename`** - Rename symbol across entire codebase
+8. **`diagnostics`** - Get errors/warnings for a file
+9. **`logs`** - Access LSP server log messages
 
 ## Critical Implementation Details
 
@@ -84,7 +86,7 @@ The MCP server provides the following tools:
 
 ### **Current Development State**
 
-- ✅ **Complete MCP Server Implementation** - All 8 tools fully implemented and working
+- ✅ **Complete MCP Server Implementation** - All 9 tools fully implemented and working
 - ✅ **LSP Communication Layer** - Robust TypeScript LSP client with proper lifecycle management
 - ✅ **3-Tier Symbol Reading** - Sophisticated preview system (none/signature/expanded)
 - ✅ **Type Safety** - Strict TypeScript with comprehensive error handling

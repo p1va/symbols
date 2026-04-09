@@ -154,8 +154,10 @@ export type CallHierarchyDirection = 'incoming' | 'outgoing' | 'both';
 
 export interface CallHierarchyTarget {
   item: CallHierarchyItem;
-  incomingCalls: CallHierarchyIncomingCall[];
-  outgoingCalls: CallHierarchyOutgoingCall[];
+  // Null means this side was intentionally not fetched for the requested
+  // direction. An empty array means it was fetched and no calls were found.
+  incomingCalls: CallHierarchyIncomingCall[] | null;
+  outgoingCalls: CallHierarchyOutgoingCall[] | null;
 }
 
 export interface CallHierarchyResult {

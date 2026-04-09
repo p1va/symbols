@@ -18,13 +18,14 @@ import type {
   CallHierarchyOutgoingCall,
   CallHierarchyResult,
   CallHierarchyTarget,
+  Range,
 } from '../types/lsp.js';
 
 const MAX_TARGETS = 5;
 const MAX_FILES_PER_SECTION = 6;
 const MAX_CALLS_PER_FILE = 5;
-// Keep the total section budget below the per-file ceiling product so broad
-// call graphs stay bounded even when many files contribute a few entries each.
+// Keep the total section budget about 20% below the per-file ceiling product
+// so broad call graphs leave headroom for more files before truncating.
 const MAX_CALLS_PER_SECTION = 24;
 const MAX_CALL_SITES_PER_ENTRY = 6;
 
@@ -147,7 +148,7 @@ function formatCallHierarchyTarget(
     sections.push(
       formatCallSection({
         title: 'Incoming Calls',
-        calls: target.incomingCalls,
+        calls: target.incomingCalls ?? [],
         getItem: (call) => call.from,
         getRanges: (call) => call.fromRanges,
         callSiteLabel: 'calls at',
@@ -159,7 +160,7 @@ function formatCallHierarchyTarget(
     sections.push(
       formatCallSection({
         title: 'Outgoing Calls',
-        calls: target.outgoingCalls,
+        calls: target.outgoingCalls ?? [],
         getItem: (call) => call.to,
         getRanges: (call) => call.fromRanges,
         callSiteLabel: 'called at',
@@ -177,20 +178,22 @@ function formatTargetSummary(
   const parts: string[] = [];
 
   if (direction !== 'outgoing') {
+    const incomingCalls = target.incomingCalls ?? [];
     const incomingFiles = countUniqueFiles(
-      target.incomingCalls.map((call) => call.from.uri)
+      incomingCalls.map((call) => call.from.uri)
     );
     parts.push(
-      `${target.incomingCalls.length} incoming call${target.incomingCalls.length === 1 ? '' : 's'} across ${incomingFiles} file${incomingFiles === 1 ? '' : 's'}`
+      `${incomingCalls.length} incoming call${incomingCalls.length === 1 ? '' : 's'} across ${incomingFiles} file${incomingFiles === 1 ? '' : 's'}`
     );
   }
 
   if (direction !== 'incoming') {
+    const outgoingCalls = target.outgoingCalls ?? [];
     const outgoingFiles = countUniqueFiles(
-      target.outgoingCalls.map((call) => call.to.uri)
+      outgoingCalls.map((call) => call.to.uri)
     );
     parts.push(
-      `${target.outgoingCalls.length} outgoing call${target.outgoingCalls.length === 1 ? '' : 's'} across ${outgoingFiles} file${outgoingFiles === 1 ? '' : 's'}`
+      `${outgoingCalls.length} outgoing call${outgoingCalls.length === 1 ? '' : 's'} across ${outgoingFiles} file${outgoingFiles === 1 ? '' : 's'}`
     );
   }
 
@@ -198,7 +201,7 @@ function formatTargetSummary(
 }
 
 function formatCallHierarchyItem(item: CallHierarchyItem): string {
-  const position = item.selectionRange?.start ?? item.range.start;
+  const position = getCallHierarchyItemStart(item);
   const kind = getSymbolKindName(item.kind);
   const filePath = formatFilePath(item.uri);
   let result = `${item.name} (${kind}) - ${filePath}:${position.line + 1}:${position.character + 1}`;
@@ -220,9 +223,7 @@ function formatCallSection<TCall extends CallSectionEntry>({
   title: string;
   calls: TCall[];
   getItem: (call: TCall) => CallHierarchyItem;
-  getRanges: (
-    call: TCall
-  ) => Array<{ start: { line: number; character: number } }>;
+  getRanges: (call: TCall) => Range[];
   callSiteLabel: string;
 }): string {
   if (calls.length === 0) {
@@ -232,19 +233,22 @@ function formatCallSection<TCall extends CallSectionEntry>({
   const sortedCalls = [...calls].sort((left, right) =>
     compareItems(getItem(left), getItem(right))
   );
-  const byFile = new Map<string, TCall[]>();
+  const byFile = new Map<string, { displayPath: string; calls: TCall[] }>();
 
   for (const call of sortedCalls) {
-    const filePath = formatFilePath(getItem(call).uri);
-    const existing = byFile.get(filePath);
+    const item = getItem(call);
+    const existing = byFile.get(item.uri);
     if (existing) {
-      existing.push(call);
+      existing.calls.push(call);
     } else {
-      byFile.set(filePath, [call]);
+      byFile.set(item.uri, {
+        displayPath: formatFilePath(item.uri),
+        calls: [call],
+      });
     }
   }
 
-  const allFilePaths = Array.from(byFile.keys()).sort((left, right) =>
+  const allFileEntries = Array.from(byFile.entries()).sort(([left], [right]) =>
     left.localeCompare(right)
   );
   const sections: string[] = [];
@@ -252,22 +256,21 @@ function formatCallSection<TCall extends CallSectionEntry>({
   let displayedFiles = 0;
   let remainingCalls = MAX_CALLS_PER_SECTION;
 
-  for (const filePath of allFilePaths) {
+  for (const [, { displayPath, calls: fileCalls }] of allFileEntries) {
     if (displayedFiles >= MAX_FILES_PER_SECTION || remainingCalls === 0) {
       break;
     }
 
-    const fileCalls = byFile.get(filePath) ?? [];
     const displayedFileCalls = fileCalls.slice(
       0,
       Math.min(MAX_CALLS_PER_FILE, remainingCalls)
     );
 
-    sections.push(`${filePath} (${fileCalls.length})`);
+    sections.push(`${displayPath} (${fileCalls.length})`);
 
     for (const call of displayedFileCalls) {
       const item = getItem(call);
-      const position = item.selectionRange?.start ?? item.range.start;
+      const position = getCallHierarchyItemStart(item);
       sections.push(
         `  ${item.name} (${getSymbolKindName(item.kind)}) @${position.line + 1}:${position.character + 1}`
       );
@@ -310,7 +313,7 @@ function formatCallSection<TCall extends CallSectionEntry>({
 }
 
 function formatCallSiteRanges(
-  ranges: Array<{ start: { line: number; character: number } }>
+  ranges: Range[]
 ): string {
   const positions = Array.from(
     new Set(
@@ -331,27 +334,30 @@ function formatCallSiteRanges(
 }
 
 function countUniqueFiles(uris: string[]): number {
-  return new Set(uris.map((uri) => formatFilePath(uri))).size;
+  return new Set(uris).size;
 }
 
 function compareItems(
   left: CallHierarchyItem,
   right: CallHierarchyItem
 ): number {
-  const leftPath = formatFilePath(left.uri);
-  const rightPath = formatFilePath(right.uri);
-  const byPath = leftPath.localeCompare(rightPath);
+  const byPath = left.uri.localeCompare(right.uri);
 
   if (byPath !== 0) {
     return byPath;
   }
 
-  const leftPosition = left.selectionRange?.start ?? left.range.start;
-  const rightPosition = right.selectionRange?.start ?? right.range.start;
+  const leftPosition = getCallHierarchyItemStart(left);
+  const rightPosition = getCallHierarchyItemStart(right);
 
   if (leftPosition.line !== rightPosition.line) {
     return leftPosition.line - rightPosition.line;
   }
 
   return leftPosition.character - rightPosition.character;
+}
+
+function getCallHierarchyItemStart(item: CallHierarchyItem) {
+  // Some servers omit selectionRange despite the LSP spec requiring it.
+  return item.selectionRange?.start ?? item.range.start;
 }

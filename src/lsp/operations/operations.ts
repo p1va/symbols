@@ -57,8 +57,6 @@ import type {
   SessionDocumentScope,
 } from '../../runtime/lsp-session.js';
 
-// The 8 MCP tools we need to implement:
-
 export async function inspectSymbol(
   session: LspSession,
   prepared: PreparedSymbolPositionRequest
@@ -241,18 +239,21 @@ export async function callHierarchy(
             };
           }
 
+          // Language servers typically return only one or two prepared items.
+          // Keep the per-target requests parallel for latency and revisit if we
+          // encounter servers that fan out much more aggressively.
           const targets = await Promise.all(
             preparedItems.map(async (item) => {
               const [incomingCalls, outgoingCalls] = await Promise.all([
                 direction === 'outgoing'
-                  ? Promise.resolve([] as CallHierarchyIncomingCall[])
+                  ? Promise.resolve(null as CallHierarchyIncomingCall[] | null)
                   : scope
                       .request<
                         CallHierarchyIncomingCall[] | null
                       >('callHierarchy/incomingCalls', { item })
                       .then((calls) => (Array.isArray(calls) ? calls : [])),
                 direction === 'incoming'
-                  ? Promise.resolve([] as CallHierarchyOutgoingCall[])
+                  ? Promise.resolve(null as CallHierarchyOutgoingCall[] | null)
                   : scope
                       .request<
                         CallHierarchyOutgoingCall[] | null
