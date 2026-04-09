@@ -87,11 +87,20 @@ class TypeScriptTestSuite extends LanguageTestSuite {
 
           const output = Array.isArray(result.content)
             ? result.content
-                .map((item) =>
-                  typeof item === 'object' && item && 'text' in item
-                    ? String(item.text)
-                    : JSON.stringify(item)
-                )
+                .map((item) => {
+                  if (typeof item === 'string') {
+                    return item;
+                  }
+
+                  if (item && typeof item === 'object') {
+                    const text = (item as { text?: unknown }).text;
+                    if (typeof text === 'string') {
+                      return text;
+                    }
+                  }
+
+                  return JSON.stringify(item);
+                })
                 .join('\n')
             : JSON.stringify(result.content);
 

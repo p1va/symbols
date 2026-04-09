@@ -263,10 +263,6 @@ function formatCallSection<TCall extends CallSectionEntry>({
       Math.min(MAX_CALLS_PER_FILE, remainingCalls)
     );
 
-    if (displayedFileCalls.length === 0) {
-      break;
-    }
-
     sections.push(`${filePath} (${fileCalls.length})`);
 
     for (const call of displayedFileCalls) {
