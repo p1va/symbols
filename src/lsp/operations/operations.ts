@@ -246,14 +246,14 @@ export async function callHierarchy(
             preparedItems.map(async (item) => {
               const [incomingCalls, outgoingCalls] = await Promise.all([
                 direction === 'outgoing'
-                  ? Promise.resolve(null as CallHierarchyIncomingCall[] | null)
+                  ? Promise.resolve<CallHierarchyIncomingCall[] | null>(null)
                   : scope
                       .request<
                         CallHierarchyIncomingCall[] | null
                       >('callHierarchy/incomingCalls', { item })
                       .then((calls) => (Array.isArray(calls) ? calls : [])),
                 direction === 'incoming'
-                  ? Promise.resolve(null as CallHierarchyOutgoingCall[] | null)
+                  ? Promise.resolve<CallHierarchyOutgoingCall[] | null>(null)
                   : scope
                       .request<
                         CallHierarchyOutgoingCall[] | null

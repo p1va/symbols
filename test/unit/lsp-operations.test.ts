@@ -334,10 +334,13 @@ describe('LSP operations', () => {
       });
 
       expect(result.ok).toBe(true);
-      expect(request).toHaveBeenCalledWith('textDocument/prepareCallHierarchy', {
-        textDocument: { uri: TEST_URI },
-        position: { line: 4, character: 9 },
-      });
+      expect(request).toHaveBeenCalledWith(
+        'textDocument/prepareCallHierarchy',
+        {
+          textDocument: { uri: TEST_URI },
+          position: { line: 4, character: 9 },
+        }
+      );
 
       if (!result.ok) {
         throw new Error('expected call hierarchy result');

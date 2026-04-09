@@ -248,15 +248,11 @@ function formatCallSection<TCall extends CallSectionEntry>({
     }
   }
 
-  const allFileEntries = Array.from(byFile.entries()).sort(([left], [right]) =>
-    left.localeCompare(right)
-  );
   const sections: string[] = [];
-  let displayedCalls = 0;
   let displayedFiles = 0;
   let remainingCalls = MAX_CALLS_PER_SECTION;
 
-  for (const [, { displayPath, calls: fileCalls }] of allFileEntries) {
+  for (const { displayPath, calls: fileCalls } of byFile.values()) {
     if (displayedFiles >= MAX_FILES_PER_SECTION || remainingCalls === 0) {
       break;
     }
@@ -289,10 +285,10 @@ function formatCallSection<TCall extends CallSectionEntry>({
     }
 
     displayedFiles += 1;
-    displayedCalls += displayedFileCalls.length;
     remainingCalls -= displayedFileCalls.length;
   }
 
+  const displayedCalls = MAX_CALLS_PER_SECTION - remainingCalls;
   let header = `${title} (${calls.length} across ${byFile.size} file${byFile.size === 1 ? '' : 's'}`;
   if (displayedCalls < calls.length) {
     header += `, showing ${displayedCalls}`;
@@ -312,9 +308,7 @@ function formatCallSection<TCall extends CallSectionEntry>({
   return [header, ...sections].join('\n');
 }
 
-function formatCallSiteRanges(
-  ranges: Range[]
-): string {
+function formatCallSiteRanges(ranges: Range[]): string {
   const positions = Array.from(
     new Set(
       ranges.map(
