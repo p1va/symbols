@@ -39,6 +39,9 @@ import type {
 
   // Response types
   Hover,
+  CallHierarchyItem,
+  CallHierarchyIncomingCall,
+  CallHierarchyOutgoingCall,
 
   // Notification parameter types
   DidOpenTextDocumentParams,
@@ -87,6 +90,9 @@ export type {
   RenameParams,
   WorkspaceEdit,
   Hover,
+  CallHierarchyItem,
+  CallHierarchyIncomingCall,
+  CallHierarchyOutgoingCall,
   DidOpenTextDocumentParams,
   DidCloseTextDocumentParams,
   DidChangeTextDocumentParams,
@@ -142,6 +148,21 @@ export interface SymbolInspection {
   definition: Location | Location[] | null;
   typeDefinition: Location | Location[] | null;
   implementation: Location | Location[] | null;
+}
+
+export type CallHierarchyDirection = 'incoming' | 'outgoing' | 'both';
+
+export interface CallHierarchyTarget {
+  item: CallHierarchyItem;
+  // Null means this side was intentionally not fetched for the requested
+  // direction. An empty array means it was fetched and no calls were found.
+  incomingCalls: CallHierarchyIncomingCall[] | null;
+  outgoingCalls: CallHierarchyOutgoingCall[] | null;
+}
+
+export interface CallHierarchyResult {
+  direction: CallHierarchyDirection;
+  targets: CallHierarchyTarget[];
 }
 
 /** Completion result item */

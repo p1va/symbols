@@ -6,11 +6,7 @@
   "mcpServers": {
     "language-servers": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@p1va/symbols@latest",
-        "start"
-      ]
+      "args": ["-y", "@p1va/symbols@latest", "start"]
     }
   }
 }

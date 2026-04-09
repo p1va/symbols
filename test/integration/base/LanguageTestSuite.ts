@@ -97,7 +97,7 @@ export abstract class LanguageTestSuite {
   protected addCommonTests(): void {
     test('Should list all tools', async () => {
       const tools = await this.client.listTools();
-      const expectedCount = this.config.expectedToolCount || 8;
+      const expectedCount = this.config.expectedToolCount || 9;
 
       expect(tools).toHaveLength(expectedCount);
       expect(tools.map((t) => t.name)).toContain('reload');
@@ -105,6 +105,7 @@ export abstract class LanguageTestSuite {
       expect(tools.map((t) => t.name)).toContain('diagnostics');
       expect(tools.map((t) => t.name)).toContain('outline');
       expect(tools.map((t) => t.name)).toContain('references');
+      expect(tools.map((t) => t.name)).toContain('call_hierarchy');
       expect(tools.map((t) => t.name)).toContain('completion');
       expect(tools.map((t) => t.name)).toContain('search');
       expect(tools.map((t) => t.name)).toContain('rename');

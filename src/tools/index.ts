@@ -7,6 +7,7 @@ import type { LspManager } from '../runtime/lsp-manager.js';
 
 import { registerInspectTool } from './inspect.js';
 import { registerReferencesTool } from './references.js';
+import { registerCallHierarchyTool } from './call-hierarchy.js';
 import { registerCompletionTool } from './completion.js';
 import { registerRenameTool } from './rename.js';
 import { registerSearchTool } from './search.js';
@@ -21,6 +22,7 @@ export function registerAllTools(server: McpServer, manager: LspManager) {
   registerReloadTool(server, manager);
   registerInspectTool(server, manager);
   registerReferencesTool(server, manager);
+  registerCallHierarchyTool(server, manager);
   registerCompletionTool(server, manager);
   registerRenameTool(server, manager);
   registerSearchTool(server, manager);

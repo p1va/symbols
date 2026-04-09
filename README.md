@@ -16,9 +16,10 @@ The server offers a minimal set of tools, resources and skills intended to be si
 ### Tools
 
 - **`outline`**: returns an outline of code symbols in a file, optionally with a small code snippet
-- **`inspect`**: returns docs, signature, declaration, and implementation locations for a symbol, including third-party symbols
+- **`inspect`**: returns docs, declaration and implementation locations for a symbol, including third-party ones
 - **`search`**: returns matching symbols across the codebase
 - **`references`**: finds all references of a symbol across the codebase
+- **`call_hierarchy`**: returns incoming and outgoing call relationships for a callable symbol
 - **`rename`**: renames all references of a symbol across the codebase
 - **`diagnostics`**: returns active diagnostics in a given file
 - **`completion`**: returns contextual completions at a given location

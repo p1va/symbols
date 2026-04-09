@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  callHierarchy,
   completion,
   findReferences,
   getDiagnostics,
@@ -213,6 +214,287 @@ describe('LSP operations', () => {
       position: { line: 2, character: 3 },
       context: { includeDeclaration: true },
     });
+  });
+
+  describe('callHierarchy', () => {
+    it('prepares call hierarchy items and resolves incoming/outgoing calls for each target', async () => {
+      const preparedItems = [
+        {
+          name: 'firstTarget',
+          kind: 12,
+          uri: TEST_URI,
+          range: {
+            start: { line: 4, character: 2 },
+            end: { line: 7, character: 1 },
+          },
+          selectionRange: {
+            start: { line: 4, character: 9 },
+            end: { line: 4, character: 20 },
+          },
+        },
+        {
+          name: 'secondTarget',
+          kind: 12,
+          uri: TEST_URI,
+          range: {
+            start: { line: 9, character: 2 },
+            end: { line: 12, character: 1 },
+          },
+          selectionRange: {
+            start: { line: 9, character: 9 },
+            end: { line: 9, character: 21 },
+          },
+        },
+      ];
+
+      const { session, request } = createMockSession({
+        requestImpl: (method, params) => {
+          if (method === 'textDocument/prepareCallHierarchy') {
+            return Promise.resolve(preparedItems);
+          }
+
+          if (method === 'callHierarchy/incomingCalls') {
+            const item =
+              params && typeof params === 'object' && 'item' in params
+                ? params.item
+                : null;
+            const name =
+              item && typeof item === 'object' && 'name' in item
+                ? String(item.name)
+                : 'unknown';
+
+            return Promise.resolve([
+              {
+                from: {
+                  name: `${name}Caller`,
+                  kind: 12,
+                  uri: TEST_URI,
+                  range: {
+                    start: { line: 1, character: 0 },
+                    end: { line: 3, character: 1 },
+                  },
+                  selectionRange: {
+                    start: { line: 1, character: 9 },
+                    end: { line: 1, character: 20 },
+                  },
+                },
+                fromRanges: [
+                  {
+                    start: { line: 2, character: 4 },
+                    end: { line: 2, character: 15 },
+                  },
+                ],
+              },
+            ]);
+          }
+
+          if (method === 'callHierarchy/outgoingCalls') {
+            const item =
+              params && typeof params === 'object' && 'item' in params
+                ? params.item
+                : null;
+            const name =
+              item && typeof item === 'object' && 'name' in item
+                ? String(item.name)
+                : 'unknown';
+
+            return Promise.resolve([
+              {
+                to: {
+                  name: `${name}Callee`,
+                  kind: 12,
+                  uri: TEST_URI,
+                  range: {
+                    start: { line: 20, character: 0 },
+                    end: { line: 24, character: 1 },
+                  },
+                  selectionRange: {
+                    start: { line: 20, character: 9 },
+                    end: { line: 20, character: 20 },
+                  },
+                },
+                fromRanges: [
+                  {
+                    start: { line: 5, character: 6 },
+                    end: { line: 5, character: 18 },
+                  },
+                ],
+              },
+            ]);
+          }
+
+          return Promise.reject(new Error(`unexpected method ${method}`));
+        },
+      });
+
+      const result = await callHierarchy(session, {
+        filePath: TEST_FILE_PATH,
+        position: createOneBasedPosition(5, 10),
+        lspPosition: { line: 4, character: 9 },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(request).toHaveBeenCalledWith(
+        'textDocument/prepareCallHierarchy',
+        {
+          textDocument: { uri: TEST_URI },
+          position: { line: 4, character: 9 },
+        }
+      );
+
+      if (!result.ok) {
+        throw new Error('expected call hierarchy result');
+      }
+
+      expect(result.data.result.direction).toBe('both');
+      expect(result.data.result.targets).toHaveLength(2);
+      expect(result.data.result.targets[0]?.incomingCalls).toHaveLength(1);
+      expect(result.data.result.targets[0]?.outgoingCalls).toHaveLength(1);
+      expect(request).toHaveBeenCalledTimes(5);
+    });
+
+    it('skips outgoing requests when direction is incoming', async () => {
+      const { session, request } = createMockSession({
+        requestImpl: (method) => {
+          if (method === 'textDocument/prepareCallHierarchy') {
+            return Promise.resolve([
+              {
+                name: 'target',
+                kind: 12,
+                uri: TEST_URI,
+                range: {
+                  start: { line: 4, character: 2 },
+                  end: { line: 7, character: 1 },
+                },
+                selectionRange: {
+                  start: { line: 4, character: 9 },
+                  end: { line: 4, character: 20 },
+                },
+              },
+            ]);
+          }
+
+          if (method === 'callHierarchy/incomingCalls') {
+            return Promise.resolve([]);
+          }
+
+          return Promise.reject(new Error(`unexpected method ${method}`));
+        },
+      });
+
+      const result = await callHierarchy(
+        session,
+        {
+          filePath: TEST_FILE_PATH,
+          position: createOneBasedPosition(5, 10),
+          lspPosition: { line: 4, character: 9 },
+        },
+        'incoming'
+      );
+
+      expect(result.ok).toBe(true);
+
+      if (!result.ok) {
+        throw new Error('expected call hierarchy result');
+      }
+
+      expect(result.data.result.direction).toBe('incoming');
+      expect(result.data.result.targets).toHaveLength(1);
+      expect(result.data.result.targets[0]?.incomingCalls).toEqual([]);
+      expect(result.data.result.targets[0]?.outgoingCalls).toBeNull();
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(request).not.toHaveBeenCalledWith(
+        'callHierarchy/outgoingCalls',
+        expect.anything()
+      );
+    });
+
+    it('skips incoming requests when direction is outgoing', async () => {
+      const { session, request } = createMockSession({
+        requestImpl: (method) => {
+          if (method === 'textDocument/prepareCallHierarchy') {
+            return Promise.resolve([
+              {
+                name: 'target',
+                kind: 12,
+                uri: TEST_URI,
+                range: {
+                  start: { line: 4, character: 2 },
+                  end: { line: 7, character: 1 },
+                },
+                selectionRange: {
+                  start: { line: 4, character: 9 },
+                  end: { line: 4, character: 20 },
+                },
+              },
+            ]);
+          }
+
+          if (method === 'callHierarchy/outgoingCalls') {
+            return Promise.resolve([]);
+          }
+
+          return Promise.reject(new Error(`unexpected method ${method}`));
+        },
+      });
+
+      const result = await callHierarchy(
+        session,
+        {
+          filePath: TEST_FILE_PATH,
+          position: createOneBasedPosition(5, 10),
+          lspPosition: { line: 4, character: 9 },
+        },
+        'outgoing'
+      );
+
+      expect(result.ok).toBe(true);
+
+      if (!result.ok) {
+        throw new Error('expected call hierarchy result');
+      }
+
+      expect(result.data.result.direction).toBe('outgoing');
+      expect(result.data.result.targets).toHaveLength(1);
+      expect(result.data.result.targets[0]?.incomingCalls).toBeNull();
+      expect(result.data.result.targets[0]?.outgoingCalls).toEqual([]);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(request).not.toHaveBeenCalledWith(
+        'callHierarchy/incomingCalls',
+        expect.anything()
+      );
+    });
+
+    it.each<[null | []]>([[null], [[]]])(
+      'returns no targets when prepareCallHierarchy returns %p',
+      async (preparedItems) => {
+        const { session, request } = createMockSession({
+          requestImpl: (method) => {
+            if (method === 'textDocument/prepareCallHierarchy') {
+              return Promise.resolve(preparedItems);
+            }
+
+            return Promise.reject(new Error(`unexpected method ${method}`));
+          },
+        });
+
+        const result = await callHierarchy(session, {
+          filePath: TEST_FILE_PATH,
+          position: createOneBasedPosition(5, 10),
+          lspPosition: { line: 4, character: 9 },
+        });
+
+        expect(result.ok).toBe(true);
+
+        if (!result.ok) {
+          throw new Error('expected call hierarchy result');
+        }
+
+        expect(result.data.result.direction).toBe('both');
+        expect(result.data.result.targets).toEqual([]);
+        expect(request).toHaveBeenCalledTimes(1);
+      }
+    );
   });
 
   it('completion handles CompletionList responses through the scoped request API', async () => {
