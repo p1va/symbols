@@ -10,6 +10,7 @@ import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
+import { createSignaturePreview, enrichSymbolsWithCode } from './enrichment.js';
 import { formatFilePath, getSymbolKindName } from './utils.js';
 import type {
   CallHierarchyDirection,
@@ -86,7 +87,7 @@ export function registerCallHierarchyTool(
         sections.push(formatCursorContext(cursorContext));
       }
 
-      sections.push(formatCallHierarchyResult(result.data.result));
+      sections.push(await formatCallHierarchyResult(result.data.result));
 
       return {
         content: [
@@ -100,7 +101,9 @@ export function registerCallHierarchyTool(
   );
 }
 
-function formatCallHierarchyResult(result: CallHierarchyResult): string {
+async function formatCallHierarchyResult(
+  result: CallHierarchyResult
+): Promise<string> {
   if (result.targets.length === 0) {
     return 'No call hierarchy item found at this position';
   }
@@ -117,11 +120,13 @@ function formatCallHierarchyResult(result: CallHierarchyResult): string {
 
   const sections = [
     `${header}.`,
-    displayedTargets
-      .map((target, index) =>
-        formatCallHierarchyTarget(target, result.direction, index)
+    (
+      await Promise.all(
+        displayedTargets.map((target, index) =>
+          formatCallHierarchyTarget(target, result.direction, index)
+        )
       )
-      .join('\n\n'),
+    ).join('\n\n'),
   ];
 
   const omittedTargets = result.targets.length - displayedTargets.length;
@@ -134,11 +139,11 @@ function formatCallHierarchyResult(result: CallHierarchyResult): string {
   return sections.join('\n\n');
 }
 
-function formatCallHierarchyTarget(
+async function formatCallHierarchyTarget(
   target: CallHierarchyTarget,
   direction: CallHierarchyDirection,
   index: number
-): string {
+): Promise<string> {
   const sections = [
     `Target ${index + 1}: ${formatCallHierarchyItem(target.item)}`,
     formatTargetSummary(target, direction),
@@ -146,7 +151,7 @@ function formatCallHierarchyTarget(
 
   if (direction !== 'outgoing') {
     sections.push(
-      formatCallSection({
+      await formatCallSection({
         title: 'Incoming Calls',
         calls: target.incomingCalls ?? [],
         getItem: (call) => call.from,
@@ -158,7 +163,7 @@ function formatCallHierarchyTarget(
 
   if (direction !== 'incoming') {
     sections.push(
-      formatCallSection({
+      await formatCallSection({
         title: 'Outgoing Calls',
         calls: target.outgoingCalls ?? [],
         getItem: (call) => call.to,
@@ -213,7 +218,7 @@ function formatCallHierarchyItem(item: CallHierarchyItem): string {
   return result;
 }
 
-function formatCallSection<TCall extends CallSectionEntry>({
+async function formatCallSection<TCall extends CallSectionEntry>({
   title,
   calls,
   getItem,
@@ -225,7 +230,7 @@ function formatCallSection<TCall extends CallSectionEntry>({
   getItem: (call: TCall) => CallHierarchyItem;
   getRanges: (call: TCall) => Range[];
   callSiteLabel: string;
-}): string {
+}): Promise<string> {
   if (calls.length === 0) {
     return `${title}\nNone`;
   }
@@ -251,6 +256,7 @@ function formatCallSection<TCall extends CallSectionEntry>({
   const sections: string[] = [];
   let displayedFiles = 0;
   let remainingCalls = MAX_CALLS_PER_SECTION;
+  const displayedCalls: TCall[] = [];
 
   for (const { displayPath, calls: fileCalls } of byFile.values()) {
     if (displayedFiles >= MAX_FILES_PER_SECTION || remainingCalls === 0) {
@@ -261,8 +267,15 @@ function formatCallSection<TCall extends CallSectionEntry>({
       0,
       Math.min(MAX_CALLS_PER_FILE, remainingCalls)
     );
+    displayedCalls.push(...displayedFileCalls);
 
     sections.push(`${displayPath} (${fileCalls.length})`);
+
+    const previews = await getCallPreviewMap(
+      displayedFileCalls,
+      getItem,
+      getRanges
+    );
 
     for (const call of displayedFileCalls) {
       const item = getItem(call);
@@ -274,6 +287,13 @@ function formatCallSection<TCall extends CallSectionEntry>({
       const ranges = getRanges(call);
       if (ranges.length > 0) {
         sections.push(`    ${callSiteLabel}: ${formatCallSiteRanges(ranges)}`);
+      }
+
+      const preview = previews.get(call);
+      if (preview?.text) {
+        sections.push(`    \`${preview.text}\``);
+      } else if (preview?.error) {
+        sections.push(`    // ${preview.error}`);
       }
     }
 
@@ -288,14 +308,13 @@ function formatCallSection<TCall extends CallSectionEntry>({
     remainingCalls -= displayedFileCalls.length;
   }
 
-  const displayedCalls = MAX_CALLS_PER_SECTION - remainingCalls;
   let header = `${title} (${calls.length} across ${byFile.size} file${byFile.size === 1 ? '' : 's'}`;
-  if (displayedCalls < calls.length) {
-    header += `, showing ${displayedCalls}`;
+  if (displayedCalls.length < calls.length) {
+    header += `, showing ${displayedCalls.length}`;
   }
   header += ')';
 
-  const omittedCalls = calls.length - displayedCalls;
+  const omittedCalls = calls.length - displayedCalls.length;
   if (omittedCalls > 0) {
     const omittedFiles = byFile.size - displayedFiles;
     let omissionSummary = `... ${omittedCalls} more call${omittedCalls === 1 ? '' : 's'} not shown`;
@@ -325,6 +344,72 @@ function formatCallSiteRanges(ranges: Range[]): string {
   }
 
   return result;
+}
+
+async function getCallPreviewMap<TCall extends CallSectionEntry>(
+  calls: TCall[],
+  getItem: (call: TCall) => CallHierarchyItem,
+  getRanges: (call: TCall) => Range[]
+): Promise<Map<TCall, { text?: string; error?: string }>> {
+  const previewRequests: Array<{ call: TCall; uri: string; range: Range }> = [];
+
+  for (const call of calls) {
+    const item = getItem(call);
+    const firstRange = getRanges(call)[0];
+    if (!firstRange) {
+      continue;
+    }
+
+    previewRequests.push({
+      call,
+      uri: item.uri,
+      range: expandRangeToWholeLine(firstRange),
+    });
+  }
+
+  const previewMap = new Map<TCall, { text?: string; error?: string }>();
+  if (previewRequests.length === 0) {
+    return previewMap;
+  }
+
+  const enrichmentResults = await enrichSymbolsWithCode(
+    previewRequests.map(({ uri, range }) => ({ uri, range }))
+  );
+
+  enrichmentResults.forEach((result, index) => {
+    const previewRequest = previewRequests[index];
+    if (!previewRequest) {
+      return;
+    }
+
+    if (result.codeSnippet) {
+      previewMap.set(previewRequest.call, {
+        text: createSignaturePreview(result.codeSnippet.trim(), 100),
+      });
+      return;
+    }
+
+    if (result.error) {
+      previewMap.set(previewRequest.call, {
+        error: result.error,
+      });
+    }
+  });
+
+  return previewMap;
+}
+
+function expandRangeToWholeLine(range: Range): Range {
+  return {
+    start: {
+      line: range.start.line,
+      character: 0,
+    },
+    end: {
+      line: range.start.line,
+      character: 1000,
+    },
+  };
 }
 
 function countUniqueFiles(uris: string[]): number {
