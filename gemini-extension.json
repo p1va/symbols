@@ -1,12 +1,16 @@
 {
   "name": "Symbols",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "Connects to a language server of choice (Typescript, Python, Go, Rust, C#...) and enable semantic code navigation.",
   "contextFileName": "GEMINI.md",
   "mcpServers": {
     "language-servers": {
       "command": "npx",
-      "args": ["-y", "@p1va/symbols@latest", "start"]
+      "args": [
+        "-y",
+        "@p1va/symbols@latest",
+        "start"
+      ]
     }
   }
 }
