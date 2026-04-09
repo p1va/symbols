@@ -102,6 +102,21 @@ class TypeScriptTestSuite extends LanguageTestSuite {
           this.assertSymbolExists(result, 'main');
         });
 
+        test('Should get TypeScript outgoing call hierarchy for function', async () => {
+          const position = {
+            file: this.getMainFilePath(),
+            line: 8, // export function main(): void {
+            character: 17, // on "main"
+          };
+          const result = await this.client.getCallHierarchy(
+            position,
+            'outgoing'
+          );
+
+          this.assertToolResult(result, 'Outgoing Calls');
+          this.assertSymbolExists(result, 'main');
+        });
+
         test('Should inspect TypeScript interface', async () => {
           const position = {
             file: this.getMainFilePath(),
