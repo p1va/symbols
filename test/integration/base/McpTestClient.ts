@@ -331,6 +331,14 @@ export class McpTestClient {
     return this.callTool('references', { ...position }, debug);
   }
 
+  async getCallHierarchy(
+    position: SymbolPosition,
+    direction: 'incoming' | 'outgoing' | 'both' = 'both',
+    debug = false
+  ): Promise<ToolCallResult> {
+    return this.callTool('call_hierarchy', { ...position, direction }, debug);
+  }
+
   async getCompletion(
     position: SymbolPosition,
     debug = false

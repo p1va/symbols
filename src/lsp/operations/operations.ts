@@ -1,6 +1,5 @@
 /**
- * Public LspOperations - the 8 MCP tools that correspond to actual MCP functionality
- * These are the only functions exported from this module
+ * Public LspOperations - MCP-backed navigation operations.
  */
 
 import {
@@ -22,6 +21,11 @@ import {
 } from '../../preparation.js';
 import logger from '../../utils/logger.js';
 import {
+  CallHierarchyDirection,
+  CallHierarchyIncomingCall,
+  CallHierarchyItem,
+  CallHierarchyOutgoingCall,
+  CallHierarchyResult,
   CompletionItem,
   CompletionList,
   CompletionParams,
@@ -200,6 +204,79 @@ export async function findReferences(
           createLspError(
             ErrorCode.LSPError,
             `Find references failed: ${error instanceof Error ? error.message : String(error)}`,
+            error instanceof Error ? error : undefined
+          )
+      );
+    }
+  );
+}
+
+export async function callHierarchy(
+  session: LspSession,
+  prepared: PreparedSymbolPositionRequest,
+  direction: CallHierarchyDirection = 'both'
+): Promise<Result<CursorContextOperationResult<CallHierarchyResult>>> {
+  return await session.executeWithCursorContext(
+    'callHierarchy',
+    prepared.filePath,
+    prepared.position,
+    'transient',
+    async (scope) => {
+      return await tryResultAsync(
+        async () => {
+          const positionParams: TextDocumentPositionParams = {
+            textDocument: { uri: scope.uri },
+            position: prepared.lspPosition,
+          };
+
+          const preparedItems = await scope.request<CallHierarchyItem[] | null>(
+            'textDocument/prepareCallHierarchy',
+            positionParams
+          );
+
+          if (!Array.isArray(preparedItems) || preparedItems.length === 0) {
+            return {
+              direction,
+              targets: [],
+            };
+          }
+
+          const targets = await Promise.all(
+            preparedItems.map(async (item) => {
+              const [incomingCalls, outgoingCalls] = await Promise.all([
+                direction === 'outgoing'
+                  ? Promise.resolve([] as CallHierarchyIncomingCall[])
+                  : scope
+                      .request<
+                        CallHierarchyIncomingCall[] | null
+                      >('callHierarchy/incomingCalls', { item })
+                      .then((calls) => (Array.isArray(calls) ? calls : [])),
+                direction === 'incoming'
+                  ? Promise.resolve([] as CallHierarchyOutgoingCall[])
+                  : scope
+                      .request<
+                        CallHierarchyOutgoingCall[] | null
+                      >('callHierarchy/outgoingCalls', { item })
+                      .then((calls) => (Array.isArray(calls) ? calls : [])),
+              ]);
+
+              return {
+                item,
+                incomingCalls,
+                outgoingCalls,
+              };
+            })
+          );
+
+          return {
+            direction,
+            targets,
+          };
+        },
+        (error) =>
+          createLspError(
+            ErrorCode.LSPError,
+            `Call hierarchy failed: ${error instanceof Error ? error.message : String(error)}`,
             error instanceof Error ? error : undefined
           )
       );
@@ -580,7 +657,9 @@ export async function rename(
           };
 
           if ('changes' in workspaceEdit && workspaceEdit.changes) {
-            for (const [fileUri, edits] of Object.entries(workspaceEdit.changes)) {
+            for (const [fileUri, edits] of Object.entries(
+              workspaceEdit.changes
+            )) {
               addEdits(fileUri, edits);
             }
           }

@@ -39,6 +39,9 @@ import type {
 
   // Response types
   Hover,
+  CallHierarchyItem,
+  CallHierarchyIncomingCall,
+  CallHierarchyOutgoingCall,
 
   // Notification parameter types
   DidOpenTextDocumentParams,
@@ -87,6 +90,9 @@ export type {
   RenameParams,
   WorkspaceEdit,
   Hover,
+  CallHierarchyItem,
+  CallHierarchyIncomingCall,
+  CallHierarchyOutgoingCall,
   DidOpenTextDocumentParams,
   DidCloseTextDocumentParams,
   DidChangeTextDocumentParams,
@@ -142,6 +148,19 @@ export interface SymbolInspection {
   definition: Location | Location[] | null;
   typeDefinition: Location | Location[] | null;
   implementation: Location | Location[] | null;
+}
+
+export type CallHierarchyDirection = 'incoming' | 'outgoing' | 'both';
+
+export interface CallHierarchyTarget {
+  item: CallHierarchyItem;
+  incomingCalls: CallHierarchyIncomingCall[];
+  outgoingCalls: CallHierarchyOutgoingCall[];
+}
+
+export interface CallHierarchyResult {
+  direction: CallHierarchyDirection;
+  targets: CallHierarchyTarget[];
 }
 
 /** Completion result item */

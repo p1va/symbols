@@ -24,10 +24,7 @@
     "longDescription": "Use Symbols to configure language servers, inspect runtime state, and navigate code semantically through LSP-backed tools and resources.",
     "developerName": "p1va",
     "category": "Coding",
-    "capabilities": [
-      "Interactive",
-      "Write"
-    ],
+    "capabilities": ["Interactive", "Write"],
     "websiteURL": "https://github.com/p1va/symbols",
     "privacyPolicyURL": "https://github.com/p1va/symbols",
     "termsOfServiceURL": "https://github.com/p1va/symbols",

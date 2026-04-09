@@ -535,7 +535,9 @@ export function createLspManager(): LspManager {
     }
 
     if (mode === 'run') {
-      return [...profiles.values()].map((profile) => getOrCreateSession(profile));
+      return [...profiles.values()].map((profile) =>
+        getOrCreateSession(profile)
+      );
     }
 
     const relevantProfiles = [...profiles.values()].filter((profile) => {

@@ -450,9 +450,7 @@ describe('LspManager routing', () => {
       'csharp',
     ]);
     expect(sessionRecords.get('csharp')?.startMock).toHaveBeenCalledTimes(1);
-    expect(
-      sessionRecords.get('typescript')?.startMock
-    ).not.toHaveBeenCalled();
+    expect(sessionRecords.get('typescript')?.startMock).not.toHaveBeenCalled();
   });
 
   it('starts every profile whose workspace markers match the current workspace', async () => {
@@ -518,9 +516,7 @@ describe('LspManager routing', () => {
     await expect(manager.getSearchSessions()).rejects.toThrow(
       'No LSP profiles are currently configured.'
     );
-    expect(
-      sessionRecords.get('typescript')?.startMock
-    ).not.toHaveBeenCalled();
+    expect(sessionRecords.get('typescript')?.startMock).not.toHaveBeenCalled();
   });
 
   it('still starts the explicit direct-command profile for search in run mode', async () => {
