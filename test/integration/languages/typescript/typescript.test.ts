@@ -1,5 +1,5 @@
 import { LanguageTestSuite, type LanguageConfig } from '../../base/index.js';
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 import {
   assertDiagnostics,
   assertSymbolInspection,
@@ -73,6 +73,30 @@ class TypeScriptTestSuite extends LanguageTestSuite {
               testName: 'TypeScript Function with JSDoc',
             }
           );
+        });
+
+        test('Should get TypeScript call hierarchy for function', async () => {
+          const position = {
+            file: this.getMainFilePath(),
+            line: 8, // export function main(): void {
+            character: 17, // on "main"
+          };
+          const result = await this.client.getCallHierarchy(position);
+
+          this.assertToolResult(result);
+
+          const output = Array.isArray(result.content)
+            ? result.content
+                .map((item) =>
+                  typeof item === 'object' && item && 'text' in item
+                    ? String(item.text)
+                    : JSON.stringify(item)
+                )
+                .join('\n')
+            : JSON.stringify(result.content);
+
+          expect(output).toContain('Target 1:');
+          expect(output).toContain('main');
         });
 
         test('Should inspect TypeScript interface', async () => {

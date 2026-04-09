@@ -23,6 +23,8 @@ import type {
 const MAX_TARGETS = 5;
 const MAX_FILES_PER_SECTION = 6;
 const MAX_CALLS_PER_FILE = 5;
+// Keep the total section budget below the per-file ceiling product so broad
+// call graphs stay bounded even when many files contribute a few entries each.
 const MAX_CALLS_PER_SECTION = 24;
 const MAX_CALL_SITES_PER_ENTRY = 6;
 
