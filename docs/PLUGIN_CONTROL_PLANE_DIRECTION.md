@@ -184,6 +184,9 @@ This document narrows some earlier ideas:
   through MCP. That is no longer the preferred direction.
 - `CLAUDE_CODE_COMPARISON_PLAN.md` remains useful for runtime architecture
   lessons, but the product packaging direction is now different.
+- `SERENA_TAKEAWAYS.md` records the same packaging decision from a Serena
+  comparison: keep installation guidance in skills and only add runtime
+  special-casing for proven language-server quirks.
 - `LSP_MANAGER_HANDOFF.md`, `FILE_LIFECYCLE_REFACTOR_PLAN.md`, and
   `TOOL_OPERATION_SIMPLIFICATION_PLAN.md` still stand for the internal runtime
   refactors already completed.

@@ -19,7 +19,6 @@ language-servers:
     # A glob pattern resolves to the first matching file to keep memory bounded.
     preload_files:
       - './src/{index,main}.ts'
-    workspace_ready_delay_ms: 3000
     diagnostics:
       strategy: 'push'
       wait_timeout_ms: 2000

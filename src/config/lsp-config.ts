@@ -26,6 +26,10 @@ const SymbolsConfigSchema = z.object({
   containerKinds: z.array(z.union([z.string(), z.number()])).optional(),
 });
 
+const SearchConfigSchema = z.object({
+  warmup_window_ms: z.number().min(0).max(60000).default(5000),
+});
+
 const LspConfigSchema = z.object({
   command: z.string(),
   extensions: z.record(z.string(), z.string()).default({}), // file extension -> language ID handled by this profile
@@ -37,8 +41,9 @@ const LspConfigSchema = z.object({
     wait_timeout_ms: 2000,
   }),
   symbols: SymbolsConfigSchema.default({}),
+  search: SearchConfigSchema.optional(),
   environment: z.record(z.string(), z.string()).optional(),
-  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', 'typescript', etc.)
+  workspace_loader: z.string().optional(), // workspace loader type ('default', 'roslyn', etc.)
 });
 
 const ConfigFileSchema = z.object({

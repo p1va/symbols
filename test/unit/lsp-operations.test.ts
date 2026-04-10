@@ -21,6 +21,12 @@ interface MockSessionOptions {
   diagnosticsStrategy?: 'push' | 'pull';
   providers?: Array<{ id: string }>;
   logMessages?: LogMessage[];
+  workspaceState?: {
+    isReady: boolean;
+    isLoading: boolean;
+    readyAt?: Date;
+  };
+  searchWarmupWindowMs?: number;
 }
 function createMockSession(options: MockSessionOptions = {}): {
   session: LspSession;
@@ -60,6 +66,13 @@ function createMockSession(options: MockSessionOptions = {}): {
       diagnostics: {
         strategy: options.diagnosticsStrategy ?? ('push' as const),
       },
+      ...(options.searchWarmupWindowMs !== undefined
+        ? {
+            search: {
+              warmup_window_ms: options.searchWarmupWindowMs,
+            },
+          }
+        : {}),
       symbols: {},
       preload_files: [],
       workspace_ready_delay_ms: 0,
@@ -104,8 +117,11 @@ function createMockSession(options: MockSessionOptions = {}): {
     restart: vi.fn(() => Promise.resolve()),
     request,
     getWorkspaceState: vi.fn(() => ({
-      isReady: true,
-      isLoading: false,
+      isReady: options.workspaceState?.isReady ?? true,
+      isLoading: options.workspaceState?.isLoading ?? false,
+      ...(options.workspaceState?.readyAt
+        ? { readyAt: options.workspaceState.readyAt }
+        : {}),
     })),
     getWorkspaceLoaderStore: vi.fn(() => ({
       state: null,
@@ -553,6 +569,88 @@ describe('LSP operations', () => {
     expect(request).toHaveBeenCalledWith('workspace/symbol', {
       query: 'TestClass',
     });
+  });
+
+  it('searchSymbols retries empty results during the search warm-up window', async () => {
+    vi.useFakeTimers();
+
+    try {
+      vi.setSystemTime(new Date('2026-04-10T07:31:13.000Z'));
+
+      const requestResponses = [
+        [],
+        [
+          {
+            name: 'registerAllTools',
+            kind: 12,
+            location: {
+              uri: TEST_URI,
+              range: {
+                start: { line: 20, character: 0 },
+                end: { line: 20, character: 16 },
+              },
+            },
+          },
+        ],
+      ];
+
+      const { session, request } = createMockSession({
+        requestImpl: () => Promise.resolve(requestResponses.shift() ?? []),
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          readyAt: new Date('2026-04-10T07:31:12.500Z'),
+        },
+        searchWarmupWindowMs: 5000,
+      });
+
+      const resultPromise = searchSymbols(session, {
+        query: 'registerAllTools',
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.ok).toBe(true);
+      expect(result.ok && result.data).toHaveLength(1);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(request).toHaveBeenNthCalledWith(1, 'workspace/symbol', {
+        query: 'registerAllTools',
+      });
+      expect(request).toHaveBeenNthCalledWith(2, 'workspace/symbol', {
+        query: 'registerAllTools',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('searchSymbols does not retry empty results after the warm-up window expires', async () => {
+    vi.useFakeTimers();
+
+    try {
+      vi.setSystemTime(new Date('2026-04-10T07:31:20.000Z'));
+
+      const { session, request } = createMockSession({
+        requestImpl: () => Promise.resolve([]),
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          readyAt: new Date('2026-04-10T07:31:10.000Z'),
+        },
+        searchWarmupWindowMs: 5000,
+      });
+
+      const result = await searchSymbols(session, {
+        query: 'MissingSymbol',
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.ok && result.data).toHaveLength(0);
+      expect(request).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('outlineSymbols resolves document symbols through the scoped request API', async () => {

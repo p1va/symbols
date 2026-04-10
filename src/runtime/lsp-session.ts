@@ -886,6 +886,9 @@ export function createLspSession(
   function getStatusSnapshot(): LspSessionStatusSnapshot {
     const hasRuntimeWorkspaceState =
       state !== 'not_started' && state !== 'stopped';
+    const workspaceLoaderState = stores.workspaceLoaderStore.getState();
+    const workspaceLoaderReady =
+      workspaceLoaderState === null || stores.workspaceLoaderStore.isReady();
 
     return {
       sessionKey,
@@ -902,10 +905,10 @@ export function createLspSession(
       diagnosticsStrategy: profile.config.diagnostics.strategy,
       workspaceLoader: profile.config.workspace_loader || null,
       workspaceReady: hasRuntimeWorkspaceState
-        ? stores.workspaceState.isReady
+        ? stores.workspaceState.isReady && workspaceLoaderReady
         : null,
       workspaceLoading: hasRuntimeWorkspaceState
-        ? stores.workspaceState.isLoading
+        ? stores.workspaceState.isLoading || !workspaceLoaderReady
         : null,
       windowLogCount: stores.windowLogStore.getMessages().length,
     };
