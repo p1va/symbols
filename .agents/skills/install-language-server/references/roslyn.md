@@ -23,6 +23,16 @@ dotnet restore /absolute/path/to/ServerDownload.csproj \
 dotnet $HOME/.csharp-lsp/Microsoft.CodeAnalysis.LanguageServer.dll --version
 ```
 
+### Good Config Setup
+
+- Keep `workspace_loader: 'roslyn'`. That is what lets Symbols send the
+  solution/project initialization notifications Roslyn expects.
+- Prefer `*.sln` and `*.csproj` markers in `workspace_files`. Validate inside a
+  real solution or project, not on an isolated `.cs` file.
+- Keep the install path behind an environment variable like
+  `SYMBOLS_ROSLYN_PATH` so the YAML stays portable across machines.
+- Keep diagnostics on `pull` for Roslyn.
+
 ### Profile Snippet
 
 Merge this block into the active config file. Keep unrelated profiles already present in that file.
@@ -54,13 +64,22 @@ language-servers:
 - Validate inside a solution or project, not on a stray `.cs` file.
 - For Razor repos, also verify a `.cshtml` or `.razor` file once the base C# path is healthy.
 
+### Gotchas
+
+- Roslyn is much happier with an actual solution or project context than with a
+  standalone file.
+- The official language server package comes from the Visual Studio IDE feed,
+  not from the normal public dotnet tool flow.
+- The server needs a working `dotnet` runtime available when launched.
+
 ### Troubleshooting
 
 - Roslyn works best when `*.sln` or `*.csproj` markers route the workspace correctly.
 - On Linux, inotify limits can block larger solutions. Increase `fs.inotify.max_user_instances` if logs point there.
 - If you need the VS Code packaged Roslyn instead, use the `vscode-roslyn` example from the generated template rather than rewriting the `roslyn` profile from scratch.
 
-### More Information
+### Source Of Truth
 
+- [ServerDownload.csproj](../assets/ServerDownload.csproj)
 - https://github.com/dotnet/roslyn
 - https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json

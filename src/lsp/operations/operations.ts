@@ -2,6 +2,7 @@
  * Public LspOperations - MCP-backed navigation operations.
  */
 
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   createLspError,
   DiagnosticEntry,
@@ -19,6 +20,7 @@ import {
   PreparedSymbolPositionRequest,
   PreparedWorkspaceRequest,
 } from '../../preparation.js';
+import { DEFAULT_SEARCH_WARMUP_WINDOW_MS } from '../../config/lsp-config.js';
 import logger from '../../utils/logger.js';
 import {
   CallHierarchyDirection,
@@ -56,6 +58,74 @@ import type {
   LspSession,
   SessionDocumentScope,
 } from '../../runtime/lsp-session.js';
+
+const SEARCH_WARMUP_RETRY_DELAYS_MS = [250, 500, 1000, 1500] as const;
+
+function getSearchWarmupDeadlineMs(session: LspSession): number | null {
+  const readyAt = session.getWorkspaceState().readyAt;
+  if (!readyAt) {
+    return null;
+  }
+
+  const warmupWindowMs =
+    session.getProfile().config.search?.warmup_window_ms ??
+    DEFAULT_SEARCH_WARMUP_WINDOW_MS;
+
+  if (warmupWindowMs <= 0) {
+    return null;
+  }
+
+  return readyAt.getTime() + warmupWindowMs;
+}
+
+function transformWorkspaceSymbols(
+  symbols: WorkspaceSymbol[] | SymbolInformation[]
+): SymbolSearchResult[] {
+  return Array.isArray(symbols)
+    ? symbols.map((symbol) => {
+        if (
+          'location' in symbol &&
+          symbol.location &&
+          'range' in symbol.location
+        ) {
+          return {
+            name: symbol.name,
+            kind: symbol.kind,
+            location: {
+              uri: symbol.location.uri,
+              range: symbol.location.range,
+            },
+            containerName: symbol.containerName || '',
+          };
+        }
+
+        return {
+          name: symbol.name,
+          kind: symbol.kind,
+          location: {
+            uri: symbol.location.uri || '',
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 0 },
+            },
+          },
+          containerName: symbol.containerName || '',
+        };
+      })
+    : [];
+}
+
+async function requestWorkspaceSymbols(
+  session: LspSession,
+  params: WorkspaceSymbolParams
+): Promise<SymbolSearchResult[]> {
+  const symbols: WorkspaceSymbol[] | SymbolInformation[] = await session.request(
+    'workspace/symbol',
+    params
+  );
+
+  return transformWorkspaceSymbols(symbols);
+}
 
 export async function inspectSymbol(
   session: LspSession,
@@ -372,46 +442,28 @@ export async function searchSymbols(
         query: prepared.query,
       };
 
-      const symbols: WorkspaceSymbol[] | SymbolInformation[] =
-        await session.request('workspace/symbol', params);
+      let results = await requestWorkspaceSymbols(session, params);
+      const warmupDeadlineAt = getSearchWarmupDeadlineMs(session);
 
-      // Transform LSP response to our format
-      const results: SymbolSearchResult[] = Array.isArray(symbols)
-        ? symbols.map((symbol) => {
-            // Handle both WorkspaceSymbol and SymbolInformation
-            if (
-              'location' in symbol &&
-              symbol.location &&
-              'range' in symbol.location
-            ) {
-              // SymbolInformation
-              return {
-                name: symbol.name,
-                kind: symbol.kind,
-                location: {
-                  uri: symbol.location.uri,
-                  range: symbol.location.range,
-                },
-                containerName: symbol.containerName || '',
-              };
-            } else {
-              // WorkspaceSymbol - has no location directly
-              return {
-                name: symbol.name,
-                kind: symbol.kind,
-                location: {
-                  uri: symbol.location.uri || '',
-                  // Default range when WorkspaceSymbol lacks precise location info
-                  range: {
-                    start: { line: 0, character: 0 },
-                    end: { line: 0, character: 0 },
-                  },
-                },
-                containerName: symbol.containerName || '',
-              };
-            }
-          })
-        : [];
+      if (results.length === 0 && warmupDeadlineAt !== null) {
+        for (const retryDelayMs of SEARCH_WARMUP_RETRY_DELAYS_MS) {
+          const remainingWarmupMs = warmupDeadlineAt - Date.now();
+          if (remainingWarmupMs <= 0) {
+            break;
+          }
+
+          await delay(Math.min(retryDelayMs, remainingWarmupMs));
+          results = await requestWorkspaceSymbols(session, params);
+
+          if (results.length > 0) {
+            logger.info('Workspace symbol search warmed up after retry', {
+              profile: session.getProfile().name,
+              query: prepared.query,
+            });
+            break;
+          }
+        }
+      }
 
       return results;
     },
