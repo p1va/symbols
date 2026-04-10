@@ -653,6 +653,76 @@ describe('LSP operations', () => {
     }
   });
 
+  it('searchSymbols does not retry when workspace readiness has no timestamp', async () => {
+    const { session, request } = createMockSession({
+      requestImpl: () => Promise.resolve([]),
+      workspaceState: {
+        isReady: true,
+        isLoading: false,
+      },
+      searchWarmupWindowMs: 5000,
+    });
+
+    const result = await searchSymbols(session, {
+      query: 'MissingSymbol',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.data).toHaveLength(0);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('searchSymbols does not retry when the warm-up window is disabled', async () => {
+    const { session, request } = createMockSession({
+      requestImpl: () => Promise.resolve([]),
+      workspaceState: {
+        isReady: true,
+        isLoading: false,
+        readyAt: new Date('2026-04-10T07:31:12.500Z'),
+      },
+      searchWarmupWindowMs: 0,
+    });
+
+    const result = await searchSymbols(session, {
+      query: 'MissingSymbol',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.data).toHaveLength(0);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('searchSymbols returns empty after exhausting warm-up retries', async () => {
+    vi.useFakeTimers();
+
+    try {
+      vi.setSystemTime(new Date('2026-04-10T07:31:13.000Z'));
+
+      const { session, request } = createMockSession({
+        requestImpl: () => Promise.resolve([]),
+        workspaceState: {
+          isReady: true,
+          isLoading: false,
+          readyAt: new Date('2026-04-10T07:31:12.500Z'),
+        },
+        searchWarmupWindowMs: 5000,
+      });
+
+      const resultPromise = searchSymbols(session, {
+        query: 'MissingSymbol',
+      });
+
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.ok).toBe(true);
+      expect(result.ok && result.data).toHaveLength(0);
+      expect(request).toHaveBeenCalledTimes(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('outlineSymbols resolves document symbols through the scoped request API', async () => {
     const { session, request } = createMockSession({
       requestImpl: () =>

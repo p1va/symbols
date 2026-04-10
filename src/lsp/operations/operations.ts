@@ -20,6 +20,7 @@ import {
   PreparedSymbolPositionRequest,
   PreparedWorkspaceRequest,
 } from '../../preparation.js';
+import { DEFAULT_SEARCH_WARMUP_WINDOW_MS } from '../../config/lsp-config.js';
 import logger from '../../utils/logger.js';
 import {
   CallHierarchyDirection,
@@ -58,7 +59,6 @@ import type {
   SessionDocumentScope,
 } from '../../runtime/lsp-session.js';
 
-const DEFAULT_SEARCH_WARMUP_WINDOW_MS = 5000;
 const SEARCH_WARMUP_RETRY_DELAYS_MS = [250, 500, 1000, 1500] as const;
 
 function getSearchWarmupDeadlineMs(session: LspSession): number | null {

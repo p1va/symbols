@@ -26,8 +26,14 @@ const SymbolsConfigSchema = z.object({
   containerKinds: z.array(z.union([z.string(), z.number()])).optional(),
 });
 
+export const DEFAULT_SEARCH_WARMUP_WINDOW_MS = 5000;
+
 const SearchConfigSchema = z.object({
-  warmup_window_ms: z.number().min(0).max(60000).default(5000),
+  warmup_window_ms: z
+    .number()
+    .min(0)
+    .max(60000)
+    .default(DEFAULT_SEARCH_WARMUP_WINDOW_MS),
 });
 
 const LspConfigSchema = z.object({
