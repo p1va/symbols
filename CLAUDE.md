@@ -1,226 +1,70 @@
 # symbols
 
-## What we do
+This file is a compatibility guide for agents that look for `CLAUDE.md`.
 
-We are building an MCP (Model Context Protocol) server called "symbols" that provides a set of tools for a more productive and precise way to explore and work in a codebase.
-This server under the hood spawn, interact and orchestrating requests to a Language Server based on the LSP specs.
-We are building a generic tool that should work with LSPs for Typescript, Python, C#, Go, Rust and Java.
-You are both working in the codebase where these tools source code is and using their last successful build via MCP.
+`AGENTS.md` is the canonical engineering guide for this repository.
+`README.md` is the canonical source for the public product surface: current
+tools, resources, installation, and usage.
 
-## Decisions
+Read first:
 
-- We have chosen Typescript as the language and pnpm as the package manager.
-- We want to enfore strict type safety to benefit from the typescript compiler when developing
-- We have chosen to use **pure functional approach** and write modern TS preferring functional patterns to OOP
+- [AGENTS.md](AGENTS.md)
+- [README.md](README.md)
+- [docs/PLUGIN_CONTROL_PLANE_DIRECTION.md](docs/PLUGIN_CONTROL_PLANE_DIRECTION.md)
+- [docs/SYMBOLS_HANDOFF_2026-04-03.md](docs/SYMBOLS_HANDOFF_2026-04-03.md)
 
-## Tool Usage Policy Addendum
+## Repo Summary
 
-The MCP server provides the following tools:
+Symbols is a lightweight MCP bridge to Language Servers.
 
-- Prefer **`mcp__symbols__search`** when searching for symbols (e.g. function names, types, ect), use your usual tool for other kinds of searches (e.g. \*.ts)
-- Prefer **`mcp__symbols__outline`** over the Read tool when doing discovery.
-- Use **`mcp__symbols__inspect`** when looking to find out about what a symbol does, its signature, its definition, its implementation. Then if needed keep exploring the suggested locations with `mcp__symbols__outline`
-- **`mcp__symbols__completion`**: suggests a list of completions
-- Use **`mcp__symbols__references`** when looking for a symbol references across the codebase
-- Use **`mcp__symbols__call_hierarchy`** when you need incoming or outgoing call relationships for a callable symbol
-- Use **`mcp__symbols__rename`** when wanting to rename a symbol across the codebase
-- Use **`mcp__symbols__diagnostics`** to retrieve active diagnostics for a given document
+It is intentionally small:
 
-## Core Architecture
+- skills and extension/plugin assets carry installation and troubleshooting guidance
+- `language-servers.yaml` is the desired state
+- MCP resources expose effective config and runtime state
+- MCP tools provide a compact, agent-oriented navigation surface
 
-### 1. **MCP Server Layer** (`src/main/`)
+Do not treat Symbols as:
 
-- **Main Entry**: `src/main/index.ts` - Context creation and initialization
-- **Server Factory**: `src/main/createServer.ts` - MCP server creation
-- **LSP Client**: `src/lsp-client.ts` - LSP communication layer
+- a managed installer framework
+- a large MCP recipe catalog
+- a broad workflow product with file, shell, or memory tooling
 
-### 2. **Tools Layer** (`src/tools/`)
+## Engineering Preferences
 
-- **Tool Registration**: `src/tools/index.ts` - Registers all 9 MCP tools
-- **Individual Tools**: Each tool has its own file with registration and formatting logic
-- **Tool Types**: outline, inspect, search, references, call_hierarchy, completion, rename, diagnostics, logs
+- TypeScript and `pnpm`
+- strict typing and build health matter
+- prefer small modules, explicit data flow, and simple typed helpers
+- prefer a pragmatic blend of functional and imperative style
 
-### 3. **LSP Operations** (`src/lsp/operations/`)
+Functional patterns are useful here, but they are not a religion.
 
-- **Core Operations**: `src/lsp/operations/operations.ts` - LSP request handlers
-- **File Lifecycle**: `src/lsp/fileLifecycle/` - File management for LSP operations
+Prefer:
 
-### 4. **State Management** (`src/state/`)
+- pure functions when they keep code obvious
+- plain objects and explicit transforms over unnecessary abstraction
+- immutable-style updates when they are cheap and readable
 
-- **Stores**: `src/state/stores.ts` - DiagnosticsStore, WindowLogStore, WorkspaceState
-- **Coordination**: `src/state/index.ts` - State management coordination
+Also use stateful or imperative structures when they are the clearer fit, for example:
 
-## The 9 MCP Tools (✅ Implemented)
+- process/session lifecycle
+- stores and runtime coordination
+- transport/protocol plumbing
 
-1. **`outline`** - Get an outline of document symbols
-2. **`inspect`** - Comprehensive symbol info (hover + all navigation)
-3. **`references`** - Find all uses of a symbol across the codebase
-4. **`call_hierarchy`** - Inspect incoming and outgoing call relationships
-5. **`completion`** - Code completion suggestions at cursor position
-6. **`search`** - Search symbols across workspace by query
-7. **`rename`** - Rename symbol across entire codebase
-8. **`diagnostics`** - Get errors/warnings for a file
-9. **`logs`** - Access LSP server log messages
+Clarity and type safety matter more than ideological purity.
 
-## Critical Implementation Details
+## Implementation Notes
 
-### **Position Coordinates**
+- MCP/user positions are 1-based; LSP protocol positions are 0-based.
+- Language servers are started lazily on demand, not eagerly at startup.
+- Multiple language servers may exist for one workspace.
+- `reload` is the config apply step for YAML-only changes.
+- Runtime/tool registration changes require restarting the session before live validation.
+- Workspace-wide `search` may use a bounded warm-up retry; prefer that over fixed startup delays.
 
-- **User/MCP**: 1-based (line 1, character 1)
-- **LSP Protocol**: 0-based (line 0, character 0)
-- **Always convert**: Critical for correct LSP communication
+## Keep In Sync
 
-### **File Lifecycle Management**
-
-- **Preloaded files**: Special handling to maintain project context
-- **Regular files**: Standard open → operate → close pattern
-- **One lifecycle per tool call**: More efficient than per-internal-operation
-
-### **Text Enrichment**
-
-- Every symbol location gets actual source code snippets
-- Helps Claude Code see both location AND the actual code
-- Essential for useful MCP responses
-
-## Development Approach
-
-### **Current Development State**
-
-- ✅ **Complete MCP Server Implementation** - All 9 tools fully implemented and working
-- ✅ **LSP Communication Layer** - Robust TypeScript LSP client with proper lifecycle management
-- ✅ **3-Tier Symbol Reading** - Sophisticated preview system (none/signature/expanded)
-- ✅ **Type Safety** - Strict TypeScript with comprehensive error handling
-- ✅ **State Management** - Proper stores for diagnostics, logs, and workspace state
-- ✅ **File Lifecycle Management** - Efficient preloaded file handling
-
-### **Using Existing "typescript" MCP Tool During Development**
-
-The existing C# "typescript" MCP tool is available and should be used during development:
-
-- **Reference implementation**: Compare outputs and behavior
-- **Testing**: Validate our TypeScript implementation against C# version
-- **Development aid**: Use for understanding codebase while building
-- **Debugging**: Cross-reference when TypeScript version has issues
-
-### **Recommended Tool Usage for Development**
-
-Use the existing TypeScript MCP tools to understand module structures and resolve typing issues:
-
-#### **Understanding Module Exports**
-
-Instead of using `console.log(Object.keys(require('module')))` or similar runtime inspection:
-
-```typescript
-// ❌ Runtime inspection (not available in strict TypeScript)
-console.log(Object.keys(require('vscode-jsonrpc')));
-
-// ✅ Use TypeScript MCP tools
-mcp__symbols__read("node_modules/vscode-jsonrpc/lib/node/main.d.ts", maxDepth: 3)
-```
-
-#### **Inspecting Import/Export Types**
-
-When facing TypeScript import errors or wanting to understand available exports:
-
-```typescript
-// Use inspect tool on import statements to see resolved types
-mcp__symbols__inspect(file: "playground/dotnet.ts", line: 20, character: 25)
-// Shows where 'vscode-jsonrpc' resolves and what's available
-
-// Use get_symbols to explore declaration files in detail
-mcp__symbols__read("node_modules/vscode-jsonrpc/node.d.ts", maxDepth: 2)
-```
-
-#### **Understanding Function Overloads**
-
-When encountering issues with function signatures or overloads:
-
-```typescript
-// Inspect specific function calls to see all available overloads
-mcp__symbols__inspect(file: "playground/dotnet.ts", line: 45, character: 31)
-// Shows createMessageConnection overloads and their type signatures
-```
-
-#### **Benefits of This Approach**
-
-- **Type-accurate**: Gets actual TypeScript compiler understanding
-- **Comprehensive**: Shows all overloads, exports, and type relationships
-- **Context-aware**: Understands module resolution in your specific project
-- **Documentation**: Includes JSDoc and type information
-- **No runtime needed**: Works purely from TypeScript declarations
-
-This approach is much more reliable than runtime inspection and provides the exact information TypeScript uses for compilation.
-
-## Usage
-
-The MCP server is fully implemented and ready for use. All 8 tools provide comprehensive LSP-based code intelligence for Claude Code, enabling precise codebase exploration and manipulation with strict type safety and functional programming patterns.
-
-# Tool Usage Policy Addendum
-
-## Read Tool - Four-Tier Preview System
-
-The `read` tool in the `typescript-new` MCP server provides a sophisticated four-tier system for exploring code with different levels of detail. This allows users to choose the optimal information density for their specific use case.
-
-### 1. **None Mode** (`previewMode: 'none'`)
-
-- **Use Case**: Quick architectural overview and file structure understanding
-- **Output**: Symbol names with hierarchical organization only
-- **Best For**: "What's in this file?" - rapid scanning of code organization
-
-### 2. **Signature Mode** (`previewMode: 'signature'`)
-
-- **Use Case**: API exploration and interface understanding
-- **Output**: Symbol names + condensed type signatures in backticks on new lines
-- **Best For**: "How do I use this API?" - understanding function parameters, return types, and method overloads
-
-### 3. **Expanded Mode** (`previewMode: 'expanded'`)
-
-- **Use Case**: Implementation understanding and algorithm analysis
-- **Output**: Complete code blocks for leaf symbols only (prevents duplication)
-- **Best For**: "How does this work?" - seeing full function logic, error handling, and business rules
-- **Key Feature**: Leaf symbol detection eliminates duplication by only showing code blocks for symbols with no children
-
-### 4. **Raw File Reading** (Standard `Read` tool)
-
-- **Use Case**: Complete context including imports, comments, and exact formatting
-- **Output**: Entire source file with line numbers
-- **Best For**: "I need full context" - understanding module structure, dependencies, and exact source
-
-### Smart Leaf Symbol Detection
-
-The `full` mode implements intelligent leaf symbol detection to prevent code duplication:
-
-- **Container symbols** (classes, interfaces with properties, modules) show structure only
-- **Leaf symbols** (individual methods, properties, standalone functions) show complete implementations
-- **Result**: No redundant class definitions while preserving detailed method implementations
-
-### Usage Examples
-
-```typescript
-// Architecture overview
-mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'none' });
-
-// API exploration with signatures
-mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'signature' });
-
-// Implementation details
-mcp__symbols__read({ file: 'src/tools/read.ts', previewMode: 'expanded' });
-
-// Complete context
-Read({ file_path: '/path/to/file.ts' });
-```
-
-### When to Use Each Mode
-
-- **`none`**: Initial code exploration, understanding file architecture
-- **`signature`**: API documentation, understanding interfaces and method signatures
-- **`full`**: Code review, debugging, understanding complex algorithms
-- **Raw file**: Import analysis, seeing complete file context, exact formatting needs
-
-This tiered approach provides surgical precision in information density, allowing users to get exactly the right level of detail for their current task without information overload or missing context.
-
-## Development Guidelines
-
-- Follow strict TypeScript patterns and type safety rules (@docs/TYPE_SAFETY.md)
-- Use functional programming approach - prefer pure functions over OOP
-- All builds must pass (`pnpm build`) - type safety violations will fail the build
+- Do not duplicate the current tool list here unless there is a strong reason.
+  Refer to [README.md](README.md) for the public surface.
+- Keep this file aligned with [AGENTS.md](AGENTS.md).
+- If the repo direction changes, update both files together.
