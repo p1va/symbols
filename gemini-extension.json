@@ -1,6 +1,6 @@
 {
   "name": "Symbols",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Lightweight MCP and skills for semantic code navigation by connecting to language servers (LSP) for TypeScript, Python, Go, Rust, C#, Java, and more.",
   "contextFileName": "GEMINI.md",
   "mcpServers": {

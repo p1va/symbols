@@ -6,7 +6,20 @@
 
 ### Install
 
-Use one of the supported install paths:
+Prefer the upstream distribution path first. Download and extract a milestone
+build from Eclipse JDT LS:
+
+```sh
+# Pick a directory you want to keep on this machine.
+mkdir -p $HOME/.java-lsp
+# Then download and extract a milestone or snapshot build into that location.
+```
+
+Keep track of the extracted JDTLS root directory and point
+`SYMBOLS_JDTLS_PATH` at it.
+
+Package-manager installs can work too, but they are secondary to the upstream
+distribution:
 
 ```sh
 # macOS
@@ -15,8 +28,6 @@ brew install jdtls
 # Arch Linux (AUR)
 yay -S jdtls
 ```
-
-For other platforms, follow the upstream installation instructions and keep track of the extracted `jdtls` path.
 
 ### Verify
 
@@ -29,6 +40,15 @@ If using a manual install, verify the full path instead:
 ```sh
 $HOME/.java-lsp/jdtls/bin/jdtls --help
 ```
+
+### Good Config Setup
+
+- JDTLS needs a full JDK, not just a JRE.
+- Keep `SYMBOLS_JDTLS_PATH` pointing at the extracted JDTLS distribution root.
+- Use a user-writable cache/config path for `-configuration`, and keep `-data`
+  unique per workspace.
+- Prefer Maven or Gradle markers in `workspace_files` so routing matches the
+  actual project shape.
 
 ### Profile Snippet
 
@@ -65,12 +85,22 @@ language-servers:
 - Prefer a `.java` file inside a Maven or Gradle workspace.
 - Expect slower first startup than TypeScript or Pyright, especially on large Gradle or Maven projects.
 
+### Gotchas
+
+- Upstream requires Java 21 or later to run the language server.
+- The bundled platform config inside the JDTLS distribution is not the same as
+  the writable `-configuration` path you should use at runtime.
+- `-data` should be stable and workspace-specific, or project state can be
+  confusing across repos.
+
 ### Troubleshooting
 
-- JDTLS needs a JDK, not just a JRE. Java 17 or later is the safe baseline.
+- JDTLS needs a JDK, not just a JRE. Java 21 or later is the safe baseline.
 - If startup is slow or flaky, verify the cache directories and the `SYMBOLS_JDTLS_PATH` value.
 
-### More Information
+### Source Of Truth
 
 - https://github.com/eclipse-jdtls/eclipse.jdt.ls
-- https://github.com/redhat-developer/vscode-java
+- https://github.com/eclipse-jdtls/eclipse.jdt.ls?tab=readme-ov-file#installation
+- https://download.eclipse.org/jdtls/milestones/
+- https://download.eclipse.org/jdtls/snapshots/

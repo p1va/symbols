@@ -52,6 +52,7 @@ If `language-servers://profiles` is unavailable, stop and say that the `language
   - Then read `language-servers://profiles` again and confirm the config path now exists.
 - [ ] Choose the target language and open the matching reference.
   - The references only provide language-specific implementation details: install commands, verify commands, one profile snippet, and language-specific validation or troubleshooting notes.
+  - Over time each reference should converge on the same structure: supported extensions, install, verify, good config setup, profile snippet, validation notes, gotchas, troubleshooting, and source-of-truth links.
   - Use this skill for the generic workflow: resource checks, config discovery, `reload`, and logs.
   - [C/C++](references/clangd.md): `.c .h .cpp .cc .cxx .hpp .hxx .C .H`
   - [C# / Roslyn](references/roslyn.md): `.cs`
