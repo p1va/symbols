@@ -18,8 +18,8 @@ function createProfileStatus(
     configured: true,
     state: 'ready',
     command:
-      '/home/truelayer/.csharp-lsp/csharp-ls --stdio --log-level Information',
-    commandName: '/home/truelayer/.csharp-lsp/csharp-ls',
+      '/home/test-user/.csharp-lsp/csharp-ls --stdio --log-level Information',
+    commandName: '/home/test-user/.csharp-lsp/csharp-ls',
     commandArgs: ['--stdio', '--log-level', 'Information'],
     workspacePath: '/workspace',
     workspaceFiles: ['*.sln', '*.csproj'],
@@ -45,7 +45,7 @@ function createManagerStatus(
     mode: 'start',
     state: 'ready',
     workspacePath: '/workspace',
-    configPath: '/home/truelayer/.config/symbols/language-servers.yaml',
+    configPath: '/home/test-user/.config/symbols/language-servers.yaml',
     defaultProfileName: 'csharp',
     detectedProfileName: 'csharp',
     issues: [],
@@ -60,7 +60,7 @@ describe('language server resources', () => {
     const summary = buildLanguageServersSummaryResource(status);
 
     expect(summary.manager.configPath).toBe(
-      '/home/truelayer/.config/symbols/language-servers.yaml'
+      '/home/test-user/.config/symbols/language-servers.yaml'
     );
     expect(summary.manager).toMatchObject({
       mode: 'start',
@@ -74,9 +74,9 @@ describe('language server resources', () => {
       name: 'csharp',
       config: {
         command:
-          '/home/truelayer/.csharp-lsp/csharp-ls --stdio --log-level Information',
+          '/home/test-user/.csharp-lsp/csharp-ls --stdio --log-level Information',
         launch: {
-          commandName: '/home/truelayer/.csharp-lsp/csharp-ls',
+          commandName: '/home/test-user/.csharp-lsp/csharp-ls',
           commandArgs: ['--stdio', '--log-level', 'Information'],
         },
         workspaceFiles: ['*.sln', '*.csproj'],
@@ -166,5 +166,32 @@ describe('window log formatting', () => {
     ]);
 
     expect(formatted).toBe('ℹ [Info] [csharp] Workspace loaded successfully');
+  });
+
+  it('reports messages evicted from the bounded store', () => {
+    const formatted = formatWindowLogMessages(
+      [{ type: 3, message: 'Newest message' }],
+      { omittedMessages: 2 }
+    );
+
+    expect(formatted).toBe(
+      '… 2 older messages omitted; showing the latest available messages\nℹ [Info] Newest message'
+    );
+  });
+
+  it('bounds output while preserving the newest complete messages', () => {
+    const messages = Array.from({ length: 10 }, (_, index) => ({
+      type: 3,
+      message: `message-${index} ${'x'.repeat(80)}`,
+    }));
+
+    const formatted = formatWindowLogMessages(messages, {
+      maxCharacters: 256,
+    });
+
+    expect(formatted.length).toBeLessThanOrEqual(256);
+    expect(formatted).toContain('older messages omitted');
+    expect(formatted).toContain('message-9');
+    expect(formatted).not.toContain('message-0');
   });
 });

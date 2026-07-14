@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'path';
+import { pathToFileURL } from 'node:url';
 import {
   resolveStartConfig,
   resolveRunConfig,
@@ -167,7 +168,7 @@ export function createLspManager(): LspManager {
     if (activeSource.mode === 'run') {
       const resolved = resolveRunConfig(activeSource.cliArgs);
       const resolvedWorkspacePath = path.resolve(resolved.workspace);
-      const resolvedWorkspaceUri = `file://${resolvedWorkspacePath}`;
+      const resolvedWorkspaceUri = pathToFileURL(resolvedWorkspacePath).href;
       const resolvedWorkspaceName = path.basename(resolvedWorkspacePath);
       applyLogLevel(resolved.loglevel);
 
@@ -210,7 +211,7 @@ export function createLspManager(): LspManager {
 
     const resolved = resolveStartConfig(activeSource.cliArgs);
     const resolvedWorkspacePath = path.resolve(resolved.workspace);
-    const resolvedWorkspaceUri = `file://${resolvedWorkspacePath}`;
+    const resolvedWorkspaceUri = pathToFileURL(resolvedWorkspacePath).href;
     const resolvedWorkspaceName = path.basename(resolvedWorkspacePath);
     applyLogLevel(resolved.loglevel);
 
@@ -404,6 +405,11 @@ export function createLspManager(): LspManager {
   }
 
   async function reloadRunningProfiles(): Promise<LspManagerStatus> {
+    if (!source) {
+      return getCurrentStatus();
+    }
+
+    const loaded = loadProfilesFromSource(source);
     const runningProfileNames = [
       ...new Set(
         getRunningSessions().map((session) => session.getProfile().name)
@@ -414,7 +420,7 @@ export function createLspManager(): LspManager {
       await stopSession(session);
     }
 
-    reloadProfiles();
+    syncLoadedProfiles(loaded);
 
     for (const profileName of runningProfileNames) {
       if (!profiles.has(profileName)) {

@@ -91,7 +91,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
 
       - run: corepack enable # optional, if you rely on pnpm/yarn
@@ -119,7 +119,7 @@ Feel free to switch `pnpm` to `npm` or `yarn` as suits your stack.
 
 ```bash
 pnpm version patch|minor|major  # bumps package.json version & creates a vX.Y.Z tag
-pnpm sync:version               # copies package.json version into plugin/extension manifests
+pnpm sync:version               # copies package.json version into the Codex plugin manifest
 git push --follow-tags          # pushes commit **and** tag
 ```
 

@@ -76,7 +76,11 @@ function createMockSession(
     })),
     getDiagnosticsStore: vi.fn(() => ({}) as never),
     getDiagnosticProviderStore: vi.fn(() => ({}) as never),
-    getWindowLogStore: vi.fn(() => ({ getMessages: vi.fn() })),
+    getWindowLogStore: vi.fn(() => ({
+      getMessages: vi.fn(),
+      getDroppedCount: vi.fn(() => 0),
+    })),
+    refreshOpenDocuments: vi.fn(() => Promise.resolve([])),
     executeWithCursorContext: vi.fn(),
     executeWithDocumentLifecycle: vi.fn(),
     claimDocument: vi.fn((filePath: string) => filePath),

@@ -48,13 +48,16 @@ export function registerReferencesTool(server: McpServer, manager: LspManager) {
       const symbolName = cursorContext?.symbolName || 'symbol';
       const formattedText = await formatReferencesResults(
         references,
-        symbolName
+        symbolName,
+        session.getProfile().workspacePath
       );
 
       const sections: string[] = [];
 
       if (cursorContext) {
-        sections.push(formatCursorContext(cursorContext));
+        sections.push(
+          formatCursorContext(cursorContext, session.getProfile().workspacePath)
+        );
       }
 
       sections.push(formattedText);
@@ -73,7 +76,8 @@ export function registerReferencesTool(server: McpServer, manager: LspManager) {
 
 async function formatReferencesResults(
   references: Location[],
-  symbolName: string
+  symbolName: string,
+  workspacePath?: string
 ): Promise<string> {
   if (references.length === 0) {
     return 'Found no references';
@@ -136,7 +140,7 @@ async function formatReferencesResults(
       continue;
     }
 
-    const filePath = formatFilePath(firstReference.uri);
+    const filePath = formatFilePath(firstReference.uri, workspacePath);
     result += `\n\n${filePath} (${fileReferences.length} references)\n`;
 
     const sortedReferences = fileReferences.sort((a, b) => {

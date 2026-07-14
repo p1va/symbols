@@ -63,7 +63,8 @@ export function registerSearchTool(server: McpServer, manager: LspManager) {
 
       let formattedText = await formatSearchResults(
         allSymbols,
-        validatedRequest.query
+        validatedRequest.query,
+        manager.getStatus().workspacePath
       );
 
       if (errors.length > 0) {
@@ -84,7 +85,8 @@ export function registerSearchTool(server: McpServer, manager: LspManager) {
 
 async function formatSearchResults(
   symbols: SymbolSearchResult[],
-  query: string
+  query: string,
+  workspacePath?: string
 ): Promise<string> {
   if (symbols.length === 0) {
     return `Found no matches for query "${query}"`;
@@ -116,7 +118,7 @@ async function formatSearchResults(
   );
 
   for (const [uri, fileSymbols] of groupedByFile) {
-    const filePath = formatFilePath(uri);
+    const filePath = formatFilePath(uri, workspacePath);
     let fileContent = `${filePath} (${fileSymbols.length} results)\n`;
 
     const sortedSymbols = fileSymbols.sort((a, b) => {

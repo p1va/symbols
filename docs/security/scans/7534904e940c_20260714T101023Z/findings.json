@@ -1,0 +1,445 @@
+{
+  "documentType": "codex-security.findings",
+  "findings": [
+    {
+      "attackPath": {
+        "dataflow": {
+          "evidenceRefs": [
+            "workspace-default",
+            "workspace-config-candidates",
+            "file-route-starts-profile",
+            "configured-process-spawn"
+          ],
+          "outcome": "repository-authored code runs with the local user's ambient filesystem, environment, and network authority",
+          "sink": "`cp.spawn(processedCommandName, processedCommandArgs, ...)`",
+          "source": "workspace-local `language-servers.yaml`, referenced script, and matching source extension",
+          "summary": "attacker-controlled checkout -> current workspace -> workspace-priority config -> extension profile -> lazy session start -> `cp.spawn` -> same-user script execution"
+        },
+        "evidenceRefs": [
+          "workspace-config-candidates",
+          "file-route-starts-profile",
+          "configured-process-spawn"
+        ],
+        "impact": {
+          "level": "high",
+          "why": "The verified process primitive can read and modify user-accessible state and use ambient network authority, although it does not cross an OS-user boundary."
+        },
+        "likelihood": {
+          "level": "high",
+          "why": "Repository-content control and a normal file-backed request are plausible product workflows, and the complete path was reproduced without shell injection or a malicious installed server."
+        },
+        "limitations": [
+          "Symbols has no network listener and execution requires a local checkout plus an ordinary tool call.",
+          "An external MCP host may show approval UX that Symbols itself does not enforce or bind to config content."
+        ],
+        "reachability": {
+          "attacker": "untrusted repository, branch, or pull-request author",
+          "entrypoint": "automatically discovered workspace-local `language-servers.yaml`",
+          "outcome": "same-user arbitrary command execution on one developer endpoint",
+          "summary": "The attacker needs repository or branch content control. The victim must use Symbols in that checkout and invoke a matching file-backed operation; no local account, shell, admin right, explicit config selection, reload, or config approval is required."
+        },
+        "summary": "A repository author commits workspace YAML, a script, and a matching source file. The victim activates Symbols and invokes a file-backed tool; workspace-first discovery selects the profile, file routing starts it, and `cp.spawn` executes the script as the victim user."
+      },
+      "codeEvidence": [
+        {
+          "code": "workspace:\n  cliArgs.workspace || process.env.SYMBOLS_WORKSPACE || process.cwd(),\nloglevel: cliArgs.loglevel || process.env.SYMBOLS_LOGLEVEL || 'info',",
+          "endLine": 535,
+          "explanation": "Without an explicit workspace override, `start` treats the current checkout as the workspace passed into configuration discovery.",
+          "id": "workspace-default",
+          "label": "Start defaults to the current workspace",
+          "language": "typescript",
+          "path": "src/utils/cli.ts",
+          "role": "entrypoint",
+          "startLine": 533
+        },
+        {
+          "code": "// Try different config locations with priority: CLI > workspace > repo > cwd > home\nconst workspaceConfigPaths = workspacePath\n  ? [\n      path.join(workspacePath, 'language-servers.yaml'),\n      path.join(workspacePath, 'language-servers.yml'),\n    ]",
+          "endLine": 118,
+          "explanation": "The loader explicitly gives workspace-controlled YAML priority ahead of repo, current-directory, and shared-user sources; no approval state accompanies this candidate selection.",
+          "id": "workspace-config-candidates",
+          "label": "Workspace YAML becomes a preferred config candidate",
+          "language": "typescript",
+          "path": "src/config/lsp-config.ts",
+          "role": "root_control",
+          "startLine": 113
+        },
+        {
+          "code": "const resolved = resolveStartConfig(activeSource.cliArgs);\nconst resolvedWorkspacePath = path.resolve(resolved.workspace);\nconst resolvedWorkspaceUri = pathToFileURL(resolvedWorkspacePath).href;\nconst resolvedWorkspaceName = path.basename(resolvedWorkspacePath);\napplyLogLevel(resolved.loglevel);\n\nconst configWithSource = loadLspConfig(\n  resolved.configPath,\n  resolved.workspace\n);",
+          "endLine": 221,
+          "explanation": "The manager passes the current workspace directly to `loadLspConfig`; an absent explicit config therefore allows the workspace candidate to win.",
+          "id": "manager-loads-workspace-config",
+          "label": "Manager loads configuration from the resolved workspace",
+          "language": "typescript",
+          "path": "src/runtime/lsp-manager.ts",
+          "role": "propagation",
+          "startLine": 212
+        },
+        {
+          "code": "async function routeFile(filePath: string): Promise<LspSession> {\n  ensureProfilesLoaded();\n\n  if (profiles.size === 0) {\n    throw new Error(issues[0] || getNoProfilesMessage());\n  }\n\n  const ownedSession = resolveOwnedSessionForFile(filePath);\n  if (ownedSession) {\n    return startSession(ownedSession);\n  }\n\n  let profile = resolveProfileForFile(filePath);\n  if (!profile) {\n    reloadProfiles();\n    profile = resolveProfileForFile(filePath);\n  }\n\n  if (!profile) {\n    throw new Error(getUnsupportedFileMessage(filePath));\n  }\n\n  const session = getOrCreateSession(profile);\n  return startSession(session);\n}",
+          "endLine": 597,
+          "explanation": "A normal file-backed navigation or inspection request selects the attacker-defined extension profile and crosses into session startup without a separate config-trust action.",
+          "id": "file-route-starts-profile",
+          "label": "Routine file routing lazily starts the selected profile",
+          "language": "typescript",
+          "path": "src/runtime/lsp-manager.ts",
+          "role": "entrypoint",
+          "startLine": 573
+        },
+        {
+          "code": "startPromise = (async () => {\n  hasStartAttempt = true;\n  state = 'starting';\n  lastError = null;\n  stores = createStores();\n\n  const workspaceConfig = createWorkspaceConfig(profile);\n  upgradeToContextualLogger(profile.workspacePath, profile.name);\n\n  const clientResult = createLspClient(\n    workspaceConfig,\n    profile.config,\n    stores.diagnosticsStore,\n    stores.diagnosticProviderStore,\n    stores.windowLogStore,\n    stores.workspaceLoaderStore\n  );",
+          "endLine": 827,
+          "explanation": "The selected profile's parsed command and arguments are carried into the production client as part of the lazy-start transition.",
+          "id": "session-constructs-client",
+          "label": "Session startup constructs the production LSP client",
+          "language": "typescript",
+          "path": "src/runtime/lsp-session.ts",
+          "role": "propagation",
+          "startLine": 811
+        },
+        {
+          "code": "// Spawn the configured Language Server with clean environment\nconst serverProcess = cp.spawn(processedCommandName, processedCommandArgs, {\n  env: lspEnv,\n  // 1st stdin, 2nd stdout, 3rd stderr\n  stdio: ['pipe', 'pipe', 'pipe'],\n});",
+          "endLine": 204,
+          "explanation": "The workspace-selected interpreter and repository-script argument reach `cp.spawn` with the Symbols user's filesystem, environment, and network authority.",
+          "id": "configured-process-spawn",
+          "label": "Client spawns the configured executable and arguments",
+          "language": "typescript",
+          "path": "src/lsp-client.ts",
+          "role": "sink",
+          "startLine": 199
+        }
+      ],
+      "confidence": {
+        "level": "high",
+        "rationale": "The source-to-sink path was traced through configuration discovery, manager routing, session startup, and `cp.spawn`, then reproduced end to end with a functioning minimal LSP, an inherited benign canary, and a complete initialize/shutdown lifecycle."
+      },
+      "extensions": {
+        "candidateId": "CAND-001-workspace-config-auto-exec",
+        "ledgerRowId": "CFG-EXEC-001"
+      },
+      "findingId": "csf_9401e990a7b0e40ad3ab959d",
+      "fingerprints": {
+        "algorithm": "codex-security/v1",
+        "primary": "codex-security/v1:sha256:8a404f1187dc00ff023b744fcd71f42642ff86cdee8618a1dc2e1875170974d7"
+      },
+      "identity": {
+        "anchor": "workspace-config-auto-execution"
+      },
+      "locations": [
+        {
+          "endLine": 535,
+          "path": "src/utils/cli.ts",
+          "role": "entrypoint",
+          "startLine": 533
+        },
+        {
+          "endLine": 175,
+          "path": "src/config/lsp-config.ts",
+          "role": "root_control",
+          "startLine": 113
+        },
+        {
+          "endLine": 221,
+          "path": "src/runtime/lsp-manager.ts",
+          "role": "propagation",
+          "startLine": 218
+        },
+        {
+          "endLine": 596,
+          "path": "src/runtime/lsp-manager.ts",
+          "role": "entrypoint",
+          "startLine": 573
+        },
+        {
+          "endLine": 827,
+          "path": "src/runtime/lsp-session.ts",
+          "role": "propagation",
+          "startLine": 811
+        },
+        {
+          "endLine": 204,
+          "path": "src/lsp-client.ts",
+          "role": "sink",
+          "startLine": 199
+        }
+      ],
+      "occurrenceId": "occ_03762754bbde28691999e5bf",
+      "preventiveControls": [
+        "Represent config source trust explicitly rather than inferring it from location or schema validity.",
+        "Bind any persisted approval to canonical workspace, canonical config path, and content digest.",
+        "Apply the same authorization decision during initial load, auto-detection, fallback lookup, and reload.",
+        "Expose denial and the effective config source clearly without silently falling back to surprising executable policy."
+      ],
+      "provenance": {
+        "source": "codex-security-plugin"
+      },
+      "remediation": "Separate discovery from authorization. Default-deny automatically discovered workspace configuration unless the canonical workspace path, canonical config path, and exact config content were explicitly selected or approved in user-owned state; invalidate approval on content or symlink-target change and re-evaluate the decision during `reload`. Preserve intentional explicit CLI config and trusted shared-user config behavior.",
+      "remediationTests": [
+        "Verify an unapproved workspace YAML cannot spawn through startup, auto-detection, file routing, a second routing attempt, or reload.",
+        "Verify explicit CLI config and trusted shared-user config preserve documented startup behavior.",
+        "Verify editing config bytes or changing the canonical workspace, config path, or symlink target invalidates approval.",
+        "Rerun the bundled PoC and require a fail-closed trust error with no marker file."
+      ],
+      "rootCause": {
+        "evidenceRefs": [
+          "workspace-default",
+          "workspace-config-candidates",
+          "manager-loads-workspace-config",
+          "file-route-starts-profile",
+          "session-constructs-client",
+          "configured-process-spawn"
+        ],
+        "summary": "The violated invariant is that workspace-local executable policy must be explicitly trusted before it can launch a child process. Configuration discovery treats location and schema validity as sufficient authorization, so routine file routing carries attacker-authored command data through manager and session startup into `cp.spawn`."
+      },
+      "ruleId": "untrusted-config.workspace-executable",
+      "severity": {
+        "changeConditions": "Severity would increase if execution became zero-interaction, remotely reachable, or demonstrably exposed crown-jewel credentials or fleet-wide propagation. It would decrease if every supported host enforced a default-deny, content-bound workspace-config approval before this path.",
+        "level": "high",
+        "rationale": "A lower-authority repository author can cross from checkout content to proven same-user arbitrary code execution through the shipped local plugin workflow. Exploitation requires the user to activate Symbols for the checkout and invoke a matching file-backed tool, and it does not elevate beyond the user's OS identity, which keeps the issue below critical."
+      },
+      "summary": "Symbols automatically selects workspace-local `language-servers.yaml` ahead of shared configuration. An untrusted repository can choose a language-server command and arguments that a routine file-backed request lazily starts with the user's local authority, without a repository-enforced trust decision.",
+      "taxonomy": {
+        "category": "Untrusted executable configuration / arbitrary command execution",
+        "cwe": [
+          "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+        ]
+      },
+      "title": "Workspace-local configuration executes repository-selected commands without approval",
+      "validation": {
+        "assertions": [
+          "Workspace YAML is selected ahead of shared configuration without approval.",
+          "An ordinary matching file request reaches lazy process startup.",
+          "Schema validation, shell-token rejection, direct argv spawning, and executable checks do not block an installed interpreter plus repository script.",
+          "The child completed initialization and shutdown, proving execution rather than only attempted spawn."
+        ],
+        "evidenceRefs": [
+          "workspace-config-candidates",
+          "manager-loads-workspace-config",
+          "file-route-starts-profile",
+          "configured-process-spawn"
+        ],
+        "limitations": [
+          "The reproduction exercised the production runtime directly rather than every installed MCP host, so host-specific approval wording and defaults remain unmeasured.",
+          "The PoC used a benign marker and environment canary; it did not access real credentials, establish persistence, or make network requests."
+        ],
+        "method": "Static source trace plus bounded end-to-end reproduction through the production manager, session, child-process, and LSP handshake paths.",
+        "summary": "With no explicit config, the harness observed the workspace YAML as active, routed a matching TypeScript file, moved the attacker profile from `not_started` to `ready`, and recorded an inherited benign canary from the spawned repository script."
+      },
+      "writeup": {
+        "reportPath": "findings/workspace-config-auto-execution/workspace-config-auto-execution.md"
+      }
+    },
+    {
+      "attackPath": {
+        "dataflow": {
+          "evidenceRefs": [
+            "diagnostics-notification",
+            "diagnostics-store",
+            "diagnostics-format",
+            "diagnostics-response"
+          ],
+          "outcome": "disproportionate work and model-context consumption in one local Symbols session",
+          "sink": "unbounded diagnostic retention and `formatDiagnostics` response construction",
+          "source": "attacker-controlled source that induces high diagnostic cardinality",
+          "summary": "hostile workspace source -> ordinary language server -> `publishDiagnostics` -> unbounded Map value -> full map/sort/join -> one MCP text item"
+        },
+        "evidenceRefs": [
+          "diagnostics-notification",
+          "diagnostics-store",
+          "diagnostics-response"
+        ],
+        "impact": {
+          "level": "medium",
+          "why": "The measured path creates substantial local latency and output amplification but no durable compromise, cross-user effect, or demonstrated crash."
+        },
+        "likelihood": {
+          "level": "medium",
+          "why": "Hostile repository content and diagnostic requests are plausible, but the effect is file- and tool-specific and remains local."
+        },
+        "limitations": [
+          "One local process and one connected agent context are affected.",
+          "Restarting Symbols is a practical recovery path if a host becomes unresponsive."
+        ],
+        "reachability": {
+          "attacker": "untrusted repository author",
+          "entrypoint": "public `diagnostics` tool on a crafted supported source file",
+          "outcome": "repeatable local delay, memory pressure, and oversized agent-visible output",
+          "summary": "The attacker controls repository source; the user must open the checkout with a compatible server and request diagnostics for the crafted file. No malicious language-server installation is required."
+        },
+        "summary": "A repository author supplies a supported source file engineered to generate many independent diagnostics. A user or agent invokes `diagnostics`; an ordinary server publishes the array, and Symbols retains, processes, and returns it without bounds, consuming local CPU, memory, latency, and agent context."
+      },
+      "codeEvidence": [
+        {
+          "code": "connection.onNotification(\n  'textDocument/publishDiagnostics',\n  (params: PublishDiagnosticsParams) => {\n    diagnosticsStore.addDiagnostics(params.uri, params.diagnostics);\n  }\n);",
+          "endLine": 609,
+          "explanation": "The language-server-controlled URI and complete diagnostics array cross the protocol boundary without a count, byte, or message-size check.",
+          "id": "diagnostics-notification",
+          "label": "LSP notification forwards the complete diagnostic array",
+          "language": "typescript",
+          "path": "src/lsp-client.ts",
+          "role": "entrypoint",
+          "startLine": 604
+        },
+        {
+          "code": "export function createDiagnosticsStore(): DiagnosticsStore {\n  const diagnostics = new Map<string, Diagnostic[]>();\n\n  return {\n    diagnostics,\n    addDiagnostics(uri: string, diagnostics: Diagnostic[]) {\n      this.diagnostics.set(uri, diagnostics);\n    },\n    getDiagnostics(uri: string): Diagnostic[] {\n      return this.diagnostics.get(uri) || [];\n    },\n    clear() {\n      this.diagnostics.clear();\n    },\n  };\n}",
+          "endLine": 69,
+          "explanation": "Per-URI replacement avoids version history for one document, but the store retains the complete current array, never caps URI keys, and does not delete an empty publication.",
+          "id": "diagnostics-store",
+          "label": "Store retains every diagnostic for every URI",
+          "language": "typescript",
+          "path": "src/state/stores.ts",
+          "role": "root_control",
+          "startLine": 54
+        },
+        {
+          "code": "// Get diagnostics from store (populated by push notifications)\nconst diagnostics = diagnosticsStore.getDiagnostics(uri);\n\n// Convert to DiagnosticEntry format\nconst diagnosticEntries: DiagnosticEntry[] = diagnostics.map(\n  (diagnostic) => ({\n    code: diagnostic.code?.toString() || 'unknown',\n    message: diagnosticMessageToString(diagnostic.message),\n    severity: diagnostic.severity || 1, // Error by default\n    range: diagnostic.range,\n    source: diagnostic.source || 'unknown',\n  })\n);\n\nreturn diagnosticEntries;",
+          "endLine": 579,
+          "explanation": "Every retained item is copied into a new operation array before any output budget is applied.",
+          "id": "diagnostics-transform",
+          "label": "Operation maps every retained diagnostic",
+          "language": "typescript",
+          "path": "src/lsp/operations/operations.ts",
+          "role": "propagation",
+          "startLine": 565
+        },
+        {
+          "code": "function formatDiagnostics(diagnostics: DiagnosticEntry[]): string {\n  if (diagnostics.length === 0) {\n    return 'No diagnostics found for this file.';\n  }\n\n  const sortedDiagnostics = [...diagnostics].sort((a, b) => {\n    if (a.severity !== b.severity) {\n      return a.severity - b.severity;\n    }\n    if (a.range.start.line !== b.range.start.line) {\n      return a.range.start.line - b.range.start.line;\n    }\n    return a.range.start.character - b.range.start.character;\n  });\n\n  return sortedDiagnostics\n    .map((diagnostic) => {\n      const severitySymbol = getSeveritySymbol(diagnostic.severity);\n      const severityName = getSeverityName(diagnostic.severity);\n      const line = diagnostic.range.start.line + 1;\n      const character = diagnostic.range.start.character + 1;\n      return `${severitySymbol} @${line}:${character} [${severityName}][${diagnostic.code}] ${diagnostic.message} (${diagnostic.source})`;\n    })\n    .join('\\n');\n}",
+          "endLine": 37,
+          "explanation": "The formatter allocates another full clone, performs `O(N log N)` sorting, creates one string per diagnostic, and joins the entire result.",
+          "id": "diagnostics-format",
+          "label": "Formatter clones, sorts, maps, and joins all entries",
+          "language": "typescript",
+          "path": "src/tools/diagnostics.ts",
+          "role": "sink",
+          "startLine": 13
+        },
+        {
+          "code": "const result = await LspOperations.getDiagnostics(session, prepared.data);\nif (!result.ok) throw new Error(result.error.message);\n\nreturn {\n  content: [\n    { type: 'text' as const, text: formatDiagnostics(result.data) },\n  ],",
+          "endLine": 95,
+          "explanation": "The public tool places the complete joined string into one MCP text item without a final character or rendered-entry limit.",
+          "id": "diagnostics-response",
+          "label": "Tool returns the complete joined text",
+          "language": "typescript",
+          "path": "src/tools/diagnostics.ts",
+          "role": "outcome",
+          "startLine": 89
+        }
+      ],
+      "confidence": {
+        "level": "high",
+        "rationale": "The unbounded source, store, transform, sort, join, and response path is direct, and an unmodified `typescript-language-server` produced 10,000 retained and returned diagnostics from attacker-controlled source with measured output size and elapsed time."
+      },
+      "extensions": {
+        "candidateId": "CAND-FR012-003",
+        "ledgerRowId": "LSP-PROTOCOL-001"
+      },
+      "findingId": "csf_c2790348915a41527547ffc3",
+      "fingerprints": {
+        "algorithm": "codex-security/v1",
+        "primary": "codex-security/v1:sha256:d09a6d8f8b51e5a001278b0996af921747c97a7375323b9a8313bd3911327e1c"
+      },
+      "identity": {
+        "anchor": "diagnostics-retention-and-output-unbounded"
+      },
+      "locations": [
+        {
+          "endLine": 609,
+          "path": "src/lsp-client.ts",
+          "role": "entrypoint",
+          "startLine": 604
+        },
+        {
+          "endLine": 68,
+          "path": "src/state/stores.ts",
+          "role": "root_control",
+          "startLine": 54
+        },
+        {
+          "endLine": 579,
+          "path": "src/lsp/operations/operations.ts",
+          "role": "propagation",
+          "startLine": 565
+        },
+        {
+          "endLine": 36,
+          "path": "src/tools/diagnostics.ts",
+          "role": "sink",
+          "startLine": 13
+        },
+        {
+          "endLine": 95,
+          "path": "src/tools/diagnostics.ts",
+          "role": "outcome",
+          "startLine": 92
+        }
+      ],
+      "occurrenceId": "occ_4bec372733c3263cf46783da",
+      "preventiveControls": [
+        "Use a bounded diagnostic representation rather than storing raw untrusted arrays indefinitely.",
+        "Apply resource budgets before sorting and string construction, not only at the final transport.",
+        "Keep operation-specific limits explicit and test their exact boundaries.",
+        "Expose omitted counts so bounded output remains honest and useful to the caller."
+      ],
+      "provenance": {
+        "source": "codex-security-plugin"
+      },
+      "remediation": "Bound diagnostics at multiple stages: cap per-URI count and individual message size before storage, delete empty URI entries, bound retained URI keys, preserve omitted-count metadata, apply the same policy to push and pull results, and enforce an independent rendered-count and final-character budget with an explicit omission marker before returning MCP text.",
+      "remediationTests": [
+        "Add store boundary tests for per-URI count, message length, empty-key deletion, omitted-count metadata, and deterministic URI eviction.",
+        "Add push and pull operation tests that prove input and output caps are independent.",
+        "Add formatter tests for exact rendered-entry and final-character boundaries with an explicit more-not-shown marker.",
+        "Rerun the 10,000-error TypeScript PoC and require bounded retained count, bounded text, an omission marker, and recorded latency and memory."
+      ],
+      "rootCause": {
+        "evidenceRefs": [
+          "diagnostics-notification",
+          "diagnostics-store",
+          "diagnostics-transform",
+          "diagnostics-format",
+          "diagnostics-response"
+        ],
+        "summary": "The violated invariant is that untrusted language-server cardinality and model-facing output must be bounded before expensive retention and transformation. The notification path stores the full array, the operation copies every item, and the tool clones, sorts, formats, joins, and returns the entire result with no omission metadata."
+      },
+      "ruleId": "resource-exhaustion.unbounded-diagnostics",
+      "severity": {
+        "changeConditions": "Severity would increase if a bounded ordinary workspace reliably crashed or persistently wedged the process, if full MCP transport measurements showed substantial recovery burden, or if the product became remotely shared. It would decrease if an enforced downstream cap prevented both retention and processing before the expensive path.",
+        "level": "low",
+        "rationale": "A 327,779-byte TypeScript file generated 10,000 valid diagnostics, an 868,893-character response, and about ten seconds of work through the public tool path. The effect is confined to one local single-user session, requires an explicit diagnostics call, completed without a crash, and causes no durable corruption, so it is Low rather than Medium or High."
+      },
+      "summary": "Symbols accepts the complete `textDocument/publishDiagnostics` array, retains it per URI without count or byte limits, maps and sorts every entry, and returns the complete formatted result as one MCP text item. Hostile workspace source can make an ordinary language server amplify a modest file into a costly local response.",
+      "taxonomy": {
+        "category": "Resource exhaustion",
+        "cwe": [
+          "CWE-770: Allocation of Resources Without Limits or Throttling"
+        ]
+      },
+      "title": "Diagnostics are retained and returned without bounds",
+      "validation": {
+        "assertions": [
+          "An ordinary server can generate the amplification solely from lower-authority workspace source.",
+          "The store and operation preserve all 10,000 diagnostics.",
+          "The tool emits every diagnostic and no omission marker.",
+          "The ordinary-server messages were short, so reportability does not depend on a malicious server or extreme individual message size."
+        ],
+        "evidenceRefs": [
+          "diagnostics-notification",
+          "diagnostics-store",
+          "diagnostics-transform",
+          "diagnostics-format",
+          "diagnostics-response"
+        ],
+        "limitations": [
+          "The final registered handler was called directly rather than serialized through a separate MCP stdio client.",
+          "The measured run completed; no crash threshold or fixed-memory termination point was sought.",
+          "Some MCP hosts may impose their own downstream response limits, which do not prevent Symbols from retaining and processing the full array first."
+        ],
+        "method": "Static source/control/sink review plus a realistic-interface reproduction through Symbols using an ordinary unmodified TypeScript language server.",
+        "summary": "A generated 327,779-byte TypeScript file containing 10,000 independent type errors produced 10,000 retained diagnostics, 10,000 operation results, and a 10,000-line, 868,893-character public-tool response in about 10.1 seconds."
+      },
+      "writeup": {
+        "reportPath": "findings/unbounded-diagnostics-output/unbounded-diagnostics-output.md"
+      }
+    }
+  ],
+  "scanId": "7534904e940c_20260714T101023Z",
+  "schemaVersion": "1.0"
+}

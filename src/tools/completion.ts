@@ -53,7 +53,9 @@ export function registerCompletionTool(server: McpServer, manager: LspManager) {
       const sections: string[] = [];
 
       if (cursorContext) {
-        sections.push(formatCursorContext(cursorContext));
+        sections.push(
+          formatCursorContext(cursorContext, session.getProfile().workspacePath)
+        );
       }
 
       sections.push(formattedText);

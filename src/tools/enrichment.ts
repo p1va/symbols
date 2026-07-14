@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs/promises';
+import { fileURLToPath } from 'node:url';
 import {
   Range,
   Location,
@@ -36,17 +37,7 @@ interface FileCache {
  * Converts a file:// URI to a local file path with proper URL decoding
  */
 function decodeFileUriToPath(uri: string): string {
-  // Remove file:// prefix
-  let path = uri.replace('file://', '');
-
-  // Decode URL encoding (like %40 -> @)
-  try {
-    path = decodeURIComponent(path);
-  } catch {
-    // If decoding fails, use the original path
-  }
-
-  return path;
+  return uri.startsWith('file:') ? fileURLToPath(uri) : uri;
 }
 
 /**

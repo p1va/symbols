@@ -31,12 +31,7 @@ vi.mock('../../src/runtime/lsp-session.js', async () => {
   };
 });
 
-import {
-  resolveStartConfig,
-  resolveRunConfig,
-  type StartCommandArgs,
-  type RunCommandArgs,
-} from '../../src/utils/cli.js';
+import { resolveStartConfig, resolveRunConfig } from '../../src/utils/cli.js';
 import {
   autoDetectLsp,
   createConfigFromDirectCommand,
@@ -152,7 +147,9 @@ function createMockSessionRecord(
     getDiagnosticProviderStore: vi.fn(() => ({}) as never),
     getWindowLogStore: vi.fn(() => ({
       getMessages: () => [],
+      getDroppedCount: () => 0,
     })),
+    refreshOpenDocuments: vi.fn(() => Promise.resolve([])),
     executeWithCursorContext: vi.fn(),
     executeWithDocumentLifecycle: vi.fn(),
     claimDocument: (filePath) => {
@@ -322,12 +319,72 @@ describe('LspManager routing', () => {
     fs.rmSync(workspacePath, { recursive: true, force: true });
   });
 
+  it('creates encoded file URIs for start-mode workspaces', async () => {
+    const uriWorkspacePath = path.join(
+      workspacePath,
+      'workspace with spaces',
+      'café'
+    );
+    mockResolveStartConfig.mockReturnValue({
+      command: 'start',
+      workspace: uriWorkspacePath,
+      configPath: undefined,
+      lsp: undefined,
+      loglevel: 'info',
+      console: false,
+    });
+
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: uriWorkspacePath,
+    });
+
+    expect(mockCreateLspSession.mock.calls[0]?.[1]).toMatchObject({
+      workspacePath: uriWorkspacePath,
+      workspaceUri: pathToFileURL(uriWorkspacePath).href,
+    });
+  });
+
+  it('creates encoded file URIs for direct-run workspaces', async () => {
+    const uriWorkspacePath = path.join(
+      workspacePath,
+      'workspace with spaces',
+      'café'
+    );
+    mockResolveRunConfig.mockReturnValue({
+      command: 'run',
+      workspace: uriWorkspacePath,
+      loglevel: 'info',
+      console: false,
+      directCommand: {
+        commandName: 'direct-lsp',
+        commandArgs: ['--stdio'],
+      },
+    });
+
+    const manager = createLspManager();
+    await manager.configureForRun({
+      command: 'run',
+      workspace: uriWorkspacePath,
+      directCommand: {
+        commandName: 'direct-lsp',
+        commandArgs: ['--stdio'],
+      },
+    });
+
+    expect(mockCreateLspSession.mock.calls[0]?.[1]).toMatchObject({
+      workspacePath: uriWorkspacePath,
+      workspaceUri: pathToFileURL(uriWorkspacePath).href,
+    });
+  });
+
   it('reuses the session that already owns an open document', async () => {
     const manager = createLspManager();
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const betaSession = await manager.start('beta');
     emitDocumentClaim('beta', 'src/test.ts');
@@ -346,7 +403,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const betaSession = await manager.start('beta');
     const routedSession = await manager.getSessionForFile('src/other.ts');
@@ -370,7 +427,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await expect(
       manager.getSessionForFile('queries/report.sql')
@@ -391,7 +448,7 @@ describe('LspManager routing', () => {
         commandName: 'direct-lsp',
         commandArgs: ['--stdio'],
       },
-    } as RunCommandArgs);
+    });
 
     await expect(
       manager.getSessionForFile('queries/report.sql')
@@ -409,7 +466,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     expect(manager.getStatus().configPath).toBe(
       path.join(workspacePath, 'language-servers.yaml')
@@ -442,7 +499,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const sessions = await manager.getSearchSessions();
 
@@ -480,7 +537,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const sessions = await manager.getSearchSessions();
 
@@ -511,7 +568,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await expect(manager.getSearchSessions()).rejects.toThrow(
       'No LSP profiles are currently configured.'
@@ -528,7 +585,7 @@ describe('LspManager routing', () => {
         commandName: 'direct-lsp',
         commandArgs: ['--stdio'],
       },
-    } as RunCommandArgs);
+    });
 
     const sessions = await manager.getSearchSessions();
 
@@ -545,7 +602,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     expect(manager.getProfileStatus('alpha')).toMatchObject({
       state: 'not_started',
@@ -564,7 +621,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const { listProfiles, getProfileStatus, detect } = manager;
 
@@ -585,7 +642,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await manager.start('alpha');
     await manager.stop('alpha');
@@ -602,7 +659,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const betaSession = await manager.start('beta');
     emitDocumentClaim('beta', 'src/test.ts');
@@ -635,7 +692,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await manager.start('alpha');
     configuredProfiles.alpha = createParsedConfig(
@@ -658,7 +715,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await manager.start('alpha');
     configuredProfiles.alpha = createParsedConfig(
@@ -698,12 +755,50 @@ describe('LspManager routing', () => {
     });
   });
 
+  it('reload keeps running sessions untouched when replacement config is invalid', async () => {
+    const manager = createLspManager();
+    await manager.configureForStart({
+      command: 'start',
+      workspace: workspacePath,
+    });
+
+    const activeSession = await manager.start('alpha');
+    emitDocumentClaim('alpha', 'src/test.ts');
+    configuredProfiles.alpha = createParsedConfig(
+      'alpha',
+      {
+        '.ts': 'typescript',
+      },
+      ['--stdio', '--invalid-replacement']
+    );
+    mockLoadLspConfig.mockImplementationOnce(() => {
+      throw new Error('Invalid configuration in language-servers.yaml');
+    });
+
+    await expect(manager.reload()).rejects.toThrow(
+      'Invalid configuration in language-servers.yaml'
+    );
+
+    const alphaRecord = sessionRecords.get('alpha');
+    expect(alphaRecord?.stopMock).not.toHaveBeenCalled();
+    expect(alphaRecord?.startMock).toHaveBeenCalledTimes(1);
+    expect(alphaRecord?.session).toBe(activeSession);
+    expect(alphaRecord?.session.getProfile().config.commandArgs).toEqual([
+      '--stdio',
+    ]);
+    expect(manager.getProfileStatus('alpha')).toMatchObject({
+      state: 'ready',
+      commandArgs: ['--stdio'],
+      ownedDocumentCount: 1,
+    });
+  });
+
   it('reload does not restart profiles that were removed from config', async () => {
     const manager = createLspManager();
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await manager.start('alpha');
     delete configuredProfiles.alpha;
@@ -741,7 +836,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     const status = manager.getStatus();
 
@@ -774,7 +869,7 @@ describe('LspManager routing', () => {
     await manager.configureForStart({
       command: 'start',
       workspace: workspacePath,
-    } as StartCommandArgs);
+    });
 
     await expect(manager.getSessionForFile('src/test.ts')).rejects.toThrow(
       'No configuration file was found. Run `symbols config init` to create language-servers.yaml, then add a language server profile, or start Symbols in direct mode with `symbols run <command>`.'

@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import {
   createLspError,
   DiagnosticEntry,
+  DiagnosticsResult,
   ErrorCode,
   Result,
   tryResult,
@@ -22,6 +23,13 @@ import {
 } from '../../preparation.js';
 import { DEFAULT_SEARCH_WARMUP_WINDOW_MS } from '../../config/lsp-config.js';
 import logger from '../../utils/logger.js';
+import {
+  DIAGNOSTIC_MESSAGE_MAX_CHARACTERS,
+  DIAGNOSTICS_MAX_ENTRIES,
+  diagnosticMessageToString,
+  truncateDiagnosticMessage,
+  truncateDiagnosticMetadata,
+} from '../../utils/diagnostics.js';
 import {
   CallHierarchyDirection,
   CallHierarchyIncomingCall,
@@ -119,10 +127,8 @@ async function requestWorkspaceSymbols(
   session: LspSession,
   params: WorkspaceSymbolParams
 ): Promise<SymbolSearchResult[]> {
-  const symbols: WorkspaceSymbol[] | SymbolInformation[] = await session.request(
-    'workspace/symbol',
-    params
-  );
+  const symbols: WorkspaceSymbol[] | SymbolInformation[] =
+    await session.request('workspace/symbol', params);
 
   return transformWorkspaceSymbols(symbols);
 }
@@ -318,16 +324,18 @@ export async function callHierarchy(
                 direction === 'outgoing'
                   ? Promise.resolve<CallHierarchyIncomingCall[] | null>(null)
                   : scope
-                      .request<
-                        CallHierarchyIncomingCall[] | null
-                      >('callHierarchy/incomingCalls', { item })
+                      .request<CallHierarchyIncomingCall[] | null>(
+                        'callHierarchy/incomingCalls',
+                        { item }
+                      )
                       .then((calls) => (Array.isArray(calls) ? calls : [])),
                 direction === 'incoming'
                   ? Promise.resolve<CallHierarchyOutgoingCall[] | null>(null)
                   : scope
-                      .request<
-                        CallHierarchyOutgoingCall[] | null
-                      >('callHierarchy/outgoingCalls', { item })
+                      .request<CallHierarchyOutgoingCall[] | null>(
+                        'callHierarchy/outgoingCalls',
+                        { item }
+                      )
                       .then((calls) => (Array.isArray(calls) ? calls : [])),
               ]);
 
@@ -504,7 +512,7 @@ export async function outlineSymbols(
 export async function getDiagnostics(
   session: LspSession,
   prepared: PreparedFileRequest
-): Promise<Result<DiagnosticEntry[]>> {
+): Promise<Result<DiagnosticsResult>> {
   const diagnosticsStore = session.getDiagnosticsStore();
   const diagnosticProviderStore = session.getDiagnosticProviderStore();
   const profile = session.getProfile();
@@ -520,7 +528,7 @@ export async function getDiagnostics(
   return await session.executeWithDocumentLifecycle(
     filePath,
     'transient',
-    async (scope): Promise<Result<DiagnosticEntry[]>> => {
+    async (scope): Promise<Result<DiagnosticsResult>> => {
       return await tryResultAsync(
         async () => {
           if (strategy === 'pull') {
@@ -530,7 +538,11 @@ export async function getDiagnostics(
               scope.uri
             );
           } else {
-            return await getPushDiagnostics(diagnosticsStore, scope.uri);
+            return await getPushDiagnostics(
+              diagnosticsStore,
+              scope.uri,
+              lspConfig.diagnostics.wait_timeout_ms
+            );
           }
         },
         (error) =>
@@ -546,10 +558,11 @@ export async function getDiagnostics(
 
 async function getPushDiagnostics(
   diagnosticsStore: DiagnosticsStore,
-  uri: string
-): Promise<DiagnosticEntry[]> {
-  // Give LSP a moment to send diagnostics after opening the file
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  uri: string,
+  waitTimeoutMs: number
+): Promise<DiagnosticsResult> {
+  // Give the LSP its configured window to publish diagnostics after opening the file.
+  await delay(waitTimeoutMs);
 
   // Get diagnostics from store (populated by push notifications)
   const diagnostics = diagnosticsStore.getDiagnostics(uri);
@@ -558,22 +571,26 @@ async function getPushDiagnostics(
   const diagnosticEntries: DiagnosticEntry[] = diagnostics.map(
     (diagnostic) => ({
       code: diagnostic.code?.toString() || 'unknown',
-      message: diagnostic.message,
+      message: diagnosticMessageToString(diagnostic.message),
       severity: diagnostic.severity || 1, // Error by default
       range: diagnostic.range,
       source: diagnostic.source || 'unknown',
     })
   );
 
-  return diagnosticEntries;
+  return {
+    diagnostics: diagnosticEntries,
+    omittedCount: diagnosticsStore.getOmittedCount(uri),
+  };
 }
 
 async function getPullDiagnostics(
   request: SessionDocumentScope['request'],
   diagnosticProviderStore: DiagnosticProviderStore,
   uri: string
-): Promise<DiagnosticEntry[]> {
+): Promise<DiagnosticsResult> {
   const allDiagnostics: DiagnosticEntry[] = [];
+  let omittedCount = 0;
 
   // Get all diagnostic providers that support this document
   const providers: DiagnosticProvider[] =
@@ -605,27 +622,38 @@ async function getPullDiagnostics(
       if ((diagnosticReport as { kind?: string }).kind === 'full') {
         const fullReport = diagnosticReport as { items: unknown[] };
 
-        // Convert diagnostics to our format
-        const diagnosticEntries: DiagnosticEntry[] = fullReport.items.map(
+        const remainingCapacity = Math.max(
+          0,
+          DIAGNOSTICS_MAX_ENTRIES - allDiagnostics.length
+        );
+        const boundedItems = fullReport.items.slice(0, remainingCapacity);
+        omittedCount += fullReport.items.length - boundedItems.length;
+
+        // Convert only the bounded prefix to our format.
+        const diagnosticEntries: DiagnosticEntry[] = boundedItems.map(
           (diagnostic: unknown) => {
             const d = diagnostic as {
               code?: { value: string | number } | string | number;
-              message: string;
+              message: string | { value: string };
               severity?: number;
               range: Range;
               source?: string;
             };
             return {
-              code:
+              code: truncateDiagnosticMetadata(
                 typeof d.code === 'object' && d.code && 'value' in d.code
                   ? String(d.code.value)
                   : d.code
                     ? String(d.code)
-                    : 'unknown',
-              message: d.message,
+                    : 'unknown'
+              ),
+              message: truncateDiagnosticMessage(
+                diagnosticMessageToString(d.message),
+                DIAGNOSTIC_MESSAGE_MAX_CHARACTERS
+              ),
               severity: d.severity || 1, // Error by default
               range: d.range,
-              source: d.source || provider.id,
+              source: truncateDiagnosticMetadata(d.source || provider.id),
             };
           }
         );
@@ -635,6 +663,8 @@ async function getPullDiagnostics(
         logger.debug('Retrieved diagnostics from provider', {
           providerId: provider.id,
           diagnosticCount: diagnosticEntries.length,
+          omittedDiagnosticCount:
+            fullReport.items.length - diagnosticEntries.length,
         });
       } else {
         logger.debug('Provider returned unchanged diagnostics', {
@@ -654,9 +684,10 @@ async function getPullDiagnostics(
     uri,
     totalDiagnostics: allDiagnostics.length,
     providerCount: providers.length,
+    omittedDiagnosticCount: omittedCount,
   });
 
-  return allDiagnostics;
+  return { diagnostics: allDiagnostics, omittedCount };
 }
 
 export async function rename(
@@ -691,20 +722,31 @@ export async function rename(
 
           const addEdits = (
             fileUri: string,
-            edits: Array<{
-              range: Range;
-              newText: string;
-            }>
+            edits: Array<
+              | { range: Range; newText: string }
+              | {
+                  range: Range;
+                  snippet: { kind: 'snippet'; value: string };
+                }
+            >
           ) => {
-            const fileChanges = edits.map((edit) => ({
-              range: edit.range,
-              newText: edit.newText,
-              // Convert positions back to 1-based for user display
-              startLine: edit.range.start.line + 1,
-              startCharacter: edit.range.start.character + 1,
-              endLine: edit.range.end.line + 1,
-              endCharacter: edit.range.end.character + 1,
-            }));
+            const fileChanges = edits.map((edit) => {
+              if (!('newText' in edit)) {
+                throw new Error(
+                  `Rename returned an unsupported snippet edit for ${fileUri}`
+                );
+              }
+
+              return {
+                range: edit.range,
+                newText: edit.newText,
+                // Convert positions back to 1-based for user display
+                startLine: edit.range.start.line + 1,
+                startCharacter: edit.range.start.character + 1,
+                endLine: edit.range.end.line + 1,
+                endCharacter: edit.range.end.character + 1,
+              };
+            });
 
             changes[fileUri] = [...(changes[fileUri] || []), ...fileChanges];
           };
@@ -724,6 +766,12 @@ export async function rename(
             for (const change of workspaceEdit.documentChanges) {
               if (!change || typeof change !== 'object') {
                 continue;
+              }
+
+              if ('kind' in change) {
+                throw new Error(
+                  `Rename returned unsupported file operation '${change.kind}'; no files were changed`
+                );
               }
 
               if (!('textDocument' in change) || !('edits' in change)) {

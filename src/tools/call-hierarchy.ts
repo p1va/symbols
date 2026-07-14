@@ -82,12 +82,15 @@ export function registerCallHierarchyTool(
 
       const sections: string[] = [];
       const { cursorContext } = result.data;
+      const workspacePath = session.getProfile().workspacePath;
 
       if (cursorContext) {
-        sections.push(formatCursorContext(cursorContext));
+        sections.push(formatCursorContext(cursorContext, workspacePath));
       }
 
-      sections.push(await formatCallHierarchyResult(result.data.result));
+      sections.push(
+        await formatCallHierarchyResult(result.data.result, workspacePath)
+      );
 
       return {
         content: [
@@ -102,7 +105,8 @@ export function registerCallHierarchyTool(
 }
 
 async function formatCallHierarchyResult(
-  result: CallHierarchyResult
+  result: CallHierarchyResult,
+  workspacePath?: string
 ): Promise<string> {
   if (result.targets.length === 0) {
     return 'No call hierarchy item found at this position';
@@ -123,7 +127,12 @@ async function formatCallHierarchyResult(
     (
       await Promise.all(
         displayedTargets.map((target, index) =>
-          formatCallHierarchyTarget(target, result.direction, index)
+          formatCallHierarchyTarget(
+            target,
+            result.direction,
+            index,
+            workspacePath
+          )
         )
       )
     ).join('\n\n'),
@@ -142,10 +151,11 @@ async function formatCallHierarchyResult(
 async function formatCallHierarchyTarget(
   target: CallHierarchyTarget,
   direction: CallHierarchyDirection,
-  index: number
+  index: number,
+  workspacePath?: string
 ): Promise<string> {
   const sections = [
-    `Target ${index + 1}: ${formatCallHierarchyItem(target.item)}`,
+    `Target ${index + 1}: ${formatCallHierarchyItem(target.item, workspacePath)}`,
     formatTargetSummary(target, direction),
   ];
 
@@ -157,6 +167,7 @@ async function formatCallHierarchyTarget(
         getItem: (call) => call.from,
         getRanges: (call) => call.fromRanges,
         callSiteLabel: 'calls at',
+        workspacePath,
       })
     );
   }
@@ -169,6 +180,7 @@ async function formatCallHierarchyTarget(
         getItem: (call) => call.to,
         getRanges: (call) => call.fromRanges,
         callSiteLabel: 'called at',
+        workspacePath,
       })
     );
   }
@@ -205,10 +217,13 @@ function formatTargetSummary(
   return `Summary: ${parts.join('; ')}`;
 }
 
-function formatCallHierarchyItem(item: CallHierarchyItem): string {
+function formatCallHierarchyItem(
+  item: CallHierarchyItem,
+  workspacePath?: string
+): string {
   const position = getCallHierarchyItemStart(item);
   const kind = getSymbolKindName(item.kind);
-  const filePath = formatFilePath(item.uri);
+  const filePath = formatFilePath(item.uri, workspacePath);
   let result = `${item.name} (${kind}) - ${filePath}:${position.line + 1}:${position.character + 1}`;
 
   if (item.detail) {
@@ -224,12 +239,14 @@ async function formatCallSection<TCall extends CallSectionEntry>({
   getItem,
   getRanges,
   callSiteLabel,
+  workspacePath,
 }: {
   title: string;
   calls: TCall[];
   getItem: (call: TCall) => CallHierarchyItem;
   getRanges: (call: TCall) => Range[];
   callSiteLabel: string;
+  workspacePath: string | undefined;
 }): Promise<string> {
   if (calls.length === 0) {
     return `${title}\nNone`;
@@ -247,7 +264,7 @@ async function formatCallSection<TCall extends CallSectionEntry>({
       existing.calls.push(call);
     } else {
       byFile.set(item.uri, {
-        displayPath: formatFilePath(item.uri),
+        displayPath: formatFilePath(item.uri, workspacePath),
         calls: [call],
       });
     }

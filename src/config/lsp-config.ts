@@ -293,7 +293,7 @@ function describeShellToken(token: ShellQuoteToken): string {
   }
 
   if (typeof token === 'object') {
-    return JSON.stringify(token as Record<string, unknown>);
+    return JSON.stringify(token);
   }
 
   if (

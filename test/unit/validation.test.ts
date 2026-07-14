@@ -107,7 +107,11 @@ function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
     getWorkspaceLoaderStore: vi.fn(() => workspaceLoaderStore),
     getDiagnosticsStore: vi.fn(() => ({})),
     getDiagnosticProviderStore: vi.fn(() => ({})),
-    getWindowLogStore: vi.fn(() => ({ getMessages: vi.fn() })),
+    getWindowLogStore: vi.fn(() => ({
+      getMessages: vi.fn(),
+      getDroppedCount: vi.fn(() => 0),
+    })),
+    refreshOpenDocuments: vi.fn(() => Promise.resolve([])),
     executeWithCursorContext: vi.fn(),
     executeWithDocumentLifecycle: vi.fn(),
     claimDocument: vi.fn((filePath: string) => filePath),
@@ -322,6 +326,19 @@ describe('Validation Utilities', () => {
 
       expect(result.valid).toBe(true);
       expect(mockReadFile).toHaveBeenCalledWith(filePath, 'utf8');
+    });
+
+    it.each([
+      ['an empty line', 'first\n\nthird', createOneBasedPosition(2, 1)],
+      ['a trailing empty line', 'first\n', createOneBasedPosition(2, 1)],
+      ['an empty file', '', createOneBasedPosition(1, 1)],
+    ])('should validate column 1 on %s', async (_, fileContent, position) => {
+      const filePath = '/test/file.ts';
+      mockReadFile.mockResolvedValue(fileContent);
+
+      const result = await validatePosition(filePath, position);
+
+      expect(result.valid).toBe(true);
     });
 
     it('should return invalid for line out of bounds', async () => {

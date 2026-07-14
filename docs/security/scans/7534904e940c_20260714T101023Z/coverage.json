@@ -1,0 +1,244 @@
+{
+  "completeness": "complete",
+  "deferred": [],
+  "documentType": "codex-security.coverage",
+  "excludePaths": [
+    "README.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/",
+    "examples/",
+    "test/",
+    "pnpm-lock.yaml",
+    "node_modules/",
+    "dist/",
+    "coverage/"
+  ],
+  "explicitExclusions": [
+    {
+      "pattern": "README.md, AGENTS.md, CLAUDE.md, docs/**, examples/**",
+      "reason": "Documentation and examples were used as product context but were not runtime security-review worklist rows."
+    },
+    {
+      "pattern": "test/**",
+      "reason": "Unit tests were executed as verification; test source was not treated as shipped runtime attack surface."
+    },
+    {
+      "pattern": "pnpm-lock.yaml, node_modules/**",
+      "reason": "Dependency resolution was covered through the lockfile and production advisory audit rather than full-file dependency source review."
+    },
+    {
+      "pattern": "dist/**, coverage/**",
+      "reason": "Generated build and coverage output was excluded from semantic source review."
+    }
+  ],
+  "includePaths": [
+    "."
+  ],
+  "inventoryStrategy": "repository",
+  "mode": "repository",
+  "openQuestions": [
+    {
+      "followUpPrompt": "Test the installed Symbols plugin in each supported MCP host using the workspace-config PoC and document the exact pre-spawn approval UX, if any.",
+      "question": "Do all supported MCP hosts show an approval that is explicitly tied to workspace-local executable configuration before the first file-backed request?"
+    },
+    {
+      "followUpPrompt": "Benchmark the diagnostics tool on representative TypeScript, Rust, C#, and Python projects, then select per-document count, message, retained-URI, and final-character limits with explicit omission metadata.",
+      "question": "Which diagnostic count and text budgets preserve useful output on representative real repositories?"
+    }
+  ],
+  "scanId": "7534904e940c_20260714T101023Z",
+  "schemaVersion": "1.0",
+  "surfaces": [
+    {
+      "disposition": "reported",
+      "id": "workspace-executable-config",
+      "label": "Workspace and executable configuration",
+      "notes": "Workspace-local YAML is selected ahead of shared configuration and can choose the executable and arguments reached by an ordinary file-backed request.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md",
+        "artifacts/03_coverage/reviewed_surfaces.md"
+      ],
+      "riskArea": "Untrusted configuration promoted to child-process policy"
+    },
+    {
+      "disposition": "rejected",
+      "id": "configuration-reload",
+      "label": "Configuration reload",
+      "notes": "A narrow race was reproduced, but the executable was already authorized and running, status exposes the stale condition, and shutdown eventually stops it.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Revocation and session-state races"
+    },
+    {
+      "disposition": "rejected",
+      "id": "file-backed-mcp-paths",
+      "label": "File-backed MCP paths",
+      "notes": "An outside-workspace excerpt is possible, but no lower-privileged recipient or independent exfiltration principal was established in the local single-user model.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Unintended local-file reads"
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "rename-workspace-edits",
+      "label": "Rename workspace edits",
+      "notes": "Targets are canonicalized under the real workspace, symlink escape and invalid edits are rejected, and content is staged before replacement. Multi-file atomicity remains reliability hardening.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Outside-workspace writes and partial application"
+    },
+    {
+      "disposition": "reported",
+      "id": "lsp-protocol-and-diagnostics",
+      "label": "LSP protocol and diagnostics",
+      "notes": "An ordinary TypeScript server produced 10,000 retained diagnostics and an 868,893-character response from hostile workspace content.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md",
+        "artifacts/03_coverage/reviewed_surfaces.md"
+      ],
+      "riskArea": "Unbounded server-controlled cardinality and output"
+    },
+    {
+      "disposition": "rejected",
+      "id": "preload-files",
+      "label": "Preload files",
+      "notes": "Escaping preload paths add no capability beyond the executable authority already granted to the same profile; selection remains one file per entry.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Config-directed reads and resource use"
+    },
+    {
+      "disposition": "reported",
+      "id": "logs-and-resources",
+      "label": "Logs and resources",
+      "notes": "Window messages and generic logs are bounded; diagnostics independently lack storage and response bounds.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md",
+        "artifacts/03_coverage/reviewed_surfaces.md"
+      ],
+      "riskArea": "Sensitive or unbounded model-facing output"
+    },
+    {
+      "disposition": "rejected",
+      "id": "session-lifecycle",
+      "label": "Session lifecycle",
+      "notes": "Retained documents and reload state are local lifecycle issues; the initialize timeout lacks a lower-authority security trigger.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Retention, hangs, and stale ownership"
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "yaml-parsing",
+      "label": "YAML parsing",
+      "notes": "Safe parsing and strict Zod transforms prevent executable YAML tags, and no dynamic-property execution sink was found.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Unsafe deserialization and object-shape abuse"
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "plugin-package-metadata",
+      "label": "Plugin package metadata",
+      "notes": "Manifests consistently invoke the intended package. The explicit latest-tag policy remains ecosystem hardening rather than a repository substitution flaw.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Mutable package selection and manifest drift"
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "installation-skills",
+      "label": "Installation skills",
+      "notes": "Shipped mirrors are byte-identical and point to official ecosystem packages or releases with executable verification guidance.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Third-party language-server provenance"
+    },
+    {
+      "disposition": "rejected",
+      "id": "ci-and-release",
+      "label": "CI and release",
+      "notes": "Mutable MCP publisher download execution is real hardening debt, but exploitation requires compromise of the protected official upstream release authority plus a maintainer release tag.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Privileged supply-chain execution"
+    },
+    {
+      "disposition": "not_applicable",
+      "id": "production-dependencies",
+      "label": "Production dependencies",
+      "notes": "pnpm audit --prod reported zero known vulnerabilities across 149 production dependencies at scan time.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Known reachable dependency vulnerabilities"
+    },
+    {
+      "disposition": "not_applicable",
+      "id": "network-behavior",
+      "label": "Network behavior",
+      "notes": "The shipped runtime has no HTTP server or outbound network client; language-server communication is local stdio.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "SSRF and callback abuse"
+    },
+    {
+      "disposition": "not_applicable",
+      "id": "authentication-and-queries",
+      "label": "Authentication and queries",
+      "notes": "Symbols has no accounts, database, hosted routes, tenant model, or query engine.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Authn, authz, tenant, and query injection"
+    },
+    {
+      "disposition": "no_issue_found",
+      "id": "agent-visible-text",
+      "label": "Agent-visible text",
+      "notes": "Repository and LSP text is returned as data and is not evaluated or automatically connected to a privileged action by Symbols.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Evaluation, template injection, and prompt-to-action"
+    },
+    {
+      "disposition": "not_applicable",
+      "id": "generated-and-developer-assets",
+      "label": "Generated and developer assets",
+      "notes": "Generated reports are ignored and unshipped; playgrounds and sync/config scripts are development-only explicit maintainer surfaces.",
+      "receiptRefs": [
+        "artifacts/02_discovery/work_ledger.jsonl",
+        "artifacts/03_coverage/repository_coverage_ledger.md"
+      ],
+      "riskArea": "Hidden release or execution drift"
+    }
+  ]
+}

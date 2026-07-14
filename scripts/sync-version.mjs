@@ -7,7 +7,6 @@ const repoRoot = path.resolve(scriptDir, '..');
 
 const packageJsonPath = path.join(repoRoot, 'package.json');
 const targetPaths = [
-  path.join(repoRoot, 'gemini-extension.json'),
   path.join(repoRoot, 'plugins', 'symbols', '.codex-plugin', 'plugin.json'),
 ];
 

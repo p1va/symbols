@@ -251,7 +251,7 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
 </details>
 
 <details>
-  
+
 <summary>
   &nbsp;
   <picture>
@@ -716,7 +716,7 @@ rust-analyzer --version
 </details>
 
 <details>
-  
+
 <summary>
   &nbsp;
   <picture>

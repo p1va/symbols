@@ -10,7 +10,6 @@ import * as rpc from 'vscode-jsonrpc';
 import which from 'which';
 import {
   InitializeParams,
-  WorkspaceFolder,
   PublishDiagnosticsParams,
   InitializeResult,
 } from 'vscode-languageserver-protocol';
@@ -61,6 +60,15 @@ function summarizeProgressNotification(params: unknown): unknown {
           }
         : notification.value,
   };
+}
+
+export function createWorkspaceConfigurationResponse(params: unknown): null[] {
+  if (!params || typeof params !== 'object') {
+    return [];
+  }
+
+  const items = (params as { items?: unknown }).items;
+  return Array.isArray(items) ? items.map(() => null) : [];
 }
 
 function resolveWorkspaceLoaderType(lspConfig: ParsedLspConfig): string {
@@ -277,7 +285,7 @@ export function createLspClient(
       logger.debug('LSP request received', { method, params });
 
       if (method === 'workspace/configuration') {
-        return [];
+        return createWorkspaceConfigurationResponse(params);
       }
 
       if (method === 'window/workDoneProgress/create') {
@@ -372,7 +380,7 @@ export async function initializeLspClient(
         {
           name: config.workspaceName,
           uri: config.workspaceUri,
-        } as WorkspaceFolder,
+        },
       ],
       capabilities: {
         window: {
@@ -396,7 +404,7 @@ export async function initializeLspClient(
             didSave: true,
           },
           semanticTokens: {
-            dynamicRegistration: true,
+            dynamicRegistration: false,
             requests: {
               range: false,
               full: {

@@ -37,8 +37,7 @@ export function createLspError(
 
 // Enhanced Result type with generic error parameter and improved discriminants
 export type Result<T, E = LspOperationError> =
-  | { ok: true; data: T }
-  | { ok: false; error: E };
+  { ok: true; data: T } | { ok: false; error: E };
 
 // Helper function to wrap operations that might throw into Result
 export function tryResult<T, E = LspOperationError>(
@@ -138,8 +137,10 @@ export interface DiagnosticProvider {
 // Stores for cached data
 export interface DiagnosticsStore {
   diagnostics: Map<string, Diagnostic[]>;
+  omittedDiagnostics: Map<string, number>;
   addDiagnostics(uri: string, diagnostics: Diagnostic[]): void;
   getDiagnostics(uri: string): Diagnostic[];
+  getOmittedCount(uri: string): number;
   clear(): void;
 }
 
@@ -158,9 +159,9 @@ export interface DiagnosticProviderStore {
 export type LogMessage = LogMessageParams;
 
 export interface WindowLogStore {
-  messages: LogMessage[];
   addMessage(message: LogMessage): void;
   getMessages(): LogMessage[];
+  getDroppedCount(): number;
   clear(): void;
 }
 
@@ -222,8 +223,7 @@ interface LspOperationError extends BaseError {
 }
 
 export type ValidationResult =
-  | { valid: true }
-  | { valid: false; error: ValidationError };
+  { valid: true } | { valid: false; error: ValidationError };
 
 // Diagnostic entry for LSP diagnostics operations
 export interface DiagnosticEntry {
@@ -232,4 +232,9 @@ export interface DiagnosticEntry {
   severity: number;
   range: Range;
   source: string;
+}
+
+export interface DiagnosticsResult {
+  diagnostics: DiagnosticEntry[];
+  omittedCount: number;
 }

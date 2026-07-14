@@ -46,11 +46,12 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
       if (!result.ok) throw new Error(result.error.message);
 
       const { result: inspectData, cursorContext } = result.data;
+      const workspacePath = session.getProfile().workspacePath;
 
       const sections: string[] = [];
 
       if (cursorContext) {
-        sections.push(formatCursorContext(cursorContext));
+        sections.push(formatCursorContext(cursorContext, workspacePath));
       }
 
       if (inspectData.hover && inspectData.hover.contents) {
@@ -67,7 +68,8 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
       ) {
         const definitionText = await formatLocationGroup(
           inspectData.definition,
-          'Definition'
+          'Definition',
+          workspacePath
         );
         sections.push(definitionText);
       }
@@ -79,7 +81,8 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
       ) {
         const typeDefText = await formatLocationGroup(
           inspectData.typeDefinition,
-          'Type Definition'
+          'Type Definition',
+          workspacePath
         );
         sections.push(typeDefText);
       }
@@ -91,7 +94,8 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
       ) {
         const implText = await formatLocationGroup(
           inspectData.implementation,
-          'Implementation'
+          'Implementation',
+          workspacePath
         );
         sections.push(implText);
       }
@@ -160,7 +164,8 @@ function extractHoverContent(hover: Hover): string | null {
  */
 async function formatLocationGroup(
   locations: Location[],
-  groupTitle: string
+  groupTitle: string,
+  workspacePath?: string
 ): Promise<string> {
   if (!locations || locations.length === 0) return '';
 
@@ -194,7 +199,7 @@ async function formatLocationGroup(
     const originalLocation = locations[index];
     if (!location || !originalLocation) return;
 
-    const filePath = formatFilePath(location.uri);
+    const filePath = formatFilePath(location.uri, workspacePath);
 
     if (!fileGroups.has(filePath)) {
       fileGroups.set(filePath, []);

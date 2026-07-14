@@ -18,7 +18,7 @@ import {
   findSemanticTokenAtPosition,
   SemanticToken,
 } from '../types/lsp.js';
-import { formatFilePath } from '../tools/utils.js';
+import { fileUriToPath, formatFilePath } from '../tools/utils.js';
 import logger from './logger.js';
 
 export interface CursorContext {
@@ -270,7 +270,7 @@ function createTextSnippet(
   }
 
   const line = lines[lineIndex];
-  if (!line || charIndex < 0 || charIndex > line.length) {
+  if (line === undefined || charIndex < 0 || charIndex > line.length) {
     return 'Invalid position';
   }
 
@@ -325,7 +325,7 @@ export async function generateCursorContext(
 ): Promise<CursorContext | null> {
   // Get file content
   const fileContent = await getFileContent(uri, sessionDocuments, filePath);
-  if (!fileContent) {
+  if (fileContent === null) {
     return null;
   }
 
@@ -345,7 +345,7 @@ export async function generateCursorContext(
 
   const result: CursorContext = {
     operation,
-    file: uri.replace('file://', ''), // Remove file:// prefix for display
+    file: fileUriToPath(uri),
     position,
     snippet,
   };
@@ -379,7 +379,10 @@ export async function generateCursorContext(
 /**
  * Formats cursor context for display in MCP responses
  */
-export function formatCursorContext(context: CursorContext): string {
+export function formatCursorContext(
+  context: CursorContext,
+  workspacePath?: string
+): string {
   // Document symbol info (broader structural context)
   const symbolInfo =
     context.symbolName && context.symbolKind
@@ -399,7 +402,7 @@ export function formatCursorContext(context: CursorContext): string {
   // Capitalize first letter of operation and format file path
   const capitalizedOperation =
     context.operation.charAt(0).toUpperCase() + context.operation.slice(1);
-  const formattedPath = formatFilePath(context.file);
+  const formattedPath = formatFilePath(context.file, workspacePath);
 
   return `${capitalizedOperation} on ${formattedPath}:${context.position.line}:${context.position.character}
     Snippet: \`${context.snippet}\`

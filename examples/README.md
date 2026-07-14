@@ -26,7 +26,7 @@ Each configuration file follows this basic structure:
 language-servers:
   <lsp-name>:
     command: '<command-to-start-lsp-server>'
-    extensions: # Optional - merged with built-in defaults
+    extensions: # Optional; when present, this is the complete routing map
       '<file-extension>': '<language-id>'
     workspace_files:
       - '<project-files-that-indicate-this-language>'
@@ -43,12 +43,11 @@ language-servers:
 
 ### Extension Mappings
 
-The `extensions` field is **optional** and **merged with built-in defaults**:
+The `extensions` field is optional. Its behavior is intentionally strict:
 
-- **Default behavior**: All common file extensions (`.js`, `.ts`, `.py`, `.go`, `.rs`, `.cs`, etc.) are pre-mapped
-- **When to specify**: Only add `extensions` when you need custom mappings or want to override defaults
-- **Merging**: Your extensions are merged with defaults - you don't lose any defaults by specifying extensions
-- **Override**: Your custom extensions take precedence over defaults when there's a conflict
+- **Known profiles**: When `extensions` is omitted, Symbols applies the built-in fallback map for that profile.
+- **Explicit profiles**: When `extensions` is present, it is authoritative. List every extension the profile should handle.
+- **Custom profiles**: Prefer an explicit map so routing stays predictable when multiple language servers are configured.
 
 **Example - No extensions needed:**
 
@@ -56,18 +55,21 @@ The `extensions` field is **optional** and **merged with built-in defaults**:
 language-servers:
   typescript:
     command: typescript-language-server --stdio
-    # No extensions field - all defaults (.ts, .js, .tsx, .jsx, etc.) work automatically!
+    # The built-in TypeScript profile fallback handles .ts, .js, .tsx, .jsx, and related extensions.
 ```
 
-**Example - Adding custom extensions:**
+**Example - Explicit authoritative mappings:**
 
 ```yaml
 language-servers:
   typescript:
     command: typescript-language-server --stdio
     extensions:
-      '.config.ts': 'typescript' # Add custom extension
-      # All defaults (.ts, .js, .tsx, etc.) still work!
+      '.js': 'javascript'
+      '.jsx': 'javascriptreact'
+      '.ts': 'typescript'
+      '.tsx': 'typescriptreact'
+      '.config.ts': 'typescript'
 ```
 
 The list of allowed language id can be found [here](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#:~:text=use%20those%20ids.-,Language,-Identifier)

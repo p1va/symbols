@@ -146,7 +146,7 @@ export async function validatePosition(
 
     // Check character bounds
     const lineContent = lines[zeroBasedPosition.line];
-    if (!lineContent) {
+    if (lineContent === undefined) {
       return {
         valid: false,
         error: {

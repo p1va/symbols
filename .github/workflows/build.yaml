@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/setup-and-install
 
       - name: 🎨 Format check
-        run: pnpm format --check
+        run: pnpm format:check
 
       - name: 🔍 Lint
         run: pnpm lint

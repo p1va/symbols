@@ -1,0 +1,109 @@
+{
+  "documentType": "codex-security.hardening-analysis",
+  "schemaVersion": "1.0",
+  "analysisId": "hardening_final",
+  "sourceScan": {
+    "scanId": "7534904e940c_20260714T101023Z",
+    "targetRevision": "7534904e940c5585a8675624ca71eb4e247d37e8",
+    "snapshotDigest": "codex-security-snapshot/v1:sha256:11bb4e0b4b6f14f6c23723da8c5c39b77d78de9d6a2ba5a8f2c4bd3ed416b1fe",
+    "sourceDrift": "none"
+  },
+  "assessment": {
+    "outcome": "local_remediation_preferred",
+    "summary": "The two reportable findings have independent control owners and proportionate tactical fixes; the evidence does not justify a shared architectural hardening program."
+  },
+  "constraints": {
+    "profile": "balanced",
+    "changeHorizons": [
+      "incremental"
+    ],
+    "nonNegotiables": [
+      "Preserve Symbols as a lightweight local, single-user MCP-to-LSP bridge.",
+      "Keep installation and troubleshooting guidance in skills, desired state in language-servers.yaml, and runtime inspection and control in MCP resources and tools.",
+      "Prefer the smallest language-agnostic change that restores the violated invariant.",
+      "Do not introduce a managed installer, hosted service, broad workflow subsystem, or generalized security policy framework."
+    ],
+    "assumptions": [
+      "No measured performance or memory budget was supplied.",
+      "Compatibility should be preserved for explicitly selected configuration and ordinary bounded diagnostic workloads.",
+      "The supplied snapshot digest represents the analyzed working tree at the target revision."
+    ]
+  },
+  "evidence": [
+    {
+      "findingId": "csf_9401e990a7b0e40ad3ab959d",
+      "sourceKind": "finding",
+      "title": "Workspace config auto-execution",
+      "path": "findings/workspace-config-auto-execution/workspace-config-auto-execution.md",
+      "claim": "Automatically discovered workspace YAML can select a language-server command that executes without an intervening trust decision."
+    },
+    {
+      "findingId": "csf_c2790348915a41527547ffc3",
+      "sourceKind": "finding",
+      "title": "Unbounded diagnostics output",
+      "path": "findings/unbounded-diagnostics-output/unbounded-diagnostics-output.md",
+      "claim": "Valid diagnostics from an ordinary server remain unbounded across retention, transformation, sorting, and final MCP output."
+    },
+    {
+      "evidenceId": "COV-001",
+      "sourceKind": "coverage",
+      "title": "Repository coverage ledger",
+      "path": "artifacts/03_coverage/repository_coverage_ledger.md",
+      "claim": "The complete scan has two final findings, no deferred coverage rows, and no repeated surviving control failure connecting these two boundaries."
+    },
+    {
+      "evidenceId": "TM-001",
+      "sourceKind": "threat_model",
+      "title": "Symbols repository threat model",
+      "path": "artifacts/01_context/threat_model.md",
+      "claim": "Executable workspace policy and language-server output are distinct trust boundaries in the local single-user product."
+    }
+  ],
+  "tacticalRemediations": [
+    {
+      "remediationId": "workspace-config-trust-gate",
+      "findingId": "csf_9401e990a7b0e40ad3ab959d",
+      "title": "Default-deny untrusted workspace executable configuration",
+      "affectedComponents": [
+        "src/config/lsp-config.ts",
+        "src/runtime/lsp-manager.ts",
+        "src/tools/reload.ts"
+      ],
+      "securityInvariant": "Automatically discovered workspace configuration cannot select an executable until the exact canonical workspace, canonical config path, and config content have been explicitly trusted; reload must re-evaluate that identity.",
+      "recommendedShape": "Keep enforcement at config-source selection. The smallest safe default is to reject auto-discovered workspace config unless it was explicitly selected or approved; if persistent convenience is retained, use a narrow user-owned content-bound approval record rather than a managed trust service.",
+      "acceptanceCriteria": [
+        "An unapproved workspace-local config cannot cause a process spawn through startup, file routing, auto-detection, or reload.",
+        "Explicit CLI config and trusted shared user config retain documented behavior.",
+        "Changing config bytes, canonical path, workspace identity, or symlink target invalidates approval.",
+        "Denial is visible and fail-closed rather than silently selecting surprising executable policy."
+      ],
+      "validationPlan": "Run the finding PoC against startup and reload; add manager/session tests for denial, explicit trust, content change, canonicalization, symlink retargeting, and trusted-config compatibility."
+    },
+    {
+      "remediationId": "bounded-diagnostics-pipeline",
+      "findingId": "csf_c2790348915a41527547ffc3",
+      "title": "Bound diagnostic retention and model-facing output",
+      "affectedComponents": [
+        "src/lsp-client.ts",
+        "src/state/stores.ts",
+        "src/lsp/operations/operations.ts",
+        "src/tools/diagnostics.ts"
+      ],
+      "securityInvariant": "Untrusted diagnostics are bounded before retention and transformation, and final MCP text is independently bounded with an explicit count or byte omission marker for both push and pull strategies.",
+      "recommendedShape": "Add diagnostics-specific per-URI count and message limits, bounded URI retention with empty-key deletion, omission metadata, and final rendered-count and character budgets. Reuse a small bounded-text helper only where existing local output paths already need the same primitive.",
+      "acceptanceCriteria": [
+        "Push diagnostics over the ingress cap retain only bounded data and record the omitted count.",
+        "Pull diagnostics and final formatting obey independent count and character budgets.",
+        "Oversized messages are truncated explicitly, empty publications delete URI state, and URI retention is deterministically bounded.",
+        "The 10,000-error ordinary TypeScript reproduction returns bounded output with an omission marker and acceptable measured latency."
+      ],
+      "validationPlan": "Add store and formatter boundary tests for count, bytes, messages, URI eviction, push and pull behavior, then rerun the 10,000-error integration workload while recording elapsed time, output characters, retained entries, and peak memory if practical."
+    }
+  ],
+  "opportunities": [],
+  "openQuestions": [
+    "Should workspace auto-discovery be disabled until an explicit --config selection, or retained behind a narrow content-bound approval record?",
+    "What per-document, per-message, retained-URI, rendered-count, and final-character budgets preserve useful diagnostics on representative repositories?",
+    "Which existing MCP error and resource surfaces should present workspace trust denial and diagnostic omission metadata without expanding the public tool surface?"
+  ]
+}

@@ -12,6 +12,8 @@ import {
 } from '../../src/lsp/operations/operations.js';
 import { createOneBasedPosition, type LogMessage } from '../../src/types.js';
 import type { LspSession } from '../../src/runtime/lsp-session.js';
+import { DIAGNOSTICS_MAX_ENTRIES } from '../../src/utils/diagnostics.js';
+import type { Diagnostic } from 'vscode-languageserver-protocol';
 
 const TEST_URI = 'file:///test/workspace/src/test.ts';
 const TEST_FILE_PATH = '/test/workspace/src/test.ts';
@@ -19,8 +21,11 @@ const TEST_FILE_PATH = '/test/workspace/src/test.ts';
 interface MockSessionOptions {
   requestImpl?: (method: string, params: unknown) => Promise<unknown>;
   diagnosticsStrategy?: 'push' | 'pull';
+  diagnosticsWaitTimeoutMs?: number;
   providers?: Array<{ id: string }>;
   logMessages?: LogMessage[];
+  pushDiagnostics?: Diagnostic[];
+  pushOmittedCount?: number;
   workspaceState?: {
     isReady: boolean;
     isLoading: boolean;
@@ -31,11 +36,17 @@ interface MockSessionOptions {
 function createMockSession(options: MockSessionOptions = {}): {
   session: LspSession;
   request: ReturnType<typeof vi.fn>;
-  diagnosticsStore: { getDiagnostics: ReturnType<typeof vi.fn> };
+  diagnosticsStore: {
+    getDiagnostics: ReturnType<typeof vi.fn>;
+    getOmittedCount: ReturnType<typeof vi.fn>;
+  };
   diagnosticProviderStore: {
     getProvidersForDocument: ReturnType<typeof vi.fn>;
   };
-  windowLogStore: { getMessages: ReturnType<typeof vi.fn> };
+  windowLogStore: {
+    getMessages: ReturnType<typeof vi.fn>;
+    getDroppedCount: ReturnType<typeof vi.fn>;
+  };
 } {
   const request = vi.fn((method: string, params: unknown) => {
     if (options.requestImpl) {
@@ -45,13 +56,15 @@ function createMockSession(options: MockSessionOptions = {}): {
     return Promise.reject(new Error(`unexpected request ${method}`));
   });
   const diagnosticsStore = {
-    getDiagnostics: vi.fn(() => []),
+    getDiagnostics: vi.fn(() => options.pushDiagnostics ?? []),
+    getOmittedCount: vi.fn(() => options.pushOmittedCount ?? 0),
   };
   const diagnosticProviderStore = {
     getProvidersForDocument: vi.fn(() => options.providers ?? []),
   };
   const windowLogStore = {
     getMessages: vi.fn(() => options.logMessages ?? []),
+    getDroppedCount: vi.fn(() => 0),
   };
   const profile = {
     name: 'typescript',
@@ -65,6 +78,7 @@ function createMockSession(options: MockSessionOptions = {}): {
       extensions: { '.ts': 'typescript' },
       diagnostics: {
         strategy: options.diagnosticsStrategy ?? ('push' as const),
+        wait_timeout_ms: options.diagnosticsWaitTimeoutMs ?? 2000,
       },
       ...(options.searchWarmupWindowMs !== undefined
         ? {
@@ -136,6 +150,7 @@ function createMockSession(options: MockSessionOptions = {}): {
     getDiagnosticsStore: vi.fn(() => diagnosticsStore),
     getDiagnosticProviderStore: vi.fn(() => diagnosticProviderStore),
     getWindowLogStore: vi.fn(() => windowLogStore),
+    refreshOpenDocuments: vi.fn(() => Promise.resolve([])),
     executeWithCursorContext,
     executeWithDocumentLifecycle,
     claimDocument: vi.fn((filePath: string) => filePath),
@@ -763,7 +778,7 @@ describe('LSP operations', () => {
           items: [
             {
               code: 'CS1001',
-              message: 'problem',
+              message: { kind: 'markdown', value: '**problem**' },
               severity: 1,
               range: {
                 start: { line: 1, character: 2 },
@@ -780,10 +795,81 @@ describe('LSP operations', () => {
     });
 
     expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data).toMatchObject({
+      diagnostics: [{ message: '**problem**' }],
+      omittedCount: 0,
+    });
     expect(request).toHaveBeenCalledWith('textDocument/diagnostic', {
       textDocument: { uri: TEST_URI },
       identifier: 'roslyn',
     });
+  });
+
+  it('getDiagnostics respects the configured push diagnostics timeout', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { session, diagnosticsStore } = createMockSession({
+        diagnosticsStrategy: 'push',
+        diagnosticsWaitTimeoutMs: 1200,
+      });
+
+      const resultPromise = getDiagnostics(session, {
+        filePath: TEST_FILE_PATH,
+      });
+
+      await vi.advanceTimersByTimeAsync(1199);
+      expect(diagnosticsStore.getDiagnostics).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await resultPromise;
+
+      expect(result).toEqual({
+        ok: true,
+        data: { diagnostics: [], omittedCount: 0 },
+      });
+      expect(diagnosticsStore.getDiagnostics).toHaveBeenCalledWith(TEST_URI);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bounds pull diagnostics across providers before mapping them', async () => {
+    const items = Array.from(
+      { length: DIAGNOSTICS_MAX_ENTRIES + 2 },
+      (_, index) => ({
+        code: `TS${index}`,
+        message: index === 0 ? 'x'.repeat(10_000) : `problem-${index}`,
+        severity: 1,
+        range: {
+          start: { line: index, character: 0 },
+          end: { line: index, character: 1 },
+        },
+        source: 'typescript',
+      })
+    );
+    const { session } = createMockSession({
+      diagnosticsStrategy: 'pull',
+      providers: [{ id: 'typescript' }],
+      requestImpl: () => Promise.resolve({ kind: 'full', items }),
+    });
+
+    const result = await getDiagnostics(session, {
+      filePath: TEST_FILE_PATH,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data.diagnostics).toHaveLength(DIAGNOSTICS_MAX_ENTRIES);
+    expect(result.data.diagnostics[0]?.message.length).toBe(2_000);
+    expect(result.data.omittedCount).toBe(2);
   });
 
   it('rename uses the prepared rename payload and returns workspace edits', async () => {
@@ -870,6 +956,87 @@ describe('LSP operations', () => {
         },
       ],
     });
+  });
+
+  it('rename rejects snippet edits before they can be written as raw text', async () => {
+    const { session } = createMockSession({
+      requestImpl: () =>
+        Promise.resolve({
+          documentChanges: [
+            {
+              textDocument: { uri: TEST_URI, version: 1 },
+              edits: [
+                {
+                  range: {
+                    start: { line: 1, character: 2 },
+                    end: { line: 1, character: 6 },
+                  },
+                  snippet: { kind: 'snippet', value: '${1:Renamed}' },
+                },
+              ],
+            },
+          ],
+        }),
+    });
+
+    const result = await rename(session, {
+      filePath: TEST_FILE_PATH,
+      position: createOneBasedPosition(2, 3),
+      lspPosition: { line: 1, character: 2 },
+      newName: 'Renamed',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error.message).toContain(
+      'unsupported snippet edit for file:///test/workspace/src/test.ts'
+    );
+  });
+
+  it('rename rejects resource operations before returning any text edits', async () => {
+    const { session } = createMockSession({
+      requestImpl: () =>
+        Promise.resolve({
+          documentChanges: [
+            {
+              textDocument: { uri: TEST_URI, version: 1 },
+              edits: [
+                {
+                  range: {
+                    start: { line: 0, character: 0 },
+                    end: { line: 0, character: 4 },
+                  },
+                  newText: 'Renamed',
+                },
+              ],
+            },
+            {
+              kind: 'rename',
+              oldUri: TEST_URI,
+              newUri: 'file:///test/workspace/src/renamed.ts',
+            },
+          ],
+        }),
+    });
+
+    const result = await rename(session, {
+      filePath: TEST_FILE_PATH,
+      position: createOneBasedPosition(1, 1),
+      lspPosition: { line: 0, character: 0 },
+      newName: 'Renamed',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error.message).toContain(
+      "unsupported file operation 'rename'; no files were changed"
+    );
   });
 
   it('logs returns messages from the window log store', () => {

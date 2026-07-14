@@ -5,6 +5,7 @@
 
 import { WorkspaceLoader, WorkspaceLoaderState } from '../types.js';
 import { LspClient, LspConfig } from '../../types.js';
+import { fileURLToPath } from 'node:url';
 import {
   detectCSharpWorkspace,
   createCSharpWorkspaceNotification,
@@ -28,8 +29,8 @@ const extractWorkspacePath = (config: LspConfig): string => {
     throw new Error('No workspace URI provided');
   }
 
-  return workspaceUri.startsWith('file://')
-    ? workspaceUri.replace('file://', '')
+  return workspaceUri.startsWith('file:')
+    ? fileURLToPath(workspaceUri)
     : workspaceUri;
 };
 

@@ -70,10 +70,7 @@ export interface ConfigCommandArgs extends BaseCliArgs {
 }
 
 type CliArgs =
-  | BaseCliArgs
-  | StartCommandArgs
-  | RunCommandArgs
-  | ConfigCommandArgs;
+  BaseCliArgs | StartCommandArgs | RunCommandArgs | ConfigCommandArgs;
 
 /**
  * Parse command-line arguments using yargs with subcommands
@@ -510,7 +507,7 @@ export function parseCliArgs(args: string[] = process.argv): CliArgs {
   return {
     command: null,
     help: Boolean(argv.help),
-  } as BaseCliArgs;
+  };
 }
 
 /**

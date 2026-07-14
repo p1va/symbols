@@ -53,8 +53,7 @@ interface LanguageServerProfileResource {
   };
 }
 
-interface LanguageServerProfileDetailResource
-  extends LanguageServerProfileResource {
+interface LanguageServerProfileDetailResource extends LanguageServerProfileResource {
   configPath: string | null;
   mode: LspManagerStatus['mode'];
   hints: string[];
@@ -333,7 +332,9 @@ export function registerLanguageServerResources(
         }
 
         sections.push(
-          `Profile: ${profileName}\n${formatWindowLogMessages(result.data)}`
+          `Profile: ${profileName}\n${formatWindowLogMessages(result.data, {
+            omittedMessages: session.getWindowLogStore().getDroppedCount(),
+          })}`
         );
       }
 

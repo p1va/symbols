@@ -273,9 +273,7 @@ function processLocations(response: unknown): Location[] {
 type MockLspClient = Pick<LspClient, 'connection' | 'isInitialized'>;
 
 const mockClient: MockLspClient = {
-  connection: {
-    /* proper mock */
-  },
+  connection: {/* proper mock */},
   isInitialized: true,
 };
 

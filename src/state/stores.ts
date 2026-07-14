@@ -13,20 +13,136 @@ import {
 } from '../types.js';
 import { WorkspaceLoaderState, WorkspaceLoader } from '../workspace/types.js';
 import logger from '../utils/logger.js';
+import {
+  DIAGNOSTIC_MESSAGE_MAX_CHARACTERS,
+  DIAGNOSTIC_METADATA_MAX_CHARACTERS,
+  DIAGNOSTICS_MAX_ENTRIES,
+  diagnosticMessageToString,
+  truncateDiagnosticMessage,
+  truncateDiagnosticMetadata,
+} from '../utils/diagnostics.js';
 
-export function createDiagnosticsStore(): DiagnosticsStore {
+export const DEFAULT_WINDOW_LOG_MAX_MESSAGES = 1_000;
+const DEFAULT_WINDOW_LOG_MAX_MESSAGE_CHARACTERS = 8_000;
+
+const WINDOW_LOG_MESSAGE_TRUNCATION_SUFFIX = '… [message truncated]';
+
+interface WindowLogStoreOptions {
+  maxMessages?: number;
+  maxMessageCharacters?: number;
+}
+
+interface DiagnosticsStoreOptions {
+  maxDiagnosticsPerUri?: number;
+  maxMessageCharacters?: number;
+  maxMetadataCharacters?: number;
+}
+
+function requirePositiveInteger(value: number, name: string): number {
+  if (!Number.isInteger(value) || value < 1) {
+    throw new RangeError(`${name} must be a positive integer`);
+  }
+
+  return value;
+}
+
+function truncateWindowLogMessage(
+  message: LogMessage,
+  maxCharacters: number
+): LogMessage {
+  if (message.message.length <= maxCharacters) {
+    return message;
+  }
+
+  const truncationSuffix = WINDOW_LOG_MESSAGE_TRUNCATION_SUFFIX.slice(
+    0,
+    maxCharacters
+  );
+  const contentLength = Math.max(0, maxCharacters - truncationSuffix.length);
+  return {
+    ...message,
+    message: `${message.message.slice(0, contentLength)}${truncationSuffix}`,
+  };
+}
+
+export function createDiagnosticsStore(
+  options: DiagnosticsStoreOptions = {}
+): DiagnosticsStore {
+  const maxDiagnosticsPerUri = requirePositiveInteger(
+    options.maxDiagnosticsPerUri ?? DIAGNOSTICS_MAX_ENTRIES,
+    'maxDiagnosticsPerUri'
+  );
+  const maxMessageCharacters = requirePositiveInteger(
+    options.maxMessageCharacters ?? DIAGNOSTIC_MESSAGE_MAX_CHARACTERS,
+    'maxMessageCharacters'
+  );
+  const maxMetadataCharacters = requirePositiveInteger(
+    options.maxMetadataCharacters ?? DIAGNOSTIC_METADATA_MAX_CHARACTERS,
+    'maxMetadataCharacters'
+  );
   const diagnostics = new Map<string, Diagnostic[]>();
+  const omittedDiagnostics = new Map<string, number>();
 
   return {
     diagnostics,
-    addDiagnostics(uri: string, diagnostics: Diagnostic[]) {
-      this.diagnostics.set(uri, diagnostics);
+    omittedDiagnostics,
+    addDiagnostics(uri: string, incomingDiagnostics: Diagnostic[]) {
+      if (incomingDiagnostics.length === 0) {
+        this.diagnostics.delete(uri);
+        this.omittedDiagnostics.delete(uri);
+        return;
+      }
+
+      const storedDiagnostics = incomingDiagnostics
+        .slice(0, maxDiagnosticsPerUri)
+        .map((diagnostic): Diagnostic => ({
+          range: diagnostic.range,
+          message: truncateDiagnosticMessage(
+            diagnosticMessageToString(diagnostic.message),
+            maxMessageCharacters
+          ),
+          ...(diagnostic.severity !== undefined
+            ? { severity: diagnostic.severity }
+            : {}),
+          ...(diagnostic.code !== undefined
+            ? {
+                code:
+                  typeof diagnostic.code === 'number'
+                    ? diagnostic.code
+                    : truncateDiagnosticMetadata(
+                        diagnostic.code,
+                        maxMetadataCharacters
+                      ),
+              }
+            : {}),
+          ...(diagnostic.source !== undefined
+            ? {
+                source: truncateDiagnosticMetadata(
+                  diagnostic.source,
+                  maxMetadataCharacters
+                ),
+              }
+            : {}),
+        }));
+      const omittedCount =
+        incomingDiagnostics.length - storedDiagnostics.length;
+
+      this.diagnostics.set(uri, storedDiagnostics);
+      if (omittedCount > 0) {
+        this.omittedDiagnostics.set(uri, omittedCount);
+      } else {
+        this.omittedDiagnostics.delete(uri);
+      }
     },
     getDiagnostics(uri: string): Diagnostic[] {
       return this.diagnostics.get(uri) || [];
     },
+    getOmittedCount(uri: string): number {
+      return this.omittedDiagnostics.get(uri) || 0;
+    },
     clear() {
       this.diagnostics.clear();
+      this.omittedDiagnostics.clear();
     },
   };
 }
@@ -98,20 +214,44 @@ export function createDiagnosticProviderStore(): DiagnosticProviderStore {
   };
 }
 
-export function createWindowLogStore(): WindowLogStore {
+export function createWindowLogStore(
+  options: WindowLogStoreOptions = {}
+): WindowLogStore {
+  const maxMessages = requirePositiveInteger(
+    options.maxMessages ?? DEFAULT_WINDOW_LOG_MAX_MESSAGES,
+    'maxMessages'
+  );
+  const maxMessageCharacters = requirePositiveInteger(
+    options.maxMessageCharacters ?? DEFAULT_WINDOW_LOG_MAX_MESSAGE_CHARACTERS,
+    'maxMessageCharacters'
+  );
   const messages: LogMessage[] = [];
+  let droppedCount = 0;
 
   return {
-    messages,
     addMessage(message: LogMessage) {
-      logger.info('[LSP-LOG]', message);
-      this.messages.push(message);
+      const storedMessage = truncateWindowLogMessage(
+        message,
+        maxMessageCharacters
+      );
+      logger.debug('[LSP-LOG]', storedMessage);
+      messages.push(storedMessage);
+
+      const overflow = messages.length - maxMessages;
+      if (overflow > 0) {
+        messages.splice(0, overflow);
+        droppedCount += overflow;
+      }
     },
     getMessages(): LogMessage[] {
-      return [...this.messages];
+      return [...messages];
+    },
+    getDroppedCount(): number {
+      return droppedCount;
     },
     clear() {
-      this.messages.length = 0;
+      messages.length = 0;
+      droppedCount = 0;
     },
   };
 }

@@ -44,7 +44,8 @@ export function registerOutlineTool(server: McpServer, manager: LspManager) {
         { symbols: result.data },
         validatedRequest.file,
         Boolean(validatedRequest.preview),
-        containerKinds
+        containerKinds,
+        session.getProfile().workspacePath
       );
       return {
         content: [
@@ -147,10 +148,11 @@ async function formatOutlineResults(
   data: { symbols: FlattenedSymbol[] },
   filePath: string,
   preview = false,
-  containerKinds: number[] = DEFAULT_CONTAINER_KINDS
+  containerKinds: number[] = DEFAULT_CONTAINER_KINDS,
+  workspacePath?: string
 ): Promise<string> {
   if (!data.symbols || data.symbols.length === 0) {
-    return `No symbols found in ${formatFilePath(filePath)}`;
+    return `No symbols found in ${formatFilePath(filePath, workspacePath)}`;
   }
 
   const symbols = data.symbols;
@@ -203,7 +205,7 @@ async function formatOutlineResults(
   const sections = [];
 
   sections.push(
-    `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}\nSymbol breakdown: ${typeBreakdown}`
+    `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath, workspacePath)}\nSymbol breakdown: ${typeBreakdown}`
   );
 
   const rootContainers = new Map<string, EnrichedSymbol[]>();

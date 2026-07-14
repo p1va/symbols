@@ -12,11 +12,8 @@ import { SymbolKind } from 'vscode-languageserver-protocol';
 // value exports when executing the code via `tsx` (pnpm dev).
 import type {
   // Basic types
-  DocumentUri,
-  Position,
   Range,
   Location,
-  uinteger,
 
   // Symbol types
   SymbolInformation,
@@ -24,9 +21,6 @@ import type {
   WorkspaceSymbol,
 
   // Request/Response parameter types
-  InitializeParams,
-  InitializeResult,
-  InitializedParams,
   TextDocumentPositionParams,
   ReferenceParams,
   CompletionParams,
@@ -44,20 +38,13 @@ import type {
   CallHierarchyOutgoingCall,
 
   // Notification parameter types
-  DidOpenTextDocumentParams,
-  DidCloseTextDocumentParams,
-  DidChangeTextDocumentParams,
-  LogMessageParams,
-  PublishDiagnosticsParams,
-
   // Diagnostic types for pull diagnostics (used in operations)
   DocumentDiagnosticParams,
-  DocumentDiagnosticReport,
-  RelatedFullDocumentDiagnosticReport,
 
   // Semantic tokens types
   SemanticTokensParams,
   SemanticTokens,
+  SemanticTokensLegend,
 } from 'vscode-languageserver-protocol';
 import logger from '../utils/logger.js';
 import type { LspClient } from '../types.js';
@@ -69,23 +56,16 @@ type SendLspRequest = <TResult, TParams = unknown>(
 
 // Re-export the official types
 export type {
-  DocumentUri,
-  Position,
   Range,
   Location,
-  uinteger,
   SymbolInformation,
   DocumentSymbol,
   WorkspaceSymbol,
-  InitializeParams,
-  InitializeResult,
-  InitializedParams,
   TextDocumentPositionParams,
   ReferenceParams,
   CompletionParams,
   CompletionList,
   CompletionItem,
-  DocumentSymbolParams,
   WorkspaceSymbolParams,
   RenameParams,
   WorkspaceEdit,
@@ -93,17 +73,8 @@ export type {
   CallHierarchyItem,
   CallHierarchyIncomingCall,
   CallHierarchyOutgoingCall,
-  DidOpenTextDocumentParams,
-  DidCloseTextDocumentParams,
-  DidChangeTextDocumentParams,
-  LogMessageParams,
-  PublishDiagnosticsParams,
   // Diagnostic types for pull diagnostics (used in operations)
   DocumentDiagnosticParams,
-  DocumentDiagnosticReport,
-  RelatedFullDocumentDiagnosticReport,
-  SemanticTokensParams,
-  SemanticTokens,
 };
 
 // Export the runtime SymbolKind value separately so both type and runtime
@@ -432,8 +403,47 @@ export function findSemanticTokenAtPosition(
   return null;
 }
 
+function getFullSemanticTokensLegend(
+  client: LspClient
+): SemanticTokensLegend | null {
+  const provider: unknown = client.serverCapabilities?.semanticTokensProvider;
+  if (!provider || typeof provider !== 'object') {
+    return null;
+  }
+
+  const { full, legend } = provider as {
+    full?: unknown;
+    legend?: {
+      tokenTypes?: unknown;
+      tokenModifiers?: unknown;
+    };
+  };
+  const supportsFull =
+    full === true || (full !== null && typeof full === 'object');
+  if (
+    !supportsFull ||
+    !legend ||
+    !Array.isArray(legend.tokenTypes) ||
+    legend.tokenTypes.length === 0 ||
+    !legend.tokenTypes.every((tokenType) => typeof tokenType === 'string') ||
+    !Array.isArray(legend.tokenModifiers) ||
+    !legend.tokenModifiers.every(
+      (tokenModifier) => typeof tokenModifier === 'string'
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    tokenTypes: legend.tokenTypes,
+    tokenModifiers: legend.tokenModifiers,
+  };
+}
+
 /**
- * Gets semantic tokens for a document and caches token type/modifier legends
+ * Gets full semantic tokens when the initialized server advertised a usable
+ * static provider. The server legend defines how numeric token indices and
+ * modifier bits must be decoded.
  */
 export async function getSemanticTokens(
   client: LspClient,
@@ -441,10 +451,16 @@ export async function getSemanticTokens(
   fileContent: string
 ): Promise<{
   tokens: SemanticToken[];
-  legend?: { tokenTypes: string[]; tokenModifiers: string[] };
+  legend: SemanticTokensLegend;
 } | null> {
+  const legend = getFullSemanticTokensLegend(client);
+  if (!legend) {
+    logger.debug('Semantic token enrichment is not supported', { uri });
+    return null;
+  }
+
   try {
-    logger.info(`getSemanticTokens called for ${uri}`);
+    logger.debug('Requesting full semantic tokens', { uri });
 
     const params: SemanticTokensParams = {
       textDocument: { uri },
@@ -460,37 +476,10 @@ export async function getSemanticTokens(
       return null;
     }
 
-    // Get the legend from the server capabilities (should be cached from initialization)
-    // For now, we'll use TypeScript's common token types and modifiers
-    // This should ideally come from the server's initialize response
-    const tokenTypes = [
-      'class',
-      'enum',
-      'interface',
-      'namespace',
-      'typeParameter',
-      'type',
-      'parameter',
-      'variable',
-      'enumMember',
-      'property',
-      'function',
-      'member',
-    ];
-
-    const tokenModifiers = [
-      'declaration',
-      'static',
-      'async',
-      'readonly',
-      'defaultLibrary',
-      'local',
-    ];
-
     const decodedTokens = decodeSemanticTokens(
       response.data,
-      tokenTypes,
-      tokenModifiers,
+      legend.tokenTypes,
+      legend.tokenModifiers,
       fileContent
     );
 
@@ -498,12 +487,13 @@ export async function getSemanticTokens(
 
     return {
       tokens: decodedTokens,
-      legend: { tokenTypes, tokenModifiers },
+      legend,
     };
   } catch (error) {
-    logger.error(
-      `Error in getSemanticTokens: ${error instanceof Error ? error.message : String(error)}`
-    );
+    logger.debug('Semantic token enrichment failed', {
+      uri,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 }

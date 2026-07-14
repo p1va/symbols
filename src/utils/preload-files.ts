@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { glob } from 'glob';
 
-export interface PreloadFileMatch {
+interface PreloadFileMatch {
   entry: string;
   resolvedPath: string;
   matchCount: number;
 }
 
-export interface PreloadFileResolution {
+interface PreloadFileResolution {
   resolvedEntries: PreloadFileMatch[];
   missingEntries: string[];
 }

@@ -81,6 +81,8 @@ export async function openFile(
       const document = sessionDocuments.get(uri);
       if (document) {
         document.isOpen = true;
+        document.content = content;
+        document.version = version;
       } else {
         sessionDocuments.set(uri, {
           uri,

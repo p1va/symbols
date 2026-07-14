@@ -21,6 +21,18 @@ jobs:
       - name: Setup and Install
         uses: ./.github/actions/setup-and-install
 
+      - name: Verify generated assets are in sync
+        run: |
+          pnpm sync:skills
+          pnpm sync:version
+          git diff --exit-code
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Run unit tests
+        run: pnpm test:unit
+
       - name: Build
         run: pnpm build
 
