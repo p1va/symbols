@@ -6,50 +6,51 @@
 
 ### Install
 
-Prefer the shipped `npx` command first. It avoids a separate install step.
-
-Optional global install:
+Prefer the shipped `npx` command. TypeScript 7 includes the native compiler and
+Language Server, so no separate LSP wrapper is required:
 
 ```sh
-npm install -g typescript-language-server typescript
+npx -y -p typescript@^7.0.2 tsc --version
+```
+
+For a project-local installation instead:
+
+```sh
+npm install --save-dev typescript@^7.0.2
 ```
 
 ### Verify
 
-If you use the default `npx` profile, verify that command path directly:
+Verify the same package range used by the profile:
 
 ```sh
-npx -y typescript-language-server --version
+npx -y -p typescript@^7.0.2 tsc --version
 ```
 
-If you installed the server globally, verify the global binary instead:
-
-```sh
-typescript-language-server --version
-```
+The result should report a TypeScript 7.x release.
 
 ### Good Config Setup
 
 - Prefer `tsconfig.json` or `jsconfig.json` in `workspace_files`. Add
-  `package.json` only if you intentionally want plain JS repos without a config
-  file to route to this profile.
-- Keep `preload_files` narrow and reusable. One or two bounded glob patterns are
-  better than a repo-specific exact file.
-- Leave `workspace_ready_delay_ms` unset unless you are debugging a specific
-  server startup issue. The search warm-up retry is the preferred mitigation
-  for cold TypeScript workspace search.
-- If this repo is large enough that the first cold workspace search still misses
-  occasionally, increase `search.warmup_window_ms` instead of reintroducing a
-  global startup delay.
+  `package.json` only if plain JavaScript repositories without a config file
+  should route to this profile.
+- Do not add `preload_files` or a fixed `workspace_ready_delay_ms` by default.
+  The native server can answer workspace search immediately after its LSP
+  handshake in ordinary projects.
+- Use pull diagnostics. The native server advertises the standard LSP
+  diagnostic provider.
+- Keep an existing legacy profile only when a real project incompatibility has
+  been observed.
 
 ### Profile Snippet
 
-Merge this block into the active config file. Keep unrelated profiles already present in that file.
+Merge this block into the active config file. Keep unrelated profiles already
+present in that file.
 
 ```yaml
 language-servers:
   typescript:
-    command: npx -y typescript-language-server --stdio
+    command: npx -y -p typescript@^7.0.2 tsc --lsp --stdio
     extensions:
       '.js': 'javascript'
       '.mjs': 'javascript'
@@ -62,50 +63,68 @@ language-servers:
     workspace_files:
       - 'tsconfig.json'
       - 'jsconfig.json'
-    preload_files:
-      - './src/{index,main,app}.ts'
-      - './{index,main}.ts'
-    # Optional: widen the empty-search retry window for very large workspaces.
-    # search:
-    #   warmup_window_ms: 10000
     diagnostics:
-      strategy: 'push'
-      wait_timeout_ms: 2000
+      strategy: 'pull'
 ```
 
 ### Validation Notes
 
 - Prefer a real `.ts` or `.tsx` file inside the current workspace.
-- `workspace_files` decide when TypeScript counts as a workspace-wide search candidate. Keep them specific.
-- If search quality matters, confirm the profile owns at least one preload file after first use.
-- Prefer bounded glob patterns for `preload_files`. Each pattern resolves to the first matching file, so the config is easier to reuse across repositories without opening every file.
+- Validate both a file-backed operation such as `outline` and a workspace-wide
+  `search` from a freshly started profile.
+- A successful first search without `preload_files` is the important readiness
+  check for the native server.
+- TypeScript 7 changes some compiler defaults and removes some legacy options.
+  Run the project's TypeScript build separately from LSP validation so config
+  migration errors are not mistaken for a Symbols integration problem.
 
 ### Gotchas
 
-- Search quality depends heavily on project state. Without a matching preload
-  file, cross-file navigation and search can look cold even when the server is
-  running.
-- On a cold start, the first workspace-wide `search` can miss even after the
-  server starts cleanly. Upstream `typescript-language-server` implements
-  `workspace/symbol` using tsserver `navto`, and during initial project loading
-  that request may be served by the syntax server before semantic project
-  loading finishes. If the first cold search unexpectedly returns no matches,
-  let Symbols perform its bounded warm-up retry before treating it as
-  authoritative. If this still happens in a very large workspace, increase
-  `search.warmup_window_ms`.
-- This server is a thin LSP wrapper over `tsserver`, so behavior often depends
-  on the workspace TypeScript configuration rather than only on the launcher
-  command.
+- The LSP mode requires both flags: `tsc --lsp --stdio`. Omitting `--stdio`
+  exits immediately.
+- TypeScript 7 does not yet expose the JavaScript programmatic compiler API.
+  Tools that import `typescript` may temporarily need the official
+  `@typescript/typescript6` compatibility package even when the `tsc` binary and
+  LSP use TypeScript 7.
+- If a project exposes a native-server incompatibility, the previous Node LSP
+  wrapper remains a useful fallback:
+
+  ```yaml
+  language-servers:
+    typescript-legacy:
+      command: npx -y typescript-language-server --stdio
+      extensions:
+        '.js': 'javascript'
+        '.jsx': 'javascriptreact'
+        '.ts': 'typescript'
+        '.tsx': 'typescriptreact'
+      workspace_files:
+        - 'tsconfig.json'
+        - 'jsconfig.json'
+      preload_files:
+        - './src/{index,main,app}.ts'
+        - './{index,main}.ts'
+      diagnostics:
+        strategy: 'push'
+        wait_timeout_ms: 2000
+  ```
 
 ### Troubleshooting
 
-- `preload_files` matter for search and broader index quality.
-- Add `package.json` to `workspace_files` only if you intentionally want plain JS repos without `tsconfig.json` or `jsconfig.json` to count as TypeScript workspaces.
-- If the server starts but search still looks cold, check whether the configured preload entries actually matched files in this workspace and retry the first cold workspace search once.
-- If startup latency matters, prefer the global install above over repeated `npx` startup.
+- If the server exits immediately, confirm the command includes `--lsp` and
+  `--stdio`, then run the verify command above.
+- If the project reports configuration errors, run
+  `npx -y -p typescript@^7.0.2 tsc --noEmit` in that project and migrate its
+  `tsconfig.json` before changing Symbols readiness settings.
+- Add `package.json` to `workspace_files` only when plain JavaScript repositories
+  without `tsconfig.json` or `jsconfig.json` should count as TypeScript
+  workspaces.
+- If the native profile works for file operations but not workspace search,
+  inspect its logs before adding preload or delay settings. Use the legacy
+  fallback only when the failure is reproducible.
 
 ### Source Of Truth
 
-- https://www.npmjs.com/package/typescript-language-server
-- https://github.com/typescript-language-server/typescript-language-server
-- https://github.com/typescript-language-server/typescript-language-server/blob/master/docs/configuration.md
+- https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/
+- https://github.com/microsoft/typescript-go
+- https://www.npmjs.com/package/typescript

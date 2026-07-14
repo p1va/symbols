@@ -54,7 +54,7 @@ The `extensions` field is optional. Its behavior is intentionally strict:
 ```yaml
 language-servers:
   typescript:
-    command: typescript-language-server --stdio
+    command: npx -y -p typescript@^7.0.2 tsc --lsp --stdio
     # The built-in TypeScript profile fallback handles .ts, .js, .tsx, .jsx, and related extensions.
 ```
 
@@ -63,7 +63,7 @@ language-servers:
 ```yaml
 language-servers:
   typescript:
-    command: typescript-language-server --stdio
+    command: npx -y -p typescript@^7.0.2 tsc --lsp --stdio
     extensions:
       '.js': 'javascript'
       '.jsx': 'javascriptreact'
@@ -104,7 +104,7 @@ language-servers:
 
 Make sure you have the appropriate language servers installed:
 
-- **TypeScript**: `npm install -g typescript-language-server typescript`
+- **TypeScript**: no separate server install is needed; the example runs TypeScript 7's native LSP through `npx`
 - **Python**: `npm install -g pyright` or `pip install pyright`
 - **Go**: `go install golang.org/x/tools/gopls@latest`
 - **Rust**: `rustup component add rust-analyzer`

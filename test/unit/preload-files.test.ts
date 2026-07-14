@@ -66,7 +66,7 @@ describe('preload file resolution', () => {
     ]);
   });
 
-  it('returns default preload entries only for TypeScript profiles', () => {
+  it('returns default preload entries only for the legacy TypeScript server', () => {
     expect(
       getDefaultPreloadEntriesForProfile({
         name: 'typescript',
@@ -74,6 +74,21 @@ describe('preload file resolution', () => {
         commandArgs: ['-y', 'typescript-language-server', '--stdio'],
       })
     ).toEqual(['./src/{index,main,app}.ts', './{index,main}.ts']);
+
+    expect(
+      getDefaultPreloadEntriesForProfile({
+        name: 'typescript',
+        commandName: 'npx',
+        commandArgs: [
+          '-y',
+          '-p',
+          'typescript@^7.0.2',
+          'tsc',
+          '--lsp',
+          '--stdio',
+        ],
+      })
+    ).toEqual([]);
 
     expect(
       getDefaultPreloadEntriesForProfile({

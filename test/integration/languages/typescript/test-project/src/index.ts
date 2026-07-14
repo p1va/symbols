@@ -1,2 +1,2 @@
-// Mirror the default preload glob used by the shared TypeScript example config.
+// Main entry point for the TypeScript integration fixture.
 export { main } from './main';

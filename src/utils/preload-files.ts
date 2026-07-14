@@ -36,10 +36,7 @@ export function getDefaultPreloadEntriesForProfile(profile: {
   commandName: string;
   commandArgs: string[];
 }): string[] {
-  if (
-    profile.name === 'typescript' ||
-    isTypeScriptServerCommand(profile.commandName, profile.commandArgs)
-  ) {
+  if (isTypeScriptServerCommand(profile.commandName, profile.commandArgs)) {
     return [...DEFAULT_TYPESCRIPT_PRELOAD_ENTRIES];
   }
 

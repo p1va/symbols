@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { load } from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 
 async function readRepoFile(relativePath: string): Promise<string> {
@@ -24,12 +25,21 @@ describe('distribution metadata', () => {
     expect(npmPackage).not.toHaveProperty('environment_variables');
   });
 
-  it('keeps the generated TypeScript profile free of a global startup delay', async () => {
+  it('uses the native TypeScript profile without legacy readiness workarounds', async () => {
     const defaultConfig = await readRepoFile(
       'assets/default-language-servers.yaml'
     );
+    const parsedConfig = load(defaultConfig) as {
+      'language-servers': Record<string, Record<string, unknown>>;
+    };
+    const typeScriptProfile = parsedConfig['language-servers'].typescript;
 
     expect(defaultConfig).not.toContain('workspace_ready_delay_ms: 3000');
+    expect(typeScriptProfile).toMatchObject({
+      command: 'npx -y -p typescript@^7.0.2 tsc --lsp --stdio',
+      diagnostics: { strategy: 'pull' },
+    });
+    expect(typeScriptProfile).not.toHaveProperty('preload_files');
   });
 
   it('keeps the Codex marketplace wired to the Symbols plugin', async () => {

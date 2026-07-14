@@ -1,25 +1,13 @@
 language-servers:
   typescript:
-    # npm install -g typescript-language-server if you prefer to install globally
-    # command: typescript-language-server --stdio
-    command: npx -y typescript-language-server --stdio
+    # TypeScript 7's native Go language server.
+    command: npx -y -p typescript@^7.0.2 tsc --lsp --stdio
     # These files identify a TypeScript/JavaScript workspace for routing and workspace-wide search.
     workspace_files:
       - 'tsconfig.json'
       - 'jsconfig.json'
-    # In TS Language Server for the search functionality to work
-    # at least one code file in the workspace needs to always be kept open
-    # Each preload entry may be an exact path or a glob pattern.
-    # A glob pattern resolves to the first matching file to keep memory bounded.
-    preload_files:
-      - './src/{index,main,app}.ts'
-      - './{index,main}.ts'
     diagnostics:
-      # TS Language Server will push diagnostics once a file is updated
-      # We open a file, wait and then return the collected diagnostics so diagnostics tool duration will include wait_timeout_ms
-      # It's possible to try and decrease it for a faster response.
-      strategy: 'push'
-      wait_timeout_ms: 2000
+      strategy: 'pull'
 
   pyright:
     # npm install -g pyright if you prefer to install globally
