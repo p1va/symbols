@@ -31,13 +31,13 @@ Legend
 }
 ```
 
-3. Build command – pick **either** plain `tsc` (already present) **or**
-   a bundler such as `tsup`:
+3. Build command – use the repository's TypeScript build script or a bundler
+   such as `tsup`:
 
 ```jsonc
 {
   "scripts": {
-    "build": "tsc -p tsconfig.json", // or: "tsup src/index.ts --format esm"
+    "build": "tsc6 -p tsconfig.json", // or: "tsup src/index.ts --format esm"
   },
 }
 ```
