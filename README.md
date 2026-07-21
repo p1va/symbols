@@ -38,17 +38,6 @@ The server offers a minimal set of tools, resources and skills intended to be si
 
 ## Installation
 
-Requires Node.js 22.12 or newer and either the Codex or Antigravity CLI.
-
-The native plugins register the Symbols MCP server and include skills for
-language-server installation, configuration, navigation, and troubleshooting.
-They do not install every language server up front; the installation skill
-configures only the servers relevant to the current codebase.
-
-On first use, the MCP configuration runs
-`npx -y @p1va/symbols@latest start`, which downloads the current Symbols package
-if it is not already cached.
-
 ### Codex
 
 ```bash
@@ -56,42 +45,21 @@ codex plugin marketplace add p1va/symbols
 codex plugin add symbols@symbols
 ```
 
-Symbols is intentionally distributed through its public Git-backed Codex
-marketplace so the MCP server can run locally beside the workspace and its
-language servers. It is not a hosted connector and is not submitted to the
-universal Plugins Directory.
-
 Then ask Codex:
 
 `Please install and configure the language servers relevant to this codebase`
 
-To update an existing installation:
-
-```bash
-codex plugin marketplace upgrade symbols
-codex plugin remove symbols@symbols
-codex plugin add symbols@symbols
-```
-
-Start a new Codex session after installing or updating the plugin.
 
 ### Antigravity
 
 ```bash
 agy plugin install https://github.com/p1va/symbols.git
-agy plugin list
 ```
 
-Start a new Antigravity session after installation, then use the same prompt:
+Then ask:
 
 > Install and configure the language servers relevant to this codebase.
 
-To update an existing installation:
-
-```bash
-agy plugin uninstall symbols
-agy plugin install https://github.com/p1va/symbols.git
-```
 
 ### Manual Installation
 
