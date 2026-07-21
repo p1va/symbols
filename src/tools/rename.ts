@@ -4,7 +4,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createOneBasedPosition } from '../types.js';
-import { prepareRenameRequest } from '../preparation.js';
+import { resolveSymbolTarget } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { renameSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
@@ -29,22 +29,20 @@ export function registerRenameTool(server: McpServer, manager: LspManager) {
       const validatedRequest = validateRename(request);
       const session = await manager.getSessionForFile(validatedRequest.file);
 
-      const renameRequest = {
+      const target = await resolveSymbolTarget(session, {
         file: validatedRequest.file,
         position: createOneBasedPosition(
           validatedRequest.line,
           validatedRequest.character
         ),
+      });
+
+      const result = await LspOperations.rename(session, {
+        ...target,
         newName: validatedRequest.newName,
-      };
+      });
 
-      const prepared = await prepareRenameRequest(session, renameRequest);
-      if (!prepared.ok) throw new Error(prepared.error.message);
-
-      const result = await LspOperations.rename(session, prepared.data);
-      if (!result.ok) throw new Error(result.error.message);
-
-      const { result: renameResult, cursorContext } = result.data;
+      const { result: renameResult, cursorContext } = result;
       const changePlan = await prepareWorkspaceChanges(
         renameResult,
         session.getProfile().workspacePath

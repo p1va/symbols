@@ -325,16 +325,13 @@ export function registerLanguageServerResources(
 
       const sections: string[] = [];
       for (const session of sessions) {
-        const result = LspOperations.logs(session);
-        if (!result.ok) {
-          sections.push(`Profile: ${profileName}\n${result.error.message}`);
-          continue;
-        }
-
         sections.push(
-          `Profile: ${profileName}\n${formatWindowLogMessages(result.data, {
-            omittedMessages: session.getWindowLogStore().getDroppedCount(),
-          })}`
+          `Profile: ${profileName}\n${formatWindowLogMessages(
+            LspOperations.logs(session),
+            {
+              omittedMessages: session.getWindowLogStore().getDroppedCount(),
+            }
+          )}`
         );
       }
 

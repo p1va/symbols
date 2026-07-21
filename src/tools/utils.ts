@@ -6,38 +6,39 @@ import * as fs from 'fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ChangeResult } from './workspace-edits.js';
+import { formatZeroBasedPosition } from '../types/position.js';
+
+const SYMBOL_KIND_NAMES: Readonly<Record<number, string>> = {
+  1: 'File',
+  2: 'Module',
+  3: 'Namespace',
+  4: 'Package',
+  5: 'Class',
+  6: 'Method',
+  7: 'Property',
+  8: 'Field',
+  9: 'Constructor',
+  10: 'Enum',
+  11: 'Interface',
+  12: 'Function',
+  13: 'Variable',
+  14: 'Constant',
+  15: 'String',
+  16: 'Number',
+  17: 'Boolean',
+  18: 'Array',
+  19: 'Object',
+  20: 'Key',
+  21: 'Null',
+  22: 'EnumMember',
+  23: 'Struct',
+  24: 'Event',
+  25: 'Operator',
+  26: 'TypeParameter',
+};
 
 export function getSymbolKindName(kind: number): string {
-  const symbolKinds: { [key: number]: string } = {
-    1: 'File',
-    2: 'Module',
-    3: 'Namespace',
-    4: 'Package',
-    5: 'Class',
-    6: 'Method',
-    7: 'Property',
-    8: 'Field',
-    9: 'Constructor',
-    10: 'Enum',
-    11: 'Interface',
-    12: 'Function',
-    13: 'Variable',
-    14: 'Constant',
-    15: 'String',
-    16: 'Number',
-    17: 'Boolean',
-    18: 'Array',
-    19: 'Object',
-    20: 'Key',
-    21: 'Null',
-    22: 'EnumMember',
-    23: 'Struct',
-    24: 'Event',
-    25: 'Operator',
-    26: 'TypeParameter',
-  };
-
-  return symbolKinds[kind] || 'Unknown';
+  return SYMBOL_KIND_NAMES[kind] ?? 'Unknown';
 }
 
 export function fileUriToPath(uriOrPath: string): string {
@@ -70,6 +71,16 @@ export function formatFilePath(
   }
 
   return cleanPath;
+}
+
+async function readFileLines(fileUri: string): Promise<string[] | null> {
+  try {
+    const filePath = fileUriToPath(fileUri);
+    const fileContent = await fs.promises.readFile(filePath, 'utf-8');
+    return fileContent.split('\n');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -110,26 +121,25 @@ export async function formatRenameResults(
       continue;
     }
 
+    const fileLines =
+      result.appliedChanges.length > 0
+        ? await readFileLines(result.fileUri)
+        : null;
+
     // Show successful changes with code context
     for (const change of result.appliedChanges) {
-      output += `\n  ✓ @${change.line}:${change.character} ${symbolName} → ${newName}`;
+      output += `\n  ✓ @${formatZeroBasedPosition(change.range.start)} ${symbolName} → ${newName}`;
 
-      // Read the actual line from the file to show context (after change was applied)
-      try {
-        const filePath = fileUriToPath(result.fileUri);
-        const fileContent = await fs.promises.readFile(filePath, 'utf-8');
-        const lines = fileContent.split('\n');
-        const contextLine = lines[change.line - 1]; // Convert back to 0-based
+      if (fileLines) {
+        const contextLine = fileLines[change.range.start.line];
 
         if (contextLine) {
-          // Trim and show the line with the new name
           const trimmedLine = contextLine.trim();
           if (trimmedLine) {
             output += `\n    \`${trimmedLine}\``;
           }
         }
-      } catch {
-        // Fallback to showing just the change if we can't read the file
+      } else {
         const changeText = change.oldText.replace(/\n/g, '\\n');
         if (changeText !== change.newText) {
           output += `\n    \`${changeText}\` → \`${change.newText}\``;
@@ -139,7 +149,7 @@ export async function formatRenameResults(
 
     // Show failed changes
     for (const failed of result.failedChanges) {
-      output += `\n  ✘ @${failed.line}:${failed.character} ${symbolName} → ${newName} (${failed.error})`;
+      output += `\n  ✘ @${formatZeroBasedPosition(failed.range.start)} ${symbolName} → ${newName} (${failed.error})`;
     }
   }
 

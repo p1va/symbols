@@ -1,18 +1,15 @@
 import type { LspSession } from './runtime/lsp-session.js';
 import {
   FileRequest,
-  RenameRequest,
-  Result,
   SearchRequest,
   SymbolPositionRequest,
   ValidationError,
-  ValidationResult,
   ZeroBasedPosition,
   toZeroBased,
 } from './types.js';
 import {
   validateFileRequest,
-  validateSymbolPositionRequest,
+  validatePosition,
   validateWorkspaceOperation,
 } from './validation.js';
 
@@ -24,94 +21,68 @@ export interface PreparedWorkspaceRequest {
   query: string;
 }
 
-export interface PreparedSymbolPositionRequest {
+export interface ResolvedSymbolTarget {
   filePath: string;
   position: SymbolPositionRequest['position'];
   lspPosition: ZeroBasedPosition;
 }
 
-export interface PreparedRenameRequest extends PreparedSymbolPositionRequest {
+export interface ResolvedRenameTarget extends ResolvedSymbolTarget {
   newName: string;
 }
 
-function validationFailure(
-  error: ValidationError
-): Result<never, ValidationError> {
-  return {
-    ok: false,
-    error,
-  };
-}
-
-function validationSuccess<T>(data: T): Result<T, ValidationError> {
-  return {
-    ok: true,
-    data,
-  };
-}
-
-function toValidationResultError(
-  validation: ValidationResult
-): ValidationError | null {
-  return validation.valid ? null : validation.error;
+function throwValidationError(error: ValidationError): never {
+  throw new Error(error.message, { cause: error });
 }
 
 export function prepareWorkspaceRequest(
   session: LspSession,
   request: SearchRequest
-): Result<PreparedWorkspaceRequest, ValidationError> {
+): PreparedWorkspaceRequest {
   const workspaceValidation = validateWorkspaceOperation(session);
-  const error = toValidationResultError(workspaceValidation);
-  if (error) {
-    return validationFailure(error);
+  if (!workspaceValidation.valid) {
+    throwValidationError(workspaceValidation.error);
   }
 
-  return validationSuccess({
+  return {
     query: request.query,
-  });
+  };
 }
 
 export function prepareFileRequest(
   session: LspSession,
   request: FileRequest
-): Result<PreparedFileRequest, ValidationError> {
+): PreparedFileRequest {
   const validation = validateFileRequest(session, request);
   if (!validation.valid) {
-    return validationFailure(validation.error);
+    throwValidationError(validation.error);
   }
 
-  return validationSuccess({
+  return {
     filePath: validation.absolutePath,
-  });
+  };
 }
 
-export async function prepareSymbolPositionRequest(
+export async function resolveSymbolTarget(
   session: LspSession,
   request: SymbolPositionRequest
-): Promise<Result<PreparedSymbolPositionRequest, ValidationError>> {
-  const validation = await validateSymbolPositionRequest(session, request);
-  if (!validation.valid) {
-    return validationFailure(validation.error);
+): Promise<ResolvedSymbolTarget> {
+  const fileValidation = validateFileRequest(session, request);
+  if (!fileValidation.valid) {
+    throwValidationError(fileValidation.error);
   }
 
-  return validationSuccess({
-    filePath: validation.absolutePath,
+  const positionValidation = await validatePosition(
+    fileValidation.absolutePath,
+    request.position
+  );
+  if (!positionValidation.valid) {
+    throwValidationError(positionValidation.error);
+  }
+
+  return {
+    filePath: fileValidation.absolutePath,
     position: request.position,
     lspPosition: toZeroBased(request.position),
-  });
-}
-
-export async function prepareRenameRequest(
-  session: LspSession,
-  request: RenameRequest
-): Promise<Result<PreparedRenameRequest, ValidationError>> {
-  const preparedPosition = await prepareSymbolPositionRequest(session, request);
-  if (!preparedPosition.ok) {
-    return preparedPosition;
-  }
-
-  return validationSuccess({
-    ...preparedPosition.data,
-    newName: request.newName,
-  });
+  };
 }

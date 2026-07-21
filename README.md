@@ -49,7 +49,6 @@ Then ask Codex:
 
 `Please install and configure the language servers relevant to this codebase`
 
-
 ### Antigravity
 
 ```bash
@@ -60,12 +59,14 @@ Then ask:
 
 > Install and configure the language servers relevant to this codebase.
 
-
 ### Manual Installation
 
 For manual configuration and language servers examples see [here](docs/INSTALLATION.md#traditional-installation).
 
 ## Development
+
+Development requires Node.js 22.13.0 or newer. The minimum version used by CI
+is pinned in `.nvmrc`; with nvm, run `nvm use` from the repository root.
 
 - `pnpm lint` outputs the lint violations
 - `pnpm lint:fix` attempts to fix lint violations

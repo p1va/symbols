@@ -4,13 +4,16 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { createOneBasedPosition } from '../types.js';
-import { prepareSymbolPositionRequest } from '../preparation.js';
+import { resolveSymbolTarget } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
-import { createSignaturePreview, enrichSymbolsWithCode } from './enrichment.js';
+import {
+  createSignaturePreview,
+  enrichCodeSnippets,
+  type EnrichmentRequest,
+} from './enrichment.js';
 import { formatFilePath, getSymbolKindName } from './utils.js';
 import type {
   CallHierarchyDirection,
@@ -21,6 +24,9 @@ import type {
   CallHierarchyTarget,
   Range,
 } from '../types/lsp.js';
+import { formatZeroBasedPosition } from '../types/position.js';
+import { createOneBasedPosition } from '../types.js';
+import { textToolResult } from './responses.js';
 
 const MAX_TARGETS = 5;
 const MAX_FILES_PER_SECTION = 6;
@@ -58,30 +64,22 @@ export function registerCallHierarchyTool(
     async (request) => {
       const validatedRequest = callHierarchyZodSchema.parse(request);
       const session = await manager.getSessionForFile(validatedRequest.file);
-
-      const symbolRequest = {
+      const target = await resolveSymbolTarget(session, {
         file: validatedRequest.file,
         position: createOneBasedPosition(
           validatedRequest.line,
           validatedRequest.character
         ),
-      };
-
-      const prepared = await prepareSymbolPositionRequest(
-        session,
-        symbolRequest
-      );
-      if (!prepared.ok) throw new Error(prepared.error.message);
+      });
 
       const result = await LspOperations.callHierarchy(
         session,
-        prepared.data,
+        target,
         validatedRequest.direction
       );
-      if (!result.ok) throw new Error(result.error.message);
 
       const sections: string[] = [];
-      const { cursorContext } = result.data;
+      const { cursorContext } = result;
       const workspacePath = session.getProfile().workspacePath;
 
       if (cursorContext) {
@@ -89,17 +87,10 @@ export function registerCallHierarchyTool(
       }
 
       sections.push(
-        await formatCallHierarchyResult(result.data.result, workspacePath)
+        await formatCallHierarchyResult(result.result, workspacePath)
       );
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: sections.join('\n\n'),
-          },
-        ],
-      };
+      return textToolResult(sections.join('\n\n'));
     }
   );
 }
@@ -224,7 +215,7 @@ function formatCallHierarchyItem(
   const position = getCallHierarchyItemStart(item);
   const kind = getSymbolKindName(item.kind);
   const filePath = formatFilePath(item.uri, workspacePath);
-  let result = `${item.name} (${kind}) - ${filePath}:${position.line + 1}:${position.character + 1}`;
+  let result = `${item.name} (${kind}) - ${filePath}:${formatZeroBasedPosition(position)}`;
 
   if (item.detail) {
     result += ` [${item.detail}]`;
@@ -298,7 +289,7 @@ async function formatCallSection<TCall extends CallSectionEntry>({
       const item = getItem(call);
       const position = getCallHierarchyItemStart(item);
       sections.push(
-        `  ${item.name} (${getSymbolKindName(item.kind)}) @${position.line + 1}:${position.character + 1}`
+        `  ${item.name} (${getSymbolKindName(item.kind)}) @${formatZeroBasedPosition(position)}`
       );
 
       const ranges = getRanges(call);
@@ -346,11 +337,7 @@ async function formatCallSection<TCall extends CallSectionEntry>({
 
 function formatCallSiteRanges(ranges: Range[]): string {
   const positions = Array.from(
-    new Set(
-      ranges.map(
-        (range) => `${range.start.line + 1}:${range.start.character + 1}`
-      )
-    )
+    new Set(ranges.map((range) => formatZeroBasedPosition(range.start)))
   );
   const displayedPositions = positions.slice(0, MAX_CALL_SITES_PER_ENTRY);
   let result = displayedPositions.join(', ');
@@ -368,7 +355,7 @@ async function getCallPreviewMap<TCall extends CallSectionEntry>(
   getItem: (call: TCall) => CallHierarchyItem,
   getRanges: (call: TCall) => Range[]
 ): Promise<Map<TCall, { text?: string; error?: string }>> {
-  const previewRequests: Array<{ call: TCall; uri: string; range: Range }> = [];
+  const previewRequests: Array<{ call: TCall; uri: string; line: number }> = [];
 
   for (const call of calls) {
     const item = getItem(call);
@@ -380,7 +367,7 @@ async function getCallPreviewMap<TCall extends CallSectionEntry>(
     previewRequests.push({
       call,
       uri: item.uri,
-      range: expandRangeToWholeLine(firstRange),
+      line: firstRange.start.line,
     });
   }
 
@@ -389,8 +376,12 @@ async function getCallPreviewMap<TCall extends CallSectionEntry>(
     return previewMap;
   }
 
-  const enrichmentResults = await enrichSymbolsWithCode(
-    previewRequests.map(({ uri, range }) => ({ uri, range }))
+  const enrichmentResults = await enrichCodeSnippets(
+    previewRequests.map(({ uri, line }): EnrichmentRequest => ({
+      uri,
+      extent: 'line',
+      line,
+    }))
   );
 
   enrichmentResults.forEach((result, index) => {
@@ -414,19 +405,6 @@ async function getCallPreviewMap<TCall extends CallSectionEntry>(
   });
 
   return previewMap;
-}
-
-function expandRangeToWholeLine(range: Range): Range {
-  return {
-    start: {
-      line: range.start.line,
-      character: 0,
-    },
-    end: {
-      line: range.start.line,
-      character: 1000,
-    },
-  };
 }
 
 function countUniqueFiles(uris: string[]): number {

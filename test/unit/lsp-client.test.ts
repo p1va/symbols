@@ -9,7 +9,10 @@ import {
 } from '../../src/state/stores.js';
 import type { LspClient, LspConfig } from '../../src/types.js';
 import type { ParsedLspConfig } from '../../src/config/lsp-config.js';
-import type { InitializeParams } from 'vscode-languageserver-protocol';
+import {
+  InitializeRequest,
+  type InitializeParams,
+} from 'vscode-languageserver-protocol';
 
 describe('LSP client request handling', () => {
   it('returns one configuration value for each requested item', () => {
@@ -29,12 +32,17 @@ describe('LSP client request handling', () => {
   });
 
   it('requests static semantic-token capabilities during initialization', async () => {
-    const sendRequest = vi.fn((method: string) => {
-      if (method === 'initialize') {
-        return Promise.resolve({ capabilities: {} });
+    const sendRequest = vi.fn(
+      (requestType: { method: string }, params?: unknown) => {
+        void params;
+        if (requestType.method === InitializeRequest.method) {
+          return Promise.resolve({ capabilities: {} });
+        }
+        return Promise.reject(
+          new Error(`Unexpected request: ${requestType.method}`)
+        );
       }
-      return Promise.reject(new Error(`Unexpected request: ${method}`));
-    });
+    );
     const sendNotification = vi.fn(() => Promise.resolve());
     const client = {
       connection: { sendRequest, sendNotification },
@@ -67,7 +75,7 @@ describe('LSP client request handling', () => {
 
     expect(result.ok).toBe(true);
     const initializeCall = sendRequest.mock.calls.find(
-      ([method]) => method === 'initialize'
+      ([requestType]) => requestType === InitializeRequest.type
     );
     const initializeParams = initializeCall?.[1] as
       InitializeParams | undefined;

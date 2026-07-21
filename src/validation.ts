@@ -8,7 +8,6 @@ import * as path from 'path';
 import {
   ValidationResult,
   ValidationError,
-  SymbolPositionRequest,
   FileRequest,
   ValidationErrorCode,
   OneBasedPosition,
@@ -201,40 +200,6 @@ export function validateFileRequest(
   );
   if (!pathCheck.valid) {
     return pathCheck;
-  }
-
-  return pathCheck;
-}
-
-/**
- * Comprehensive validation for symbol position requests
- */
-export async function validateSymbolPositionRequest(
-  session: LspSession,
-  request: SymbolPositionRequest
-): Promise<FilePathValidationResult> {
-  // Check workspace readiness
-  const workspaceCheck = validateWorkspaceReady(session);
-  if (!workspaceCheck.valid) {
-    return workspaceCheck;
-  }
-
-  // Validate and normalize file path using workspace context
-  const pathCheck = validateAndNormalizeFilePath(
-    request.file,
-    session.getProfile().workspacePath
-  );
-  if (!pathCheck.valid) {
-    return pathCheck;
-  }
-
-  // Validate position bounds
-  const positionCheck = await validatePosition(
-    pathCheck.absolutePath,
-    request.position
-  );
-  if (!positionCheck.valid) {
-    return positionCheck;
   }
 
   return pathCheck;

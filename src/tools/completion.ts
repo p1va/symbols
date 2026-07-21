@@ -3,8 +3,7 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createOneBasedPosition } from '../types.js';
-import { prepareSymbolPositionRequest } from '../preparation.js';
+import { resolveSymbolTarget } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
@@ -12,6 +11,8 @@ import { getSymbolKindName } from './utils.js';
 import { CompletionResult } from '../types/lsp.js';
 import { validateSymbolPosition } from './validation.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
+import { createOneBasedPosition } from '../types.js';
+import { textToolResult } from './responses.js';
 
 export function registerCompletionTool(server: McpServer, manager: LspManager) {
   server.registerTool(
@@ -25,29 +26,16 @@ export function registerCompletionTool(server: McpServer, manager: LspManager) {
     async (request) => {
       const validatedRequest = validateSymbolPosition(request);
       const session = await manager.getSessionForFile(validatedRequest.file);
-
-      const symbolRequest = {
+      const target = await resolveSymbolTarget(session, {
         file: validatedRequest.file,
         position: createOneBasedPosition(
           validatedRequest.line,
           validatedRequest.character
         ),
-      };
+      });
 
-      const prepared = await prepareSymbolPositionRequest(
-        session,
-        symbolRequest
-      );
-      if (!prepared.ok) {
-        throw new Error(prepared.error.message);
-      }
-
-      const result = await LspOperations.completion(session, prepared.data);
-      if (!result.ok) {
-        throw new Error(result.error.message);
-      }
-
-      const { result: completions, cursorContext } = result.data;
+      const result = await LspOperations.completion(session, target);
+      const { result: completions, cursorContext } = result;
       const formattedText = formatCompletionResults(completions);
 
       const sections: string[] = [];
@@ -60,14 +48,7 @@ export function registerCompletionTool(server: McpServer, manager: LspManager) {
 
       sections.push(formattedText);
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: sections.join('\n\n'),
-          },
-        ],
-      };
+      return textToolResult(sections.join('\n\n'));
     }
   );
 }
@@ -75,7 +56,9 @@ export function registerCompletionTool(server: McpServer, manager: LspManager) {
 /**
  * Format completion results grouped by symbol kind with prioritization
  */
-function formatCompletionResults(completions: CompletionResult[]): string {
+export function formatCompletionResults(
+  completions: CompletionResult[]
+): string {
   if (completions.length === 0) {
     return 'Found no completion suggestions';
   }
@@ -101,49 +84,41 @@ function formatCompletionResults(completions: CompletionResult[]): string {
 
   const kindPriority = [2, 10, 3, 7, 8, 9, 6, 4, 5, 13, 22, 1];
 
-  let result = `Found ${completions.length} completion suggestion${completions.length === 1 ? '' : 's'}`;
-
-  if (completions.length > maxResults) {
-    result += ` (showing top ${maxResults})`;
-  }
+  const summary = `Found ${completions.length} completion suggestion${completions.length === 1 ? '' : 's'}${completions.length > maxResults ? ` (showing top ${maxResults})` : ''}`;
+  const sections = [summary];
 
   for (const kind of kindPriority) {
     const items = groupedByKind.get(kind);
     if (!items || items.length === 0) continue;
 
     const kindName = getSymbolKindName(kind);
-    result += `\n\n${kindName}s (${items.length})`;
+    const lines = [`${kindName}s (${items.length})`];
 
     for (const item of items.slice(0, 20)) {
-      result += `\n  ${item.label}`;
+      const detail = item.detail?.trim();
+      const itemLine =
+        detail && detail !== item.label
+          ? `  ${item.label} - ${detail}`
+          : `  ${item.label}`;
+      lines.push(itemLine);
 
-      if (
-        item.detail &&
-        item.detail.trim() !== item.label &&
-        item.detail.trim() !== ''
-      ) {
-        result += ` - ${item.detail.trim()}`;
-      }
-
-      if (
-        item.documentation &&
-        typeof item.documentation === 'string' &&
-        item.documentation.trim() !== ''
-      ) {
+      if (typeof item.documentation === 'string') {
         const doc = item.documentation.trim();
         const firstLine = doc.split('\n')[0];
         if (firstLine && firstLine.length > 60) {
-          result += `\n    // ${firstLine.substring(0, 57)}...`;
+          lines.push(`    // ${firstLine.substring(0, 57)}...`);
         } else if (firstLine && firstLine.length > 0) {
-          result += `\n    // ${firstLine}`;
+          lines.push(`    // ${firstLine}`);
         }
       }
     }
 
     if (items.length > 20) {
-      result += `\n  ... and ${items.length - 20} more`;
+      lines.push(`  ... and ${items.length - 20} more`);
     }
+
+    sections.push(lines.join('\n'));
   }
 
-  return result;
+  return sections.join('\n\n');
 }

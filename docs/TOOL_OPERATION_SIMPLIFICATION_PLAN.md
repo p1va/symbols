@@ -14,7 +14,7 @@ been simplified into four clear stages:
 
 1. tool parsing
 2. session resolution
-3. request preparation
+3. target resolution
 4. operation execution + formatting
 
 Concretely:
@@ -36,40 +36,42 @@ Tools now do this shape:
 
 1. parse raw MCP input
 2. ask `LspManager` for a session
-3. prepare a request against that session
-4. call an operation with `session + prepared request`
+3. resolve the file and position against that session
+4. call an operation with `session + resolved target`
 5. format the returned data
 
 Tools no longer ask operations to validate file paths, workspace readiness, or
 cursor bounds.
 
-### 2. Preparation is the semantic boundary
+### 2. Target resolution is the semantic boundary
 
-`src/preparation.ts` now contains helpers such as:
+For position tools, `src/preparation.ts` exposes one top-to-bottom helper:
 
-- `prepareFileRequest(...)`
-- `prepareSymbolPositionRequest(...)`
-- `prepareRenameRequest(...)`
-- `prepareWorkspaceRequest(...)`
+- `resolveSymbolTarget(session, request)`
 
-Prepared requests now contain the normalized values operations actually need,
-for example:
+It validates workspace readiness, resolves and bounds-checks the file position,
+and returns the values operations actually need:
 
 - `filePath`
 - original one-based position
 - zero-based `lspPosition`
 
+Session lookup deliberately remains visible in each tool handler because it is
+routing, not position preparation. File-only and workspace-wide tools continue
+to use their small preparation helpers where callers branch on validation
+results.
+
 ### 3. Operations are protocol-focused
 
 Operations in `src/lsp/operations/operations.ts` now:
 
-- accept prepared inputs
+- accept resolved targets or prepared file/workspace inputs
 - translate to LSP method names and wire params
 - map responses back into Symbols result types
 
 Operations no longer:
 
-- call `validateSymbolPositionRequest(...)`
+- perform semantic position validation
 - call `validateFileRequest(...)`
 - call `validateWorkspaceOperation(...)`
 - call `session.getClient()`
@@ -104,7 +106,8 @@ The distinction remains:
 - boundary parsing
 - semantic preparation
 
-But semantic preparation now happens before operations rather than inside them.
+But semantic target resolution now happens before operations rather than inside
+them.
 
 ### Keep scoped session execution
 
@@ -132,7 +135,7 @@ This refactor added or updated tests for:
 
 Those tests now validate the new contract directly:
 
-- prepared inputs go into operations
+- resolved targets go into position operations
 - operations talk to LSP through session-scoped `request(...)`
 
 ## Next Good Steps
@@ -140,9 +143,5 @@ Those tests now validate the new contract directly:
 The next work should not be more boundary refactoring. This area is now in a
 good state.
 
-Higher-value next steps are:
-
-- setup/catalog/install surfaces for known LSP profiles
-- safe profile mutation through `setup`
-- call hierarchy operations
-- later, stronger multi-session capabilities if needed
+Future work should remain evidence-driven and preserve this visible routing
+boundary rather than introducing a generic tool-registration framework.

@@ -58,7 +58,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "packageManager": "pnpm@10.16.1",
   "dependencies": {
@@ -67,7 +67,7 @@
     "glob": "^13.0.6",
     "js-yaml": "^4.3.0",
     "shell-quote": "^1.10.0",
-    "vscode-jsonrpc": "^8.2.1",
+    "vscode-jsonrpc": "^9.0.1",
     "vscode-languageserver-protocol": "^3.18.2",
     "which": "^5.0.0",
     "winston": "^3.19.0",

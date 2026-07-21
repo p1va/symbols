@@ -157,8 +157,7 @@ async function findSymbolAtPosition(
 
     // Get flattened symbols using shared utility
     const symbols = await getDocumentSymbols(
-      async (method, params) =>
-        await client.connection.sendRequest(method, params),
+      async (type, params) => await client.connection.sendRequest(type, params),
       uri
     );
     logger.info(`Found ${symbols.length} document symbols`);

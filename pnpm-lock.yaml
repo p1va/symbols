@@ -27,8 +27,8 @@ importers:
         specifier: ^1.10.0
         version: 1.10.0
       vscode-jsonrpc:
-        specifier: ^8.2.1
-        version: 8.2.1
+        specifier: ^9.0.1
+        version: 9.0.1
       vscode-languageserver-protocol:
         specifier: ^3.18.2
         version: 3.18.2
@@ -2954,13 +2954,6 @@ packages:
       jsdom:
         optional: true
 
-  vscode-jsonrpc@8.2.1:
-    resolution:
-      {
-        integrity: sha512-kdjOSJ2lLIn7r1rtrMbbNCHjyMPfRnowdKjBQ+mGq6NAW5QY2bEZC/khaC5OR8svbbjvLEaIXkOq45e2X9BIbQ==,
-      }
-    engines: { node: '>=14.0.0' }
-
   vscode-jsonrpc@9.0.1:
     resolution:
       {
@@ -4732,8 +4725,6 @@ snapshots:
       - terser
       - tsx
       - yaml
-
-  vscode-jsonrpc@8.2.1: {}
 
   vscode-jsonrpc@9.0.1: {}
 

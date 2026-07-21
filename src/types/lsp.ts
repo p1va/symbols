@@ -4,8 +4,12 @@
  */
 
 // Import all the official LSP types instead of defining our own
-// Import the single runtime value we rely on.
-import { SymbolKind } from 'vscode-languageserver-protocol';
+// Import the protocol values used for request typing and runtime guards.
+import {
+  DocumentSymbolRequest,
+  SemanticTokensRequest,
+  SymbolKind,
+} from 'vscode-languageserver-protocol';
 
 // Import the remainder purely as types so they are erased from the runtime
 // import. This avoids Node complaining that these names are not available as
@@ -24,12 +28,10 @@ import type {
   TextDocumentPositionParams,
   ReferenceParams,
   CompletionParams,
-  CompletionList,
   CompletionItem,
   DocumentSymbolParams,
   WorkspaceSymbolParams,
   RenameParams,
-  WorkspaceEdit,
 
   // Response types
   Hover,
@@ -43,32 +45,24 @@ import type {
 
   // Semantic tokens types
   SemanticTokensParams,
-  SemanticTokens,
   SemanticTokensLegend,
 } from 'vscode-languageserver-protocol';
 import logger from '../utils/logger.js';
 import type { LspClient } from '../types.js';
-
-type SendLspRequest = <TResult, TParams = unknown>(
-  method: string,
-  params: TParams
-) => Promise<TResult>;
+import type { SendLspRequest } from '../lsp/request.js';
 
 // Re-export the official types
 export type {
   Range,
   Location,
   SymbolInformation,
-  DocumentSymbol,
   WorkspaceSymbol,
   TextDocumentPositionParams,
   ReferenceParams,
   CompletionParams,
-  CompletionList,
   CompletionItem,
   WorkspaceSymbolParams,
   RenameParams,
-  WorkspaceEdit,
   Hover,
   CallHierarchyItem,
   CallHierarchyIncomingCall,
@@ -87,38 +81,15 @@ export type SymbolKindValue = (typeof SymbolKind)[keyof typeof SymbolKind];
 // Internal operation result types (not MCP responses)
 // These represent structured data that flows from LspOperations to MCP tools
 
-/** Position information with 1-based coordinates for display */
-interface DisplayPosition {
-  line: number;
-  character: number;
-}
-
-/** Range information with 1-based coordinates for display */
-interface DisplayRange {
-  start: DisplayPosition;
-  end: DisplayPosition;
-}
-
-/** Location information for display */
-interface DisplayLocation {
-  uri: string;
-  range: DisplayRange;
-}
-
 /** Symbol reference result */
-export interface SymbolReference {
-  uri: string;
-  range: Range; // 0-based LSP range
-  line: number; // 1-based display line
-  character: number; // 1-based display character
-}
+export type SymbolReference = Location;
 
 /** Symbol inspection result */
 export interface SymbolInspection {
   hover: Hover | null;
-  definition: Location | Location[] | null;
-  typeDefinition: Location | Location[] | null;
-  implementation: Location | Location[] | null;
+  definition: Location[];
+  typeDefinition: Location[];
+  implementation: Location[];
 }
 
 export type CallHierarchyDirection = 'incoming' | 'outgoing' | 'both';
@@ -146,7 +117,7 @@ export interface CompletionResult {
   filterText: string;
   sortText: string;
   textEdit?: {
-    range: DisplayRange;
+    range: Range;
     newText: string;
   };
 }
@@ -155,18 +126,14 @@ export interface CompletionResult {
 export interface SymbolSearchResult {
   name: string;
   kind: number;
-  location: DisplayLocation;
+  location: Location;
   containerName: string;
 }
 
 /** File change for rename operation */
 export interface FileChange {
-  range: DisplayRange;
+  range: Range;
   newText: string;
-  startLine: number;
-  startCharacter: number;
-  endLine: number;
-  endCharacter: number;
 }
 
 /** Rename operation result */
@@ -198,32 +165,30 @@ type DocumentSymbolResult =
 
 // Utility function with refined checks
 function parseDocumentSymbolResponse(
-  response: DocumentSymbol[] | SymbolInformation[]
+  response: DocumentSymbol[] | SymbolInformation[] | null
 ): DocumentSymbolResult {
   logger.info(
-    `parseDocumentSymbolResponse called with ${Array.isArray(response) ? response.length : 'non-array'} items`
+    `parseDocumentSymbolResponse called with ${response?.length ?? 0} items`
   );
 
-  if (!Array.isArray(response) || response.length === 0) {
-    logger.info('Empty or invalid response, returning empty symbolInformation');
+  if (!response || response.length === 0) {
+    logger.info('Empty response, returning empty symbolInformation');
     return { type: 'symbolInformation', symbols: [] };
   }
 
-  const firstSymbol = response[0];
-
-  if (firstSymbol && 'location' in firstSymbol) {
+  if (response.every(isSymbolInformation)) {
     logger.info('Detected SymbolInformation format');
     return {
       type: 'symbolInformation',
-      symbols: response as SymbolInformation[],
+      symbols: response,
     };
   }
 
-  if (firstSymbol && 'range' in firstSymbol) {
+  if (response.every(isDocumentSymbol)) {
     logger.info('Detected DocumentSymbol format');
     return {
       type: 'documentSymbol',
-      symbols: response as DocumentSymbol[],
+      symbols: response,
     };
   }
 
@@ -231,6 +196,18 @@ function parseDocumentSymbolResponse(
   throw new Error(
     'Unable to determine symbol type from the provided response.'
   );
+}
+
+function isSymbolInformation(
+  symbol: DocumentSymbol | SymbolInformation
+): symbol is SymbolInformation {
+  return 'location' in symbol;
+}
+
+function isDocumentSymbol(
+  symbol: DocumentSymbol | SymbolInformation
+): symbol is DocumentSymbol {
+  return 'range' in symbol && 'selectionRange' in symbol;
 }
 
 // Common flattened symbol type for internal use
@@ -255,10 +232,7 @@ export async function getDocumentSymbols(
     textDocument: { uri },
   };
 
-  const rawSymbols: DocumentSymbol[] | SymbolInformation[] = await request(
-    'textDocument/documentSymbol',
-    params
-  );
+  const rawSymbols = await request(DocumentSymbolRequest.type, params);
 
   const symbolResult = parseDocumentSymbolResponse(rawSymbols);
 
@@ -362,10 +336,7 @@ function decodeSemanticTokens(
     }
 
     // Safe array access with bounds checking
-    const safeTokenType: string =
-      tokenType >= 0 && tokenType < tokenTypes.length
-        ? (tokenTypes[tokenType] as string)
-        : 'unknown';
+    const safeTokenType = tokenTypes[tokenType] ?? 'unknown';
 
     tokens.push({
       line: currentLine,
@@ -466,8 +437,8 @@ export async function getSemanticTokens(
       textDocument: { uri },
     };
 
-    const response: SemanticTokens = await client.connection.sendRequest(
-      'textDocument/semanticTokens/full',
+    const response = await client.connection.sendRequest(
+      SemanticTokensRequest.type,
       params
     );
 

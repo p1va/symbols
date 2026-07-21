@@ -37,6 +37,17 @@ vi.mock('../../src/utils/preload-files.js', () => ({
   resolvePreloadEntries: vi.fn(),
 }));
 
+vi.mock('../../src/utils/logger.js', () => ({
+  initLogger: vi.fn(),
+  upgradeToContextualLogger: vi.fn(),
+  default: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 const mockReadFile = vi.mocked(fs.promises.readFile);
 const mockCreateLspClient = vi.mocked(createLspClient);
 const mockInitializeLspClient = vi.mocked(initializeLspClient);
@@ -85,7 +96,7 @@ function createProfile(preloadFiles: string[] = []): LspSessionProfile {
   };
 }
 
-function mockSuccessfulStart(): void {
+function mockSuccessfulStart() {
   const sendNotification = vi.fn().mockResolvedValue(undefined);
   mockCreateLspClient.mockReturnValue({
     ok: true,
@@ -101,8 +112,10 @@ function mockSuccessfulStart(): void {
   });
   mockInitializeLspClient.mockResolvedValue({
     ok: true,
-    data: undefined,
+    data: { capabilities: {} },
   });
+
+  return sendNotification;
 }
 
 describe('LspSession document lifecycle', () => {
@@ -181,7 +194,10 @@ describe('LspSession document lifecycle', () => {
           process,
         },
       });
-      mockInitializeLspClient.mockResolvedValue({ ok: true, data: undefined });
+      mockInitializeLspClient.mockResolvedValue({
+        ok: true,
+        data: { capabilities: {} },
+      });
 
       const session = createLspSession(
         'typescript::/workspace',
@@ -219,7 +235,7 @@ describe('LspSession document lifecycle', () => {
     });
     mockInitializeLspClient.mockResolvedValue({
       ok: true,
-      data: undefined,
+      data: { capabilities: {} },
     });
 
     const session = createLspSession(
@@ -267,7 +283,10 @@ describe('LspSession document lifecycle', () => {
         process,
       },
     });
-    mockInitializeLspClient.mockResolvedValue({ ok: true, data: undefined });
+    mockInitializeLspClient.mockResolvedValue({
+      ok: true,
+      data: { capabilities: {} },
+    });
 
     const session = createLspSession('typescript::/workspace', createProfile());
     const startPromise = session.start();
@@ -307,7 +326,7 @@ describe('LspSession document lifecycle', () => {
     });
     mockInitializeLspClient.mockResolvedValue({
       ok: true,
-      data: undefined,
+      data: { capabilities: {} },
     });
 
     const session = createLspSession(
@@ -325,14 +344,10 @@ describe('LspSession document lifecycle', () => {
     const result = await session.executeWithDocumentLifecycle(
       'src/transient.ts',
       'transient',
-      (uri) =>
-        Promise.resolve({
-          ok: true,
-          data: uri,
-        })
+      (scope) => Promise.resolve(scope)
     );
 
-    expect(result.ok).toBe(true);
+    expect(result.uri).toBe('file:///workspace/src/transient.ts');
     expect(session.listOwnedDocuments()).toEqual([anchorPath]);
 
     const methods = sendNotification.mock.calls.map(
@@ -364,6 +379,44 @@ describe('LspSession document lifecycle', () => {
     expect(mockReadFile).toHaveBeenCalledWith(transientPath, 'utf8');
   });
 
+  it('closes a transient document when its operation fails', async () => {
+    const sendNotification = mockSuccessfulStart();
+    const session = createLspSession('typescript::/workspace', createProfile());
+    await session.start();
+
+    const operationError = new Error('operation failed', {
+      cause: new Error('root cause'),
+    });
+    await expect(
+      session.executeWithDocumentLifecycle(
+        'src/transient.ts',
+        'transient',
+        () => Promise.reject(operationError)
+      )
+    ).rejects.toBe(operationError);
+
+    expect(session.listOwnedDocuments()).toEqual([]);
+    expect(
+      sendNotification.mock.calls.map((call): string => call[0] as string)
+    ).toEqual(['textDocument/didOpen', 'textDocument/didClose']);
+  });
+
+  it('preserves the original cause through the session lifecycle', async () => {
+    mockSuccessfulStart();
+    const session = createLspSession('typescript::/workspace', createProfile());
+    await session.start();
+    const cause = new Error('root cause');
+    const operationError = new Error('operation failed', { cause });
+
+    await expect(
+      session.executeWithDocumentLifecycle(
+        'src/transient.ts',
+        'transient',
+        () => Promise.reject(operationError)
+      )
+    ).rejects.toMatchObject({ cause });
+  });
+
   it('refreshes affected open documents from their updated disk content', async () => {
     const sendNotification = vi.fn().mockResolvedValue(undefined);
     mockCreateLspClient.mockReturnValue({
@@ -378,7 +431,10 @@ describe('LspSession document lifecycle', () => {
         process: createMockProcess(),
       },
     });
-    mockInitializeLspClient.mockResolvedValue({ ok: true, data: undefined });
+    mockInitializeLspClient.mockResolvedValue({
+      ok: true,
+      data: { capabilities: {} },
+    });
 
     const session = createLspSession(
       'typescript::/workspace',
@@ -437,7 +493,7 @@ describe('LspSession document lifecycle', () => {
     });
     mockInitializeLspClient.mockResolvedValue({
       ok: true,
-      data: undefined,
+      data: { capabilities: {} },
     });
     mockGetDefaultPreloadEntriesForProfile.mockReturnValue(['src/index.ts']);
     mockResolvePreloadEntries

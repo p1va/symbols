@@ -22,10 +22,6 @@ function createChange(
       end: { line: endLine, character: endCharacter },
     },
     newText,
-    startLine: startLine + 1,
-    startCharacter: startCharacter + 1,
-    endLine: endLine + 1,
-    endCharacter: endCharacter + 1,
   };
 }
 

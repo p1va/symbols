@@ -3,20 +3,17 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { FileChange } from '../types/lsp.js';
 import { fileUriToPath } from './utils.js';
+import { formatZeroBasedPosition } from '../types/position.js';
 
 export interface AppliedChange {
   range: FileChange['range'];
   oldText: string;
   newText: string;
-  line: number;
-  character: number;
 }
 
 export interface FailedChange {
   range: FileChange['range'];
   newText: string;
-  line: number;
-  character: number;
   error: string;
 }
 
@@ -99,7 +96,7 @@ function positionToOffset(
     position.line >= lines.length
   ) {
     throw new Error(
-      `Rename returned an out-of-bounds line for ${fileUri}: ${position.line + 1}:${position.character + 1}`
+      `Rename returned an out-of-bounds line for ${fileUri}: ${formatZeroBasedPosition(position)}`
     );
   }
 
@@ -107,7 +104,7 @@ function positionToOffset(
   const lineLength = line.end - line.start;
   if (position.character < 0 || position.character > lineLength) {
     throw new Error(
-      `Rename returned an out-of-bounds character for ${fileUri}: ${position.line + 1}:${position.character + 1}`
+      `Rename returned an out-of-bounds character for ${fileUri}: ${formatZeroBasedPosition(position)}`
     );
   }
 
@@ -126,7 +123,7 @@ function prepareFileContent(
 
     if (startOffset > endOffset) {
       throw new Error(
-        `Rename returned a reversed edit range for ${fileUri}: ${change.startLine}:${change.startCharacter}-${change.endLine}:${change.endCharacter}`
+        `Rename returned a reversed edit range for ${fileUri}: ${formatZeroBasedPosition(change.range.start)}-${formatZeroBasedPosition(change.range.end)}`
       );
     }
 
@@ -164,8 +161,6 @@ function prepareFileContent(
       range: change.range,
       oldText: content.slice(startOffset, endOffset),
       newText: change.newText,
-      line: change.startLine,
-      character: change.startCharacter,
     })),
   };
 }

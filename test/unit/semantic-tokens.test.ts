@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getSemanticTokens } from '../../src/types/lsp.js';
 import type { LspClient } from '../../src/types.js';
-import type { ServerCapabilities } from 'vscode-languageserver-protocol';
+import {
+  SemanticTokensRequest,
+  type ServerCapabilities,
+} from 'vscode-languageserver-protocol';
 
 function createClient(serverCapabilities: ServerCapabilities): {
   client: LspClient;
@@ -38,10 +41,9 @@ describe('semantic token decoding', () => {
       'Thing'
     );
 
-    expect(sendRequest).toHaveBeenCalledWith(
-      'textDocument/semanticTokens/full',
-      { textDocument: { uri: 'file:///workspace/example.ts' } }
-    );
+    expect(sendRequest).toHaveBeenCalledWith(SemanticTokensRequest.type, {
+      textDocument: { uri: 'file:///workspace/example.ts' },
+    });
     expect(result).toEqual({
       legend,
       tokens: [

@@ -1,4 +1,5 @@
 import type { DiagnosticEntry, DiagnosticsResult } from '../types.js';
+import { formatZeroBasedPosition } from '../types/position.js';
 
 export const DIAGNOSTICS_MAX_ENTRIES = 1_000;
 export const DIAGNOSTIC_MESSAGE_MAX_CHARACTERS = 2_000;
@@ -95,15 +96,13 @@ function formatDiagnostic(
 ): string {
   const severitySymbol = getSeveritySymbol(diagnostic.severity);
   const severityName = getSeverityName(diagnostic.severity);
-  const line = diagnostic.range.start.line + 1;
-  const character = diagnostic.range.start.character + 1;
   const message = truncateDiagnosticMessage(
     diagnostic.message,
     maxMessageCharacters
   );
   const code = truncateDiagnosticMetadata(diagnostic.code);
   const source = truncateDiagnosticMetadata(diagnostic.source);
-  return `${severitySymbol} @${line}:${character} [${severityName}][${code}] ${message} (${source})`;
+  return `${severitySymbol} @${formatZeroBasedPosition(diagnostic.range.start)} [${severityName}][${code}] ${message} (${source})`;
 }
 
 function formatOmittedDiagnostics(count: number): string {

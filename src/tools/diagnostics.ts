@@ -9,6 +9,7 @@ import { diagnosticsSchema } from './schemas.js';
 import { validateDiagnostics } from './validation.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
 import { formatDiagnostics } from '../utils/diagnostics.js';
+import { textToolResult } from './responses.js';
 
 export function registerDiagnosticsTool(
   server: McpServer,
@@ -28,16 +29,10 @@ export function registerDiagnosticsTool(
       const prepared = prepareFileRequest(session, {
         file: validatedRequest.file,
       });
-      if (!prepared.ok) throw new Error(prepared.error.message);
 
-      const result = await LspOperations.getDiagnostics(session, prepared.data);
-      if (!result.ok) throw new Error(result.error.message);
+      const result = await LspOperations.getDiagnostics(session, prepared);
 
-      return {
-        content: [
-          { type: 'text' as const, text: formatDiagnostics(result.data) },
-        ],
-      };
+      return textToolResult(formatDiagnostics(result));
     }
   );
 }

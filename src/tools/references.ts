@@ -3,16 +3,22 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createOneBasedPosition } from '../types.js';
-import { prepareSymbolPositionRequest } from '../preparation.js';
+import { resolveSymbolTarget } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
-import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
+import {
+  enrichCodeSnippets,
+  createSignaturePreview,
+  type EnrichmentRequest,
+} from './enrichment.js';
 import { Location } from '../types/lsp.js';
 import { validateSymbolPosition } from './validation.js';
 import { formatFilePath } from './utils.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
+import { formatZeroBasedPosition } from '../types/position.js';
+import { createOneBasedPosition } from '../types.js';
+import { textToolResult } from './responses.js';
 
 export function registerReferencesTool(server: McpServer, manager: LspManager) {
   server.registerTool(
@@ -26,25 +32,16 @@ export function registerReferencesTool(server: McpServer, manager: LspManager) {
     async (request) => {
       const validatedRequest = validateSymbolPosition(request);
       const session = await manager.getSessionForFile(validatedRequest.file);
-
-      const symbolRequest = {
+      const target = await resolveSymbolTarget(session, {
         file: validatedRequest.file,
         position: createOneBasedPosition(
           validatedRequest.line,
           validatedRequest.character
         ),
-      };
+      });
 
-      const prepared = await prepareSymbolPositionRequest(
-        session,
-        symbolRequest
-      );
-      if (!prepared.ok) throw new Error(prepared.error.message);
-
-      const result = await LspOperations.findReferences(session, prepared.data);
-      if (!result.ok) throw new Error(result.error.message);
-
-      const { result: references, cursorContext } = result.data;
+      const result = await LspOperations.findReferences(session, target);
+      const { result: references, cursorContext } = result;
       const symbolName = cursorContext?.symbolName || 'symbol';
       const formattedText = await formatReferencesResults(
         references,
@@ -62,19 +59,12 @@ export function registerReferencesTool(server: McpServer, manager: LspManager) {
 
       sections.push(formattedText);
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: sections.join('\n\n'),
-          },
-        ],
-      };
+      return textToolResult(sections.join('\n\n'));
     }
   );
 }
 
-async function formatReferencesResults(
+export async function formatReferencesResults(
   references: Location[],
   symbolName: string,
   workspacePath?: string
@@ -83,56 +73,45 @@ async function formatReferencesResults(
     return 'Found no references';
   }
 
-  const symbols = references.map((ref) => ({
-    name: 'reference',
-    kind: 1,
-    location: {
-      uri: ref.uri,
-      range: {
-        start: {
-          line: ref.range.start.line,
-          character: 0,
-        },
-        end: {
-          line: ref.range.start.line,
-          character: 1000,
-        },
-      },
-    },
-  }));
-
-  const enrichmentResults = await enrichSymbolsWithCode(symbols);
-  const enrichedReferences = enrichmentResults.map((result, index) => ({
-    ...references[index],
-    signaturePreview: result.codeSnippet
-      ? createSignaturePreview(result.codeSnippet.trim(), 100)
-      : null,
-    error: result.error,
-  }));
+  const enrichmentResults = await enrichCodeSnippets(
+    references.map((reference): EnrichmentRequest => ({
+      uri: reference.uri,
+      extent: 'line',
+      line: reference.range.start.line,
+    }))
+  );
 
   type EnrichedReference = Location & {
     signaturePreview?: string | null;
-    error?: string | undefined;
+    error?: string | null;
   };
+  const enrichedReferences: EnrichedReference[] = references.map(
+    (reference, index) => {
+      const result = enrichmentResults[index]!;
+      return {
+        ...reference,
+        signaturePreview: result.codeSnippet
+          ? createSignaturePreview(result.codeSnippet.trim(), 100)
+          : null,
+        error: result.error,
+      };
+    }
+  );
   const groupedByFile = new Map<string, EnrichedReference[]>();
 
   for (const ref of enrichedReferences) {
     const uri = ref.uri;
-    if (!uri || !ref.range) continue;
 
     if (!groupedByFile.has(uri)) {
       groupedByFile.set(uri, []);
     }
-    groupedByFile.get(uri)!.push({
-      uri,
-      range: ref.range,
-      signaturePreview: ref.signaturePreview,
-      error: ref.error,
-    });
+    groupedByFile.get(uri)!.push(ref);
   }
 
   const fileText = groupedByFile.size === 1 ? 'file' : 'files';
-  let result = `Found ${references.length} reference(s) across ${groupedByFile.size} ${fileText}`;
+  const sections = [
+    `Found ${references.length} reference(s) across ${groupedByFile.size} ${fileText}`,
+  ];
 
   for (const [, fileReferences] of groupedByFile) {
     const firstReference = fileReferences[0];
@@ -141,28 +120,27 @@ async function formatReferencesResults(
     }
 
     const filePath = formatFilePath(firstReference.uri, workspacePath);
-    result += `\n\n${filePath} (${fileReferences.length} references)\n`;
-
     const sortedReferences = fileReferences.sort((a, b) => {
       const lineA = a.range.start.line;
       const lineB = b.range.start.line;
       return lineA - lineB;
     });
+    const lines = [`${filePath} (${fileReferences.length} references)`];
 
     for (const ref of sortedReferences) {
-      const line = ref.range.start.line + 1;
-      const char = ref.range.start.character + 1;
-
-      result += `  @${line}:${char} ${symbolName}`;
+      lines.push(
+        `  @${formatZeroBasedPosition(ref.range.start)} ${symbolName}`
+      );
 
       if (ref.signaturePreview) {
-        result += `\n    \`${ref.signaturePreview}\``;
+        lines.push(`    \`${ref.signaturePreview}\``);
       } else if (ref.error) {
-        result += `\n    // ${ref.error}`;
+        lines.push(`    // ${ref.error}`);
       }
-      result += '\n';
     }
+
+    sections.push(lines.join('\n'));
   }
 
-  return result.trim();
+  return sections.join('\n\n');
 }

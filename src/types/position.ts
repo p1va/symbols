@@ -71,15 +71,9 @@ export function toZeroBased(pos: OneBasedPosition): ZeroBasedPosition {
   return createZeroBasedPosition(pos.line - 1, pos.character - 1);
 }
 
-/**
- * Converts a 0-based position to 1-based position.
- * Use this when converting from LSP protocol response to MCP client output.
- *
- * @param pos - ZeroBasedPosition to convert
- * @returns OneBasedPosition (line+1, character+1)
- */
-export function toOneBased(pos: ZeroBasedPosition): OneBasedPosition {
-  return createOneBasedPosition(pos.line + 1, pos.character + 1);
+/** Formats a 0-based LSP position for 1-based user-facing output. */
+export function formatZeroBasedPosition(position: Position): string {
+  return `${position.line + 1}:${position.character + 1}`;
 }
 
 /**

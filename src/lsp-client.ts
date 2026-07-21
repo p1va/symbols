@@ -6,12 +6,14 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as rpc from 'vscode-jsonrpc';
+import * as rpc from 'vscode-jsonrpc/node';
 import which from 'which';
 import {
   InitializeParams,
   PublishDiagnosticsParams,
+  InitializeRequest,
   InitializeResult,
+  ShutdownRequest,
 } from 'vscode-languageserver-protocol';
 
 import {
@@ -24,14 +26,13 @@ import {
   DiagnosticProvider,
   WindowLogStore,
   LogMessage,
-  createLspError,
-  ErrorCode,
 } from './types.js';
 import { ParsedLspConfig } from './config/lsp-config.js';
 import logger from './utils/logger.js';
 import { createWorkspaceLoader } from './workspace/registry.js';
 import { WorkspaceLoaderStore } from './types.js';
 import { expandEnvVars } from './utils/env-expansion.js';
+import { contextualError } from './utils/errors.js';
 
 function summarizeProgressNotification(params: unknown): unknown {
   if (!params || typeof params !== 'object') {
@@ -253,13 +254,9 @@ export function createLspClient(
 
     logger.debug('Creating JSON-RPC connection over process streams');
 
-    // Create JSON-RPC connection using the overload that accepts streams directly
-    // vscode-jsonrpc expects Readable/Writable but child_process streams are compatible
     const connection = rpc.createMessageConnection(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-      serverProcess.stdout as any, // Readable stream from child process
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-      serverProcess.stdin as any // Writable stream to child process
+      serverProcess.stdout,
+      serverProcess.stdin
     );
 
     logger.debug('JSON-RPC connection created successfully');
@@ -355,11 +352,7 @@ export function createLspClient(
 
     return {
       ok: false,
-      error: createLspError(
-        ErrorCode.LSPError,
-        errorMessage,
-        error instanceof Error ? error : undefined
-      ),
+      error: contextualError('Failed to create LSP client', error),
     };
   }
 }
@@ -455,8 +448,8 @@ export async function initializeLspClient(
       },
     };
 
-    const initResult: InitializeResult = await client.connection.sendRequest(
-      'initialize',
+    const initResult = await client.connection.sendRequest(
+      InitializeRequest.type,
       initParams
     );
 
@@ -484,11 +477,7 @@ export async function initializeLspClient(
   } catch (error) {
     return {
       ok: false,
-      error: createLspError(
-        ErrorCode.LSPError,
-        `Failed to initialize LSP client: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      ),
+      error: contextualError('Failed to initialize LSP client', error),
     };
   }
 }
@@ -536,7 +525,7 @@ async function initializeWorkspaceLoader(
 export async function shutdownLspClient(client: LspClient): Promise<void> {
   try {
     if (client.isInitialized) {
-      await client.connection.sendRequest('shutdown');
+      await client.connection.sendRequest(ShutdownRequest.type);
       await client.connection.sendNotification('exit', null);
     }
   } catch {
