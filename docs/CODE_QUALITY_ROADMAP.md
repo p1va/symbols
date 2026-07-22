@@ -1,8 +1,9 @@
 # Code Quality Roadmap
 
-Status: agreed 2026-07-21, revised after Codex review. Work through the phases
-in order; each phase leaves the codebase healthy (build + tests green) before
-the next starts.
+Status: implemented 2026-07-21 and released in v0.0.25 on 2026-07-22. This is
+now a decision record for the contracts introduced by the refactor. The
+remaining sweep ideas are optional cleanup candidates, not active ordered
+phases.
 
 ## Why
 
@@ -40,8 +41,8 @@ enough that the rest of the code gets to lean on them.
 
 ## Phase 0 — Characterize the contracts
 
-Status: implemented 2026-07-21. Known gaps are recorded with Vitest
-`it.fails`; fixing one must turn its case into a normal passing test.
+Status: implemented 2026-07-21. Boundary variants and public rendering
+contracts are covered by focused tests.
 
 **Problem.** The tests are good at asserting which requests are sent and that
 operations succeed, but less complete at pinning down normalized return shapes
@@ -263,7 +264,7 @@ is acceptable for this phase to conclude that no full tool skeleton is needed.
 
 ## Phase 6 — Sweep
 
-Status: in progress 2026-07-21. The multiline formatters in `inspect.ts`,
+Status: implemented 2026-07-21. The multiline formatters in `inspect.ts`,
 `references.ts`, and `completion.ts` now assemble explicit lines and sections;
 their exact rendering contracts and multi-file reference ordering remain
 covered by unit tests. The remaining `result +=` uses are short optional
@@ -273,8 +274,7 @@ come from one module-level lookup rather than rebuilding the table per call.
 The supported Node floor is now pinned at 22.13.0 in `.nvmrc`, consumed by CI,
 and aligned with the current development dependency requirements.
 
-Smaller items, safe to do piecemeal or fold into the phases above when a file
-is already open:
+Optional cleanup candidates, safe to do piecemeal when a file is already open:
 
 - Completed 2026-07-21: multiline formatters build `lines: string[]` +
   `join('\n')` instead of `result += ...` with a trailing `.trim()` to fix the

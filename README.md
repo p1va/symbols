@@ -55,7 +55,7 @@ Then ask Codex:
 agy plugin install https://github.com/p1va/symbols.git
 ```
 
-Then ask Gemini:
+Then ask Antigravity:
 
 > Install and configure the language servers relevant to this codebase.
 

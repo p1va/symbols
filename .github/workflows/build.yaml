@@ -55,12 +55,6 @@ jobs:
       - name: Setup and Install
         uses: ./.github/actions/setup-and-install
 
-      - name: Install TypeScript Language Server
-        run: pnpm install -g typescript-language-server typescript
-
-      - name: Verify typescript-language-server installation
-        run: typescript-language-server --version
-
       - name: Build project
         run: pnpm build
 
