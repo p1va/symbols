@@ -1,6 +1,6 @@
 {
   "name": "symbols",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "description": "Symbols MCP plugin for semantic code navigation, language server setup, and troubleshooting.",
   "author": {
     "name": "p1va",
