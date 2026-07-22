@@ -16,13 +16,13 @@ jobs:
       - name: Setup and Install
         uses: ./.github/actions/setup-and-install
 
-      - name: 🧩 Verify plugin skills are in sync
+      - name: 🧩 Verify generated assets are in sync
         run: |
-          pnpm sync:skills
-          changes="$(git status --porcelain --untracked-files=all -- skills plugins/symbols/skills)"
+          pnpm sync:generated
+          changes="$(git status --porcelain --untracked-files=all -- skills plugins/symbols/skills plugins/symbols/.codex-plugin/plugin.json)"
           if [ -n "$changes" ]; then
             echo "$changes"
-            echo "Run 'pnpm sync:skills' and commit the generated changes."
+            echo "Run 'pnpm sync:generated' and commit the generated changes."
             exit 1
           fi
 

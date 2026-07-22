@@ -23,9 +23,13 @@ jobs:
 
       - name: Verify generated assets are in sync
         run: |
-          pnpm sync:skills
-          pnpm sync:version
-          git diff --exit-code
+          pnpm sync:generated
+          changes="$(git status --porcelain --untracked-files=all -- skills plugins/symbols/skills plugins/symbols/.codex-plugin/plugin.json)"
+          if [ -n "$changes" ]; then
+            echo "$changes"
+            echo "Run 'pnpm sync:generated' and commit the generated changes."
+            exit 1
+          fi
 
       - name: Check formatting
         run: pnpm format:check

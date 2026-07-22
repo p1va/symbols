@@ -77,9 +77,10 @@ For manual configuration and language servers examples see [here](docs/INSTALLAT
 
 ## Release
 
-- `pnpm sync:skills` to mirror `.agents/skills/` into
-  - `skills/` for Antigravity
-  - `plugins/symbols/skills/` for Codex
-- `pnpm version patch` to bump the version and create the tag. Then:
-  - `pnpm sync:version` to update the versioned Codex plugin manifest.
-  - `git push --follow-tags` to push the commit and tag.
+- `pnpm version patch` to synchronize generated assets, bump the version, and
+  create a single commit and tag. Use `minor` or `major` when appropriate.
+- `git push --follow-tags` to push the commit and tag.
+
+The version lifecycle checks formatting, mirrors `.agents/skills/` into the
+Antigravity and Codex distributions, and updates the versioned Codex plugin
+manifest before the commit and tag are created.

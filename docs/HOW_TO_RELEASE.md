@@ -118,10 +118,13 @@ Feel free to switch `pnpm` to `npm` or `yarn` as suits your stack.
 ## 5 Release flow (you do per release)
 
 ```bash
-pnpm version patch|minor|major  # bumps package.json version & creates a vX.Y.Z tag
-pnpm sync:version               # copies package.json version into the Codex plugin manifest
-git push --follow-tags          # pushes commit **and** tag
+pnpm version patch|minor|major  # syncs assets, bumps the version, and creates a vX.Y.Z tag
+git push --follow-tags          # pushes the commit and tag
 ```
+
+The `version` lifecycle hook synchronizes the skill distributions and Codex
+plugin manifest after `package.json` has been bumped, checks formatting, and
+stages the generated assets so they are included in the tagged commit.
 
 The pushed tag triggers the GitHub Action, which builds, tests and publishes
 `@p1va/symbols@X.Y.Z`. After the workflow is green you can test it via:

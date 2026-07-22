@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { format, resolveConfig } from 'prettier';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
@@ -16,7 +17,13 @@ async function readJson(filePath) {
 }
 
 async function writeJson(filePath, value) {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  const prettierConfig = (await resolveConfig(filePath)) ?? {};
+  const content = await format(JSON.stringify(value, null, 2), {
+    ...prettierConfig,
+    filepath: filePath,
+  });
+
+  await writeFile(filePath, content, 'utf8');
 }
 
 const packageJson = await readJson(packageJsonPath);
