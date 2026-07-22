@@ -55,7 +55,7 @@ Then ask Codex:
 agy plugin install https://github.com/p1va/symbols.git
 ```
 
-Then ask:
+Then ask Gemini:
 
 > Install and configure the language servers relevant to this codebase.
 
@@ -64,9 +64,6 @@ Then ask:
 For manual configuration and language servers examples see [here](docs/INSTALLATION.md#traditional-installation).
 
 ## Development
-
-Development requires Node.js 22.13.0 or newer. The minimum version used by CI
-is pinned in `.nvmrc`; with nvm, run `nvm use` from the repository root.
 
 - `pnpm lint` outputs the lint violations
 - `pnpm lint:fix` attempts to fix lint violations
@@ -80,9 +77,9 @@ is pinned in `.nvmrc`; with nvm, run `nvm use` from the repository root.
 
 ## Release
 
-- `pnpm sync:skills` to mirror `.agents/skills/` into `skills/` for Antigravity and `plugins/symbols/skills/` for Codex.
+- `pnpm sync:skills` to mirror `.agents/skills/` into
+  - `skills/` for Antigravity
+  - `plugins/symbols/skills/` for Codex
 - `pnpm version patch` to bump the version and create the tag. Then:
   - `pnpm sync:version` to update the versioned Codex plugin manifest.
   - `git push --follow-tags` to push the commit and tag.
-
-Current maintenance work and deferred findings are tracked in [docs/MAINTENANCE.md](docs/MAINTENANCE.md).
