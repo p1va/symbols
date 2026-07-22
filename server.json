@@ -16,7 +16,13 @@
       "transport": {
         "type": "stdio"
       },
-      "environment_variables": []
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "start"
+        }
+      ],
+      "environmentVariables": []
     }
   ]
 }

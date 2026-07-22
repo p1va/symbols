@@ -7,10 +7,16 @@ import { prepareWorkspaceRequest } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { searchSchema } from './schemas.js';
 import { getSymbolKindName, formatFilePath } from './utils.js';
-import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
+import {
+  enrichCodeSnippets,
+  createSignaturePreview,
+  type EnrichmentRequest,
+} from './enrichment.js';
 import { SymbolSearchResult } from '../types/lsp.js';
 import { validateSearch } from './validation.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
+import { formatZeroBasedPosition } from '../types/position.js';
+import { textToolResult } from './responses.js';
 
 export function registerSearchTool(server: McpServer, manager: LspManager) {
   server.registerTool(
@@ -28,11 +34,8 @@ export function registerSearchTool(server: McpServer, manager: LspManager) {
       const settledResults = await Promise.allSettled(
         sessions.map(async (session) => {
           const prepared = prepareWorkspaceRequest(session, validatedRequest);
-          if (!prepared.ok) {
-            throw new Error(prepared.error.message);
-          }
 
-          return await LspOperations.searchSymbols(session, prepared.data);
+          return await LspOperations.searchSymbols(session, prepared);
         })
       );
 
@@ -49,12 +52,7 @@ export function registerSearchTool(server: McpServer, manager: LspManager) {
           continue;
         }
 
-        if (!settled.value.ok) {
-          errors.push(settled.value.error.message);
-          continue;
-        }
-
-        allSymbols.push(...settled.value.data);
+        allSymbols.push(...settled.value);
       }
 
       if (allSymbols.length === 0 && errors.length > 0) {
@@ -63,41 +61,45 @@ export function registerSearchTool(server: McpServer, manager: LspManager) {
 
       let formattedText = await formatSearchResults(
         allSymbols,
-        validatedRequest.query
+        validatedRequest.query,
+        manager.getStatus().workspacePath
       );
 
       if (errors.length > 0) {
         formattedText = `Warnings:\n${errors.map((error) => `- ${error}`).join('\n')}\n\n${formattedText}`;
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: formattedText,
-          },
-        ],
-      };
+      return textToolResult(formattedText);
     }
   );
 }
 
 async function formatSearchResults(
   symbols: SymbolSearchResult[],
-  query: string
+  query: string,
+  workspacePath?: string
 ): Promise<string> {
   if (symbols.length === 0) {
     return `Found no matches for query "${query}"`;
   }
 
-  const enrichmentResults = await enrichSymbolsWithCode(symbols);
-  const enrichedSymbols = enrichmentResults.map((result) => ({
-    ...result.symbol,
-    signaturePreview: result.codeSnippet
-      ? createSignaturePreview(result.codeSnippet, 100)
-      : null,
-    error: result.error,
-  }));
+  const enrichmentResults = await enrichCodeSnippets(
+    symbols.map((symbol): EnrichmentRequest => ({
+      uri: symbol.location.uri,
+      extent: 'range',
+      range: symbol.location.range,
+    }))
+  );
+  const enrichedSymbols = symbols.map((symbol, index) => {
+    const result = enrichmentResults[index];
+    return {
+      ...symbol,
+      signaturePreview: result?.codeSnippet
+        ? createSignaturePreview(result.codeSnippet, 100)
+        : null,
+      error: result?.error ?? null,
+    };
+  });
 
   const groupedByFile = new Map<string, typeof enrichedSymbols>();
 
@@ -116,7 +118,7 @@ async function formatSearchResults(
   );
 
   for (const [uri, fileSymbols] of groupedByFile) {
-    const filePath = formatFilePath(uri);
+    const filePath = formatFilePath(uri, workspacePath);
     let fileContent = `${filePath} (${fileSymbols.length} results)\n`;
 
     const sortedSymbols = fileSymbols.sort((a, b) => {
@@ -126,11 +128,9 @@ async function formatSearchResults(
     });
 
     for (const symbol of sortedSymbols) {
-      const line = symbol.location.range.start.line + 1;
-      const char = symbol.location.range.start.character + 1;
       const kind = getSymbolKindName(symbol.kind);
 
-      fileContent += `  @${line}:${char} ${kind} - ${symbol.name}\n`;
+      fileContent += `  @${formatZeroBasedPosition(symbol.location.range.start)} ${kind} - ${symbol.name}\n`;
 
       if (symbol.signaturePreview) {
         fileContent += `    \`${symbol.signaturePreview}\`\n`;

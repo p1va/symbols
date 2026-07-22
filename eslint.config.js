@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
-  // Add a global ignore for the dist directory, this config file, playground, and test JS files
+  // Ignore generated, archived, external, and non-project executable artifacts.
   {
     ignores: [
       'dist',
@@ -13,6 +13,7 @@ export default tseslint.config(
       'test/**/*.js',
       '.external',
       'test-results/**',
+      'docs/security/scans/**',
     ],
   },
 

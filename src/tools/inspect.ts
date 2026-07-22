@@ -3,17 +3,23 @@
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createOneBasedPosition } from '../types.js';
-import { prepareSymbolPositionRequest } from '../preparation.js';
+import { resolveSymbolTarget } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { symbolPositionSchema } from './schemas.js';
 import { formatCursorContext } from '../utils/cursor-context.js';
-import { enrichSymbolLocations } from './enrichment.js';
-import { createSignaturePreview } from './enrichment.js';
+import {
+  createSignaturePreview,
+  enrichCodeSnippets,
+  type EnrichmentRequest,
+} from './enrichment.js';
 import { formatFilePath } from './utils.js';
-import { Hover, Location } from 'vscode-languageserver-protocol';
+import { MarkedString, MarkupContent } from 'vscode-languageserver-protocol';
+import type { Hover, Location } from 'vscode-languageserver-protocol';
 import { validateSymbolPosition } from './validation.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
+import { formatZeroBasedPosition } from '../types/position.js';
+import { createOneBasedPosition } from '../types.js';
+import { textToolResult } from './responses.js';
 
 export function registerInspectTool(server: McpServer, manager: LspManager) {
   server.registerTool(
@@ -27,83 +33,59 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
     async (request) => {
       const validatedRequest = validateSymbolPosition(request);
       const session = await manager.getSessionForFile(validatedRequest.file);
-
-      const symbolRequest = {
+      const target = await resolveSymbolTarget(session, {
         file: validatedRequest.file,
         position: createOneBasedPosition(
           validatedRequest.line,
           validatedRequest.character
         ),
-      };
+      });
 
-      const prepared = await prepareSymbolPositionRequest(
-        session,
-        symbolRequest
-      );
-      if (!prepared.ok) throw new Error(prepared.error.message);
-
-      const result = await LspOperations.inspectSymbol(session, prepared.data);
-      if (!result.ok) throw new Error(result.error.message);
-
-      const { result: inspectData, cursorContext } = result.data;
+      const result = await LspOperations.inspectSymbol(session, target);
+      const { result: inspectData, cursorContext } = result;
+      const workspacePath = session.getProfile().workspacePath;
 
       const sections: string[] = [];
 
       if (cursorContext) {
-        sections.push(formatCursorContext(cursorContext));
+        sections.push(formatCursorContext(cursorContext, workspacePath));
       }
 
-      if (inspectData.hover && inspectData.hover.contents) {
+      if (inspectData.hover) {
         const hoverContent = extractHoverContent(inspectData.hover);
         if (hoverContent) {
           sections.push(`Documentation\n${hoverContent}`);
         }
       }
 
-      if (
-        inspectData.definition &&
-        Array.isArray(inspectData.definition) &&
-        inspectData.definition.length > 0
-      ) {
+      if (inspectData.definition.length > 0) {
         const definitionText = await formatLocationGroup(
           inspectData.definition,
-          'Definition'
+          'Definition',
+          workspacePath
         );
         sections.push(definitionText);
       }
 
-      if (
-        inspectData.typeDefinition &&
-        Array.isArray(inspectData.typeDefinition) &&
-        inspectData.typeDefinition.length > 0
-      ) {
+      if (inspectData.typeDefinition.length > 0) {
         const typeDefText = await formatLocationGroup(
           inspectData.typeDefinition,
-          'Type Definition'
+          'Type Definition',
+          workspacePath
         );
         sections.push(typeDefText);
       }
 
-      if (
-        inspectData.implementation &&
-        Array.isArray(inspectData.implementation) &&
-        inspectData.implementation.length > 0
-      ) {
+      if (inspectData.implementation.length > 0) {
         const implText = await formatLocationGroup(
           inspectData.implementation,
-          'Implementation'
+          'Implementation',
+          workspacePath
         );
         sections.push(implText);
       }
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: sections.join('\n\n'),
-          },
-        ],
-      };
+      return textToolResult(sections.join('\n\n'));
     }
   );
 }
@@ -111,90 +93,55 @@ export function registerInspectTool(server: McpServer, manager: LspManager) {
 /**
  * Extract readable content from LSP hover response
  */
-function extractHoverContent(hover: Hover): string | null {
-  if (!hover || !hover.contents) return null;
-
+export function extractHoverContent(hover: Hover): string | null {
   const contents = hover.contents;
 
-  if (typeof contents === 'string') {
-    return contents.trim();
+  if (MarkupContent.is(contents)) {
+    return contents.value.trim();
   }
 
-  if (
-    typeof contents === 'object' &&
-    'kind' in contents &&
-    'value' in contents
-  ) {
-    const markupContent = contents as { kind: string; value: string };
-    return markupContent.value.trim();
+  if (MarkedString.is(contents)) {
+    return markedStringValue(contents).trim();
   }
 
-  if (Array.isArray(contents)) {
-    return contents
-      .map((item) => {
-        if (typeof item === 'string') return item;
-        if (typeof item === 'object' && 'value' in item) {
-          const contentItem = item as { language?: string; value: string };
-          if (contentItem.language) {
-            return contentItem.value;
-          }
-          return contentItem.value;
-        }
-        return JSON.stringify(item);
-      })
-      .filter(Boolean)
-      .join('\n\n')
-      .trim();
-  }
+  return contents.map(markedStringValue).filter(Boolean).join('\n\n').trim();
+}
 
-  if (typeof contents === 'object' && 'value' in contents) {
-    const contentObject = contents as { language?: string; value: string };
-    return contentObject.value.trim();
-  }
-
-  return null;
+function markedStringValue(content: MarkedString): string {
+  return typeof content === 'string' ? content : content.value;
 }
 
 /**
  * Format a group of locations (definition, type definition, implementation)
  */
-async function formatLocationGroup(
+export async function formatLocationGroup(
   locations: Location[],
-  groupTitle: string
+  groupTitle: string,
+  workspacePath?: string
 ): Promise<string> {
   if (!locations || locations.length === 0) return '';
 
-  const symbolLocations: Location[] = locations.map((location) => ({
-    uri: location.uri,
-    range: {
-      start: {
-        line: location.range.start.line - 1,
-        character: location.range.start.character - 1,
-      },
-      end: {
-        line: location.range.end.line - 1,
-        character: location.range.end.character - 1,
-      },
-    },
-  }));
-
-  const enrichmentResults = await enrichSymbolLocations(symbolLocations);
+  const enrichmentResults = await enrichCodeSnippets(
+    locations.map((location): EnrichmentRequest => ({
+      uri: location.uri,
+      extent: 'line',
+      line: location.range.start.line,
+    }))
+  );
 
   const fileGroups = new Map<
     string,
     Array<{
       location: Location;
-      originalLocation: Location;
       codeSnippet: string | null;
     }>
   >();
 
   enrichmentResults.forEach((result, index: number) => {
-    const location = symbolLocations[index];
-    const originalLocation = locations[index];
-    if (!location || !originalLocation) return;
+    const location = locations[index];
+    if (!location) return;
 
-    const filePath = formatFilePath(location.uri);
+    const filePath = formatFilePath(location.uri, workspacePath);
 
     if (!fileGroups.has(filePath)) {
       fileGroups.set(filePath, []);
@@ -202,33 +149,34 @@ async function formatLocationGroup(
 
     fileGroups.get(filePath)!.push({
       location,
-      originalLocation,
       codeSnippet: result.codeSnippet,
     });
   });
 
-  let result = `${groupTitle} (${locations.length} location${locations.length === 1 ? '' : 's'})`;
+  const sections = [
+    `${groupTitle} (${locations.length} location${locations.length === 1 ? '' : 's'})`,
+  ];
 
   for (const [filePath, fileLocations] of fileGroups) {
-    result += `\n\n${filePath} (${fileLocations.length})\n`;
-
     fileLocations.sort(
       (left, right) =>
         left.location.range.start.line - right.location.range.start.line
     );
 
+    const lines = [`${filePath} (${fileLocations.length})`];
+
     for (const entry of fileLocations) {
-      const line = entry.originalLocation.range.start.line;
-      const character = entry.originalLocation.range.start.character;
-      result += `  @${line}:${character}`;
+      lines.push(`  @${formatZeroBasedPosition(entry.location.range.start)}`);
 
       if (entry.codeSnippet) {
-        result += `\n    \`${createSignaturePreview(entry.codeSnippet.trim(), 100)}\``;
+        lines.push(
+          `    \`${createSignaturePreview(entry.codeSnippet.trim(), 100)}\``
+        );
       }
-
-      result += '\n';
     }
+
+    sections.push(lines.join('\n'));
   }
 
-  return result.trim();
+  return sections.join('\n\n');
 }

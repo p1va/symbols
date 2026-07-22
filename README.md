@@ -38,32 +38,26 @@ The server offers a minimal set of tools, resources and skills intended to be si
 
 ## Installation
 
-### Agent Installation
+### Codex
 
-Install the MCP Server, Agent Skills via Plugins and Extensions and then ask the agent to install any relevant language server for the codebase.
+```bash
+codex plugin marketplace add p1va/symbols
+codex plugin add symbols@symbols
+```
 
-<h4>
-  <picture>
-    <img src="https://img.shields.io/badge/-8E75B2?&logo=google%20gemini&logoColor=white" valign="middle">
-  </picture>
-  &nbsp;
-  <b>Gemini</b>
-</h4>
+Then ask Codex:
 
-- **Add Extension:** `gemini extensions install p1va/symbols`
-- **Ask Gemini:** `Please install the language servers relevant to this codebase`
+`Please install and configure the language servers relevant to this codebase`
 
-<h4>
-  <picture>
-    <img src="https://custom-icon-badges.demolab.com/badge/-74aa9c?logo=openai&logoColor=white" valign="middle">
-  </picture>
-  &nbsp;
-  <b>Codex</b>
-</h4>
+### Antigravity
 
-- **Add MCP Server:** `codex mcp add language-servers -- npx -y @p1va/symbols@latest start`
-- **Add Language Server Skills:** `npx skills add p1va/symbols -a codex`
-- **Ask Codex:** `Please install the language servers relevant to this codebase`
+```bash
+agy plugin install https://github.com/p1va/symbols.git
+```
+
+Then ask:
+
+> Install and configure the language servers relevant to this codebase.
 
 ### Manual Installation
 
@@ -71,9 +65,13 @@ For manual configuration and language servers examples see [here](docs/INSTALLAT
 
 ## Development
 
+Development requires Node.js 22.13.0 or newer. The minimum version used by CI
+is pinned in `.nvmrc`; with nvm, run `nvm use` from the repository root.
+
 - `pnpm lint` outputs the lint violations
 - `pnpm lint:fix` attempts to fix lint violations
 - `pnpm format` formats the codebase
+- `pnpm format:check` checks formatting without changing files
 - `pnpm dev` starts in development mode
 - `pnpm build` runs the linter and build
 - `pnpm start` starts the built artifacts
@@ -82,9 +80,9 @@ For manual configuration and language servers examples see [here](docs/INSTALLAT
 
 ## Release
 
-- `pnpm sync:skills` to mirror `.agents/skills/` into:
-  - `skills/` for the Gemini Extension
-  - `plugins/symbols/skills/` for the Codex Plugin.
+- `pnpm sync:skills` to mirror `.agents/skills/` into `skills/` for Antigravity and `plugins/symbols/skills/` for Codex.
 - `pnpm version patch` to bump the version and create the tag. Then:
-  - `pnpm sync:version` to update plugin and extension manifests.
+  - `pnpm sync:version` to update the versioned Codex plugin manifest.
   - `git push --follow-tags` to push the commit and tag.
+
+Current maintenance work and deferred findings are tracked in [docs/MAINTENANCE.md](docs/MAINTENANCE.md).

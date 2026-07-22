@@ -1,0 +1,260 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "automationDetails": {
+        "id": "7534904e940c_20260714T101023Z"
+      },
+      "properties": {
+        "codexSecuritySchemaVersion": "1.0",
+        "codexSecurityTargetKind": "git_worktree"
+      },
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "message": {
+                "text": "root_control"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/config/lsp-config.ts"
+                },
+                "region": {
+                  "endLine": 175,
+                  "startLine": 113
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Symbols automatically selects workspace-local `language-servers.yaml` ahead of shared configuration. An untrusted repository can choose a language-server command and arguments that a routine file-backed request lazily starts with the user's local authority, without a repository-enforced trust decision."
+          },
+          "partialFingerprints": {
+            "codexSecurity/v1": "codex-security/v1:sha256:8a404f1187dc00ff023b744fcd71f42642ff86cdee8618a1dc2e1875170974d7",
+            "primaryLocationLineHash": "cf28f9e4d54b334:1"
+          },
+          "properties": {
+            "candidateId": "CAND-001-workspace-config-auto-exec",
+            "category": "Untrusted executable configuration / arbitrary command execution",
+            "confidence": "high",
+            "findingId": "csf_9401e990a7b0e40ad3ab959d",
+            "occurrenceId": "occ_03762754bbde28691999e5bf",
+            "severity": "high"
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "entrypoint"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/utils/cli.ts"
+                },
+                "region": {
+                  "endLine": 535,
+                  "startLine": 533
+                }
+              }
+            },
+            {
+              "id": 2,
+              "message": {
+                "text": "propagation"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/runtime/lsp-manager.ts"
+                },
+                "region": {
+                  "endLine": 221,
+                  "startLine": 218
+                }
+              }
+            },
+            {
+              "id": 3,
+              "message": {
+                "text": "entrypoint"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/runtime/lsp-manager.ts"
+                },
+                "region": {
+                  "endLine": 596,
+                  "startLine": 573
+                }
+              }
+            },
+            {
+              "id": 4,
+              "message": {
+                "text": "propagation"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/runtime/lsp-session.ts"
+                },
+                "region": {
+                  "endLine": 827,
+                  "startLine": 811
+                }
+              }
+            },
+            {
+              "id": 5,
+              "message": {
+                "text": "sink"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lsp-client.ts"
+                },
+                "region": {
+                  "endLine": 204,
+                  "startLine": 199
+                }
+              }
+            }
+          ],
+          "ruleId": "untrusted-config.workspace-executable",
+          "ruleIndex": 1
+        },
+        {
+          "level": "note",
+          "locations": [
+            {
+              "message": {
+                "text": "root_control"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/state/stores.ts"
+                },
+                "region": {
+                  "endLine": 68,
+                  "startLine": 54
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Symbols accepts the complete `textDocument/publishDiagnostics` array, retains it per URI without count or byte limits, maps and sorts every entry, and returns the complete formatted result as one MCP text item. Hostile workspace source can make an ordinary language server amplify a modest file into a costly local response."
+          },
+          "partialFingerprints": {
+            "codexSecurity/v1": "codex-security/v1:sha256:d09a6d8f8b51e5a001278b0996af921747c97a7375323b9a8313bd3911327e1c",
+            "primaryLocationLineHash": "a8d9da6b61fcf0ea:1"
+          },
+          "properties": {
+            "candidateId": "CAND-FR012-003",
+            "category": "Resource exhaustion",
+            "confidence": "high",
+            "findingId": "csf_c2790348915a41527547ffc3",
+            "occurrenceId": "occ_4bec372733c3263cf46783da",
+            "severity": "low"
+          },
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "entrypoint"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lsp-client.ts"
+                },
+                "region": {
+                  "endLine": 609,
+                  "startLine": 604
+                }
+              }
+            },
+            {
+              "id": 2,
+              "message": {
+                "text": "propagation"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lsp/operations/operations.ts"
+                },
+                "region": {
+                  "endLine": 579,
+                  "startLine": 565
+                }
+              }
+            },
+            {
+              "id": 3,
+              "message": {
+                "text": "sink"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/tools/diagnostics.ts"
+                },
+                "region": {
+                  "endLine": 36,
+                  "startLine": 13
+                }
+              }
+            },
+            {
+              "id": 4,
+              "message": {
+                "text": "outcome"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/tools/diagnostics.ts"
+                },
+                "region": {
+                  "endLine": 95,
+                  "startLine": 92
+                }
+              }
+            }
+          ],
+          "ruleId": "resource-exhaustion.unbounded-diagnostics",
+          "ruleIndex": 0
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "Codex Security",
+          "rules": [
+            {
+              "id": "resource-exhaustion.unbounded-diagnostics",
+              "name": "resource-exhaustion.unbounded-diagnostics",
+              "properties": {
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "resource-exhaustion.unbounded-diagnostics"
+              }
+            },
+            {
+              "id": "untrusted-config.workspace-executable",
+              "name": "untrusted-config.workspace-executable",
+              "properties": {
+                "tags": [
+                  "security"
+                ]
+              },
+              "shortDescription": {
+                "text": "untrusted-config.workspace-executable"
+              }
+            }
+          ],
+          "version": "0.1.11"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

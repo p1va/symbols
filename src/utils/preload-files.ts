@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { glob } from 'glob';
 
-export interface PreloadFileMatch {
+interface PreloadFileMatch {
   entry: string;
   resolvedPath: string;
   matchCount: number;
 }
 
-export interface PreloadFileResolution {
+interface PreloadFileResolution {
   resolvedEntries: PreloadFileMatch[];
   missingEntries: string[];
 }
@@ -36,10 +36,7 @@ export function getDefaultPreloadEntriesForProfile(profile: {
   commandName: string;
   commandArgs: string[];
 }): string[] {
-  if (
-    profile.name === 'typescript' ||
-    isTypeScriptServerCommand(profile.commandName, profile.commandArgs)
-  ) {
+  if (isTypeScriptServerCommand(profile.commandName, profile.commandArgs)) {
     return [...DEFAULT_TYPESCRIPT_PRELOAD_ENTRIES];
   }
 

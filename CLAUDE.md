@@ -19,7 +19,7 @@ Symbols is a lightweight MCP bridge to Language Servers.
 
 It is intentionally small:
 
-- skills and extension/plugin assets carry installation and troubleshooting guidance
+- skills and plugin assets carry installation and troubleshooting guidance
 - `language-servers.yaml` is the desired state
 - MCP resources expose effective config and runtime state
 - MCP tools provide a compact, agent-oriented navigation surface

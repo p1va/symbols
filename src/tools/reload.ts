@@ -4,6 +4,7 @@ import type {
   LspManagerProfileStatus,
   LspManagerStatus,
 } from '../runtime/lsp-manager.js';
+import { textToolResult } from './responses.js';
 
 function formatProfileSummary(profile: LspManagerProfileStatus): string {
   const workspaceReadyText =
@@ -81,9 +82,7 @@ export function registerReloadTool(
     },
     async () => {
       const status = await manager.reload();
-      return {
-        content: [{ type: 'text' as const, text: formatStatus(status) }],
-      };
+      return textToolResult(formatStatus(status));
     }
   );
 }

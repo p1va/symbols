@@ -366,8 +366,7 @@ interface ApplicationServiceError {
 }
 
 type Result<T, E = ApplicationServiceError> =
-  | { success: true; data: T }
-  | { success: false; error: E };
+  { success: true; data: T } | { success: false; error: E };
 ```
 
 ### **Error Handling Pattern**

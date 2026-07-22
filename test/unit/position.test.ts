@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   createOneBasedPosition,
   createZeroBasedPosition,
+  formatZeroBasedPosition,
   toZeroBased,
-  toOneBased,
   unsafeOneBasedPosition,
   unsafeZeroBasedPosition,
 } from '../../src/types/position.js';
@@ -129,47 +129,17 @@ describe('Position Utilities', () => {
       });
     });
 
-    describe('toOneBased', () => {
-      it('should convert 0-based to 1-based position', () => {
-        const zeroBased = createZeroBasedPosition(0, 0);
-        const oneBased = toOneBased(zeroBased);
-
-        expect(oneBased.line).toBe(1);
-        expect(oneBased.character).toBe(1);
+    describe('formatZeroBasedPosition', () => {
+      it('formats the first LSP position as line 1, character 1', () => {
+        expect(formatZeroBasedPosition(createZeroBasedPosition(0, 0))).toBe(
+          '1:1'
+        );
       });
 
-      it('should convert larger coordinates correctly', () => {
-        const zeroBased = createZeroBasedPosition(9, 24);
-        const oneBased = toOneBased(zeroBased);
-
-        expect(oneBased.line).toBe(10);
-        expect(oneBased.character).toBe(25);
-      });
-
-      it('should handle edge case of minimum valid 0-based position', () => {
-        const zeroBased = createZeroBasedPosition(0, 0);
-        const oneBased = toOneBased(zeroBased);
-
-        expect(oneBased.line).toBe(1);
-        expect(oneBased.character).toBe(1);
-      });
-    });
-
-    describe('round-trip conversions', () => {
-      it('should maintain values in one-based to zero-based to one-based conversion', () => {
-        const original = createOneBasedPosition(5, 10);
-        const converted = toOneBased(toZeroBased(original));
-
-        expect(converted.line).toBe(original.line);
-        expect(converted.character).toBe(original.character);
-      });
-
-      it('should maintain values in zero-based to one-based to zero-based conversion', () => {
-        const original = createZeroBasedPosition(4, 9);
-        const converted = toZeroBased(toOneBased(original));
-
-        expect(converted.line).toBe(original.line);
-        expect(converted.character).toBe(original.character);
+      it('formats larger LSP positions for display', () => {
+        expect(formatZeroBasedPosition(createZeroBasedPosition(9, 24))).toBe(
+          '10:25'
+        );
       });
     });
   });

@@ -203,7 +203,7 @@ Based on our experience fixing 291 type safety violations, here are key practice
 pnpm build
 
 # Quick type check without artifacts
-npx tsc --noEmit
+pnpm exec tsc6 -p tsconfig.build.json --noEmit
 ```
 
 #### 2. **Progressive Type Safety**
@@ -273,9 +273,7 @@ function processLocations(response: unknown): Location[] {
 type MockLspClient = Pick<LspClient, 'connection' | 'isInitialized'>;
 
 const mockClient: MockLspClient = {
-  connection: {
-    /* proper mock */
-  },
+  connection: {/* proper mock */},
   isInitialized: true,
 };
 
@@ -330,7 +328,7 @@ chmod +x .git/hooks/pre-commit
 
 If you find type safety has drifted significantly:
 
-1. **Isolate the scope**: `npx tsc --noEmit 2>&1 | head -20`
+1. **Isolate the scope**: `pnpm exec tsc6 -p tsconfig.build.json --noEmit`
 2. **Fix by area**: Start with core types (not tests)
 3. **Use discriminated unions**: For complex response handling
 4. **Create type guards**: For runtime safety

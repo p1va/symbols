@@ -3,162 +3,136 @@
  */
 
 import * as fs from 'fs/promises';
-import {
-  Range,
-  Location,
-  WorkspaceSymbol,
-  SymbolInformation,
-  DocumentSymbol,
-  FlattenedSymbol,
-} from '../types/lsp.js';
+import type { Range } from '../types/lsp.js';
+import { fileUriToPath } from './utils.js';
 
-// Supported symbol types for enrichment
-type EnrichableSymbol =
-  | Location
-  | WorkspaceSymbol
-  | SymbolInformation
-  | DocumentSymbol
-  | FlattenedSymbol
-  | { uri: string; range: Range } // Generic location-like object
-  | { location: Location }; // Legacy format with location wrapper
-
-interface EnrichedSymbol<T extends EnrichableSymbol = EnrichableSymbol> {
-  symbol: T;
-  codeSnippet?: string;
-  error?: string;
-}
-
-interface FileCache {
-  [filePath: string]: string[];
-}
-
-/**
- * Converts a file:// URI to a local file path with proper URL decoding
- */
-function decodeFileUriToPath(uri: string): string {
-  // Remove file:// prefix
-  let path = uri.replace('file://', '');
-
-  // Decode URL encoding (like %40 -> @)
-  try {
-    path = decodeURIComponent(path);
-  } catch {
-    // If decoding fails, use the original path
-  }
-
-  return path;
-}
-
-/**
- * Enriches a list of symbols with code snippets by reading their source files
- */
-export async function enrichSymbolsWithCode<T extends EnrichableSymbol>(
-  symbols: T[],
-  options?: { extractFullDeclaration?: boolean }
-): Promise<EnrichedSymbol<T>[]> {
-  const fileCache: FileCache = {};
-  const enrichedSymbols: EnrichedSymbol<T>[] = [];
-
-  // Group symbols by file to minimize file reads
-  const symbolsByFile = new Map<string, T[]>();
-  for (const symbol of symbols) {
-    const uri = extractUriFromSymbol(symbol);
-    if (uri) {
-      const filePath = decodeFileUriToPath(uri);
-      if (!symbolsByFile.has(filePath)) {
-        symbolsByFile.set(filePath, []);
-      }
-      symbolsByFile.get(filePath)!.push(symbol);
+export type EnrichmentRequest =
+  | {
+      uri: string | null;
+      extent: 'range';
+      range: Range;
     }
-  }
-
-  // Read each file once and cache the lines
-  for (const [filePath, fileSymbols] of symbolsByFile) {
-    try {
-      const fileContent = await fs.readFile(filePath, 'utf-8');
-      const lines = fileContent.split('\n');
-      fileCache[filePath] = lines;
-
-      // Extract code snippets for all symbols in this file
-      for (const symbol of fileSymbols) {
-        const range = extractRangeFromSymbol(symbol);
-        const snippet = range
-          ? extractCodeSnippet(lines, range, options?.extractFullDeclaration)
-          : null;
-        const enriched: EnrichedSymbol<T> = { symbol };
-        if (snippet) {
-          enriched.codeSnippet = snippet;
-        }
-        enrichedSymbols.push(enriched);
-      }
-    } catch (error) {
-      // If file reading fails, add symbols without snippets
-      for (const symbol of fileSymbols) {
-        enrichedSymbols.push({
-          symbol,
-          error: `Could not read file: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        });
-      }
+  | {
+      uri: string | null;
+      extent: 'line';
+      line: number;
     }
-  }
+  | {
+      uri: string | null;
+      extent: 'declaration';
+      range: Range;
+    };
 
-  return enrichedSymbols;
+interface EnrichmentResult {
+  request: EnrichmentRequest;
+  codeSnippet: string | null;
+  error: string | null;
 }
 
 /**
- * Type guard and extraction functions for symbol properties
+ * Returns exactly one result per request, in input order. File reads are
+ * cached as promises so interleaved requests for the same file share one read.
  */
-function extractUriFromSymbol(symbol: EnrichableSymbol): string | null {
-  if ('uri' in symbol && typeof symbol.uri === 'string') {
-    return symbol.uri;
-  }
-  if ('location' in symbol && symbol.location && 'uri' in symbol.location) {
-    return symbol.location.uri;
-  }
-  return null;
+export async function enrichCodeSnippets(
+  requests: readonly EnrichmentRequest[]
+): Promise<EnrichmentResult[]> {
+  const fileCache = new Map<string, Promise<string[]>>();
+
+  const readLines = (filePath: string): Promise<string[]> => {
+    const cached = fileCache.get(filePath);
+    if (cached) {
+      return cached;
+    }
+
+    const pending = fs
+      .readFile(filePath, 'utf-8')
+      .then((fileContent) => fileContent.split('\n'));
+    fileCache.set(filePath, pending);
+    return pending;
+  };
+
+  return await Promise.all(
+    requests.map(async (request): Promise<EnrichmentResult> => {
+      if (!request.uri) {
+        return failedResult(request, 'Could not enrich code without a URI');
+      }
+
+      let filePath: string;
+      try {
+        filePath = fileUriToPath(request.uri);
+      } catch (error) {
+        return failedResult(
+          request,
+          `Could not resolve file URI: ${errorMessage(error)}`
+        );
+      }
+
+      try {
+        const lines = await readLines(filePath);
+        return {
+          request,
+          codeSnippet: extractRequestedSnippet(lines, request),
+          error: null,
+        };
+      } catch (error) {
+        return failedResult(
+          request,
+          `Could not read file: ${errorMessage(error)}`
+        );
+      }
+    })
+  );
 }
 
-function extractRangeFromSymbol(symbol: EnrichableSymbol): Range | null {
-  if ('range' in symbol && symbol.range) {
-    return symbol.range;
-  }
-  if ('location' in symbol && symbol.location && 'range' in symbol.location) {
-    return symbol.location.range;
-  }
-  return null;
+function failedResult(
+  request: EnrichmentRequest,
+  error: string
+): EnrichmentResult {
+  return { request, codeSnippet: null, error };
 }
 
-/**
- * Extracts code snippet from file lines using LSP range (0-based)
- * @param fileLines - Array of file lines
- * @param range - LSP range (0-based)
- * @param extractFullDeclaration - If true, extracts from character 0 to get full declaration with modifiers
- */
-function extractCodeSnippet(
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function extractRequestedSnippet(
   fileLines: string[],
-  range: Range,
-  extractFullDeclaration?: boolean
+  request: EnrichmentRequest
 ): string {
-  const startLine = range.start.line;
-  let endLine = range.end.line;
-  let startChar = range.start.character;
-  let endChar = range.end.character;
+  switch (request.extent) {
+    case 'range':
+      return extractRangeSnippet(fileLines, request.range);
+    case 'line':
+      return extractLineSnippet(fileLines, request.line);
+    case 'declaration':
+      return extractDeclarationSnippet(fileLines, request.range);
+  }
+}
 
-  // For signature mode: extract full declaration starting from column 0
-  // Get up to 3-4 lines to handle multi-line declarations
-  if (extractFullDeclaration) {
-    startChar = 0;
-    // Get a few lines for multi-line declarations, but cap at the symbol's end or 4 lines
-    endLine = Math.min(startLine + 3, range.end.line);
-    // Get to end of line or reasonable length
-    if (endLine === startLine) {
-      endChar = Math.min(fileLines[startLine]?.length ?? 0, 200);
-    } else {
-      endChar = Math.min(fileLines[endLine]?.length ?? 0, 200);
-    }
+function extractLineSnippet(fileLines: string[], line: number): string {
+  return fileLines[line] ?? '// Code snippet unavailable - invalid line';
+}
+
+function extractDeclarationSnippet(fileLines: string[], range: Range): string {
+  const startLine = range.start.line;
+  if (
+    startLine < 0 ||
+    startLine >= fileLines.length ||
+    range.end.line < startLine
+  ) {
+    return '// Code snippet unavailable - invalid range';
   }
 
-  // Validate line numbers
+  const endLine = Math.min(startLine + 3, range.end.line, fileLines.length - 1);
+  return fileLines.slice(startLine, endLine + 1).join('\n');
+}
+
+function extractRangeSnippet(fileLines: string[], range: Range): string {
+  const startLine = range.start.line;
+  const endLine = range.end.line;
+  const startChar = range.start.character;
+  const endChar = range.end.character;
+
   if (
     startLine < 0 ||
     startLine >= fileLines.length ||
@@ -169,22 +143,20 @@ function extractCodeSnippet(
   }
 
   if (startLine === endLine) {
-    // Single line snippet
     const line = fileLines[startLine];
-    if (!line) return '// Code snippet unavailable - line not found';
+    if (line === undefined) {
+      return '// Code snippet unavailable - line not found';
+    }
     return line.substring(startChar, endChar);
   }
 
-  // Multi-line snippet
   const snippetLines: string[] = [];
 
-  // First line (from startChar to end)
   const firstLine = fileLines[startLine];
-  if (firstLine) {
+  if (firstLine !== undefined) {
     snippetLines.push(firstLine.substring(startChar));
   }
 
-  // Middle lines (full lines)
   for (let i = startLine + 1; i < endLine; i++) {
     const line = fileLines[i];
     if (line !== undefined) {
@@ -192,12 +164,9 @@ function extractCodeSnippet(
     }
   }
 
-  // Last line (from start to endChar)
-  if (endLine < fileLines.length) {
-    const lastLine = fileLines[endLine];
-    if (lastLine !== undefined) {
-      snippetLines.push(lastLine.substring(0, endChar));
-    }
+  const lastLine = fileLines[endLine];
+  if (lastLine !== undefined) {
+    snippetLines.push(lastLine.substring(0, endChar));
   }
 
   return snippetLines.join('\n');
@@ -229,40 +198,4 @@ export function createSignaturePreview(
   // If we found a space near the end, break there; otherwise just cut at maxChars
   const breakPoint = lastSpace > maxChars - 20 ? lastSpace : maxChars - 3;
   return normalized.substring(0, breakPoint) + '...';
-}
-
-/**
- * Enriches a list of symbol locations with code snippets
- */
-export async function enrichSymbolLocations(
-  locations: Location[]
-): Promise<{ codeSnippet: string | null }[]> {
-  const results: { codeSnippet: string | null }[] = [];
-  const fileCache: FileCache = {};
-
-  for (const location of locations) {
-    try {
-      const filePath = decodeFileUriToPath(location.uri);
-
-      // Load file if not cached
-      if (!fileCache[filePath]) {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        fileCache[filePath] = fileContent.split('\n');
-      }
-
-      // Expand range to get full line context
-      const expandedRange: Range = {
-        start: { line: location.range.start.line, character: 0 },
-        end: { line: location.range.start.line, character: 1000 },
-      };
-
-      const snippet = extractCodeSnippet(fileCache[filePath], expandedRange);
-      results.push({ codeSnippet: snippet });
-    } catch {
-      // If we can't read the file, just return null for the snippet
-      results.push({ codeSnippet: null });
-    }
-  }
-
-  return results;
 }

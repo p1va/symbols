@@ -22,17 +22,13 @@ import {
 import {
   DiagnosticProviderStore,
   DiagnosticsStore,
-  ErrorCode,
   LspClient,
   LspConfig,
   OneBasedPosition,
-  Result,
   SessionDocuments,
   WindowLogStore,
   WorkspaceLoaderStore,
   WorkspaceState,
-  createLspError,
-  tryResultAsync,
 } from '../types.js';
 import {
   ParsedLspConfig,
@@ -47,13 +43,11 @@ import {
   resolvePreloadEntries,
 } from '../utils/preload-files.js';
 import logger, { upgradeToContextualLogger } from '../utils/logger.js';
+import type { SendLspRequest } from '../lsp/request.js';
+import { contextualError } from '../utils/errors.js';
 
 export type SessionState =
-  | 'not_started'
-  | 'stopped'
-  | 'starting'
-  | 'ready'
-  | 'error';
+  'not_started' | 'stopped' | 'starting' | 'ready' | 'error';
 
 export interface LspSessionProfile {
   name: string;
@@ -90,10 +84,7 @@ export interface CursorContextOperationResult<T> {
 
 export interface SessionDocumentScope {
   uri: string;
-  request<TResult, TParams = unknown>(
-    method: string,
-    params: TParams
-  ): Promise<TResult>;
+  request: SendLspRequest;
 }
 
 interface SessionCursorContextScope extends SessionDocumentScope {
@@ -110,27 +101,25 @@ export interface LspSession {
   start(): Promise<void>;
   stop(): Promise<void>;
   restart(): Promise<void>;
-  request<TResult, TParams = unknown>(
-    method: string,
-    params: TParams
-  ): Promise<TResult>;
+  request: SendLspRequest;
   getWorkspaceState(): WorkspaceState;
   getWorkspaceLoaderStore(): WorkspaceLoaderStore;
   getDiagnosticsStore(): DiagnosticsStore;
   getDiagnosticProviderStore(): DiagnosticProviderStore;
   getWindowLogStore(): WindowLogStore;
+  refreshOpenDocuments(filePaths: string[]): Promise<string[]>;
   executeWithCursorContext<T>(
     operationName: string,
     filePath: string,
     position: OneBasedPosition,
     strategy: FileLifecycleStrategy,
-    operation: (scope: SessionCursorContextScope) => Promise<Result<T>>
-  ): Promise<Result<CursorContextOperationResult<T>>>;
+    operation: (scope: SessionCursorContextScope) => Promise<T>
+  ): Promise<CursorContextOperationResult<T>>;
   executeWithDocumentLifecycle<T>(
     filePath: string,
     strategy: FileLifecycleStrategy,
-    operation: (scope: SessionDocumentScope) => Promise<Result<T>>
-  ): Promise<Result<T>>;
+    operation: (scope: SessionDocumentScope) => Promise<T>
+  ): Promise<T>;
   claimDocument(filePath: string): string;
   releaseDocument(filePath: string): string | null;
   listOwnedDocuments(): string[];
@@ -217,7 +206,8 @@ async function terminateClientProcess(
     ),
   ]);
 
-  if (!exitedNaturally && !process.killed) {
+  const stillRunning = process.exitCode === null && process.signalCode === null;
+  if (!exitedNaturally && stillRunning) {
     process.kill('SIGKILL');
     await Promise.race([
       exitPromise,
@@ -310,12 +300,8 @@ export function createLspSession(
     return client;
   }
 
-  async function request<TResult, TParams = unknown>(
-    method: string,
-    params: TParams
-  ): Promise<TResult> {
-    return await requireClient().connection.sendRequest(method, params);
-  }
+  const request: SendLspRequest = async (type, params) =>
+    await requireClient().connection.sendRequest(type, params);
 
   function notifyDocumentClaimed(filePath: string, uri: string): void {
     const normalizedPath = claimDocument(filePath);
@@ -386,80 +372,60 @@ export function createLspSession(
   async function openDocument(
     filePath: string,
     strategy: FileLifecycleStrategy
-  ): Promise<Result<OpenedDocument>> {
-    return tryResultAsync(
-      async () => {
-        const activeClient = requireSessionClient();
-        const normalizedPath = normalizeWorkspaceFilePath(
-          profile.workspacePath,
-          filePath
-        );
-        const uri = pathToFileURL(normalizedPath).toString();
-        const existingDocument = stores.documents.get(uri);
-        const isPreloaded = Boolean(existingDocument);
-        const wasAlreadyOpen = existingDocument?.isOpen ?? false;
-
-        if (wasAlreadyOpen && strategy === 'respect_existing') {
-          return {
-            wasAlreadyOpen,
-            isPreloaded,
-            filePath: normalizedPath,
-            uri,
-            strategy,
-          };
-        }
-
-        const { content, version } = await resolveDocumentContent(
-          normalizedPath,
-          strategy,
-          existingDocument
-        );
-
-        if (wasAlreadyOpen) {
-          const closeResult = await forceCloseFile(
-            activeClient,
-            uri,
-            stores.documents
-          );
-          if (!closeResult.ok) {
-            throw new Error(closeResult.error.message);
-          }
-          notifyDocumentReleased(normalizedPath, uri);
-        }
-
-        const languageId = getLanguageIdForExtensions(
-          normalizedPath,
-          profile.config.extensions
-        );
-        const openResult = await openFile(
-          activeClient,
-          uri,
-          content,
-          version,
-          languageId,
-          stores.documents
-        );
-        if (!openResult.ok) {
-          throw new Error(openResult.error.message);
-        }
-
-        notifyDocumentClaimed(normalizedPath, uri);
-
-        return {
-          wasAlreadyOpen,
-          isPreloaded,
-          filePath: normalizedPath,
-          uri,
-          strategy,
-        };
-      },
-      (error) =>
-        createLspError(
-          ErrorCode.LSPError,
-          `Failed to open file with strategy: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error : undefined
-        )
+  ): Promise<OpenedDocument> {
+    const activeClient = requireSessionClient();
+    const normalizedPath = normalizeWorkspaceFilePath(
+      profile.workspacePath,
+      filePath
     );
+    const uri = pathToFileURL(normalizedPath).toString();
+    const existingDocument = stores.documents.get(uri);
+    const isPreloaded = Boolean(existingDocument);
+    const wasAlreadyOpen = existingDocument?.isOpen ?? false;
+
+    if (wasAlreadyOpen && strategy === 'respect_existing') {
+      return {
+        wasAlreadyOpen,
+        isPreloaded,
+        filePath: normalizedPath,
+        uri,
+        strategy,
+      };
+    }
+
+    const { content, version } = await resolveDocumentContent(
+      normalizedPath,
+      strategy,
+      existingDocument
+    );
+
+    if (wasAlreadyOpen) {
+      await forceCloseFile(activeClient, uri, stores.documents);
+      notifyDocumentReleased(normalizedPath, uri);
+    }
+
+    const languageId = getLanguageIdForExtensions(
+      normalizedPath,
+      profile.config.extensions
+    );
+    await openFile(
+      activeClient,
+      uri,
+      content,
+      version,
+      languageId,
+      stores.documents
+    );
+
+    notifyDocumentClaimed(normalizedPath, uri);
+
+    return {
+      wasAlreadyOpen,
+      isPreloaded,
+      filePath: normalizedPath,
+      uri,
+      strategy,
+    };
   }
 
   async function closeDocument(
@@ -467,7 +433,7 @@ export function createLspSession(
       OpenedDocument,
       'filePath' | 'uri' | 'strategy' | 'wasAlreadyOpen' | 'isPreloaded'
     >
-  ): Promise<Result<void>> {
+  ): Promise<void> {
     if (
       !shouldCloseDocument(
         document.strategy,
@@ -475,20 +441,66 @@ export function createLspSession(
         document.isPreloaded
       )
     ) {
-      return { ok: true, data: undefined };
+      return;
     }
 
-    const closeResult = await closeFile(
-      requireSessionClient(),
-      document.uri,
-      stores.documents
-    );
-    if (!closeResult.ok) {
-      return closeResult;
-    }
+    await closeFile(requireSessionClient(), document.uri, stores.documents);
 
     notifyDocumentReleased(document.filePath, document.uri);
-    return { ok: true, data: undefined };
+  }
+
+  async function closeDocumentAfterOperation(
+    document: OpenedDocument,
+    operationKind: string
+  ): Promise<void> {
+    try {
+      await closeDocument(document);
+    } catch (error) {
+      logger.warn(`Failed to close document after ${operationKind}`, {
+        profile: profile.name,
+        filePath: document.filePath,
+        error,
+      });
+    }
+  }
+
+  async function refreshOpenDocuments(filePaths: string[]): Promise<string[]> {
+    const activeClient = requireSessionClient();
+    const refreshedPaths: string[] = [];
+
+    for (const filePath of new Set(filePaths)) {
+      const normalizedPath = normalizeWorkspaceFilePath(
+        profile.workspacePath,
+        filePath
+      );
+      const uri = pathToFileURL(normalizedPath).toString();
+      const document = stores.documents.get(uri);
+      if (!document?.isOpen) {
+        continue;
+      }
+
+      const content = await fs.promises.readFile(normalizedPath, 'utf8');
+      const version = document.version + 1;
+      await forceCloseFile(activeClient, uri, stores.documents);
+      notifyDocumentReleased(normalizedPath, uri);
+
+      const languageId = getLanguageIdForExtensions(
+        normalizedPath,
+        profile.config.extensions
+      );
+      await openFile(
+        activeClient,
+        uri,
+        content,
+        version,
+        languageId,
+        stores.documents
+      );
+      notifyDocumentClaimed(normalizedPath, uri);
+      refreshedPaths.push(normalizedPath);
+    }
+
+    return refreshedPaths;
   }
 
   async function executeWithSessionCursorContext<T>(
@@ -496,127 +508,61 @@ export function createLspSession(
     filePath: string,
     position: OneBasedPosition,
     strategy: FileLifecycleStrategy,
-    operation: (scope: SessionCursorContextScope) => Promise<Result<T>>
-  ): Promise<Result<CursorContextOperationResult<T>>> {
-    const openResult = await openDocument(filePath, strategy);
-    if (!openResult.ok) {
-      return openResult;
+    operation: (scope: SessionCursorContextScope) => Promise<T>
+  ): Promise<CursorContextOperationResult<T>> {
+    const document = await openDocument(filePath, strategy);
+
+    try {
+      const activeClient = requireClient();
+      const cursorContext = await generateCursorContext(
+        operationName,
+        activeClient,
+        document.uri,
+        filePath,
+        position,
+        stores.documents
+      );
+
+      const result = await operation({
+        uri: document.uri,
+        cursorContext: cursorContext || undefined,
+        request: async (type, params) =>
+          await activeClient.connection.sendRequest(type, params),
+      });
+
+      return {
+        result,
+        ...(cursorContext ? { cursorContext } : {}),
+      };
+    } finally {
+      await closeDocumentAfterOperation(document, 'cursor-context operation');
     }
-
-    const document = openResult.data;
-    const activeClient = requireClient();
-
-    const executionResult = await tryResultAsync(
-      async () => {
-        const cursorContext = await generateCursorContext(
-          operationName,
-          activeClient,
-          document.uri,
-          filePath,
-          position,
-          stores.documents
-        );
-
-        const operationResult = await operation({
-          uri: document.uri,
-          cursorContext: cursorContext || undefined,
-          request: async (method, params) =>
-            await activeClient.connection.sendRequest(method, params),
-        });
-        if (!operationResult.ok) {
-          throw new Error(operationResult.error.message);
-        }
-
-        const closeResult = await closeDocument(document);
-        if (!closeResult.ok) {
-          logger.warn(
-            'Failed to close document after cursor-context operation',
-            {
-              profile: profile.name,
-              filePath: document.filePath,
-              error: closeResult.error,
-            }
-          );
-        }
-
-        const resultData: CursorContextOperationResult<
-          typeof operationResult.data
-        > = {
-          result: operationResult.data,
-        };
-
-        if (cursorContext) {
-          resultData.cursorContext = cursorContext;
-        }
-
-        return resultData;
-      },
-      (error) =>
-        createLspError(
-          ErrorCode.LSPError,
-          `Operation failed: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error : undefined
-        )
-    );
-
-    if (!executionResult.ok) {
-      await closeDocument(document);
-    }
-
-    return executionResult;
   }
 
   async function executeWithSessionDocumentLifecycle<T>(
     filePath: string,
     strategy: FileLifecycleStrategy,
-    operation: (scope: SessionDocumentScope) => Promise<Result<T>>
-  ): Promise<Result<T>> {
-    const openResult = await openDocument(filePath, strategy);
-    if (!openResult.ok) {
-      return openResult;
+    operation: (scope: SessionDocumentScope) => Promise<T>
+  ): Promise<T> {
+    const document = await openDocument(filePath, strategy);
+
+    try {
+      const activeClient = requireClient();
+      return await operation({
+        uri: document.uri,
+        request: async (type, params) =>
+          await activeClient.connection.sendRequest(type, params),
+      });
+    } finally {
+      await closeDocumentAfterOperation(document, 'lifecycle operation');
     }
-
-    const document = openResult.data;
-    const executionResult = await tryResultAsync(
-      async () => {
-        const activeClient = requireClient();
-        const operationResult = await operation({
-          uri: document.uri,
-          request: async (method, params) =>
-            await activeClient.connection.sendRequest(method, params),
-        });
-        if (!operationResult.ok) {
-          throw new Error(operationResult.error.message);
-        }
-
-        const closeResult = await closeDocument(document);
-        if (!closeResult.ok) {
-          logger.warn('Failed to close document after lifecycle operation', {
-            profile: profile.name,
-            filePath: document.filePath,
-            error: closeResult.error,
-          });
-        }
-
-        return operationResult.data;
-      },
-      (error) =>
-        createLspError(
-          ErrorCode.LSPError,
-          `Operation failed: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error : undefined
-        )
-    );
-
-    if (!executionResult.ok) {
-      await closeDocument(document);
-    }
-
-    return executionResult;
   }
 
-  async function initializeWorkspace(): Promise<void> {
-    if (!client) {
+  async function initializeWorkspace(
+    activeClient: LspClient,
+    activeProcess: ChildProcessWithoutNullStreams
+  ): Promise<void> {
+    if (client !== activeClient || process !== activeProcess) {
       throw new Error('LSP client not initialized');
     }
 
@@ -685,26 +631,21 @@ export function createLspSession(
       const failedFiles: string[] = [];
 
       for (const preloadEntry of resolution.resolvedEntries) {
-        const result = await openDocument(
-          preloadEntry.resolvedPath,
-          'persistent'
-        );
-
-        if (!result.ok) {
+        try {
+          await openDocument(preloadEntry.resolvedPath, 'persistent');
+          openedFiles.push(preloadEntry.resolvedPath);
+        } catch (error) {
           logger.warn(
             'Failed to open preloaded file for workspace initialization',
             {
               profile: profile.name,
               entry: preloadEntry.entry,
               filePath: preloadEntry.resolvedPath,
-              error: result.error,
+              error,
             }
           );
           failedFiles.push(preloadEntry.resolvedPath);
-          continue;
         }
-
-        openedFiles.push(preloadEntry.resolvedPath);
       }
 
       const warmupDelayMs = profile.config.workspace_ready_delay_ms || 0;
@@ -716,6 +657,17 @@ export function createLspSession(
           openedFiles,
         });
         await new Promise((resolve) => setTimeout(resolve, warmupDelayMs));
+      }
+
+      if (
+        client !== activeClient ||
+        process !== activeProcess ||
+        activeProcess.exitCode !== null ||
+        activeProcess.signalCode !== null
+      ) {
+        throw new Error(
+          lastError || 'LSP process exited during workspace initialization'
+        );
       }
 
       stores.workspaceLoaderStore.updateState('symbols/preloadComplete', {
@@ -732,9 +684,7 @@ export function createLspSession(
       stores.workspaceState.isLoading = false;
       stores.workspaceState.isReady = false;
 
-      throw new Error(
-        `Failed to initialize workspace: ${error instanceof Error ? error.message : String(error)}`
-      );
+      throw contextualError('Failed to initialize workspace', error);
     }
   }
 
@@ -768,7 +718,7 @@ export function createLspSession(
       if (!clientResult.ok) {
         state = 'error';
         lastError = clientResult.error.message;
-        throw new Error(clientResult.error.message);
+        throw clientResult.error;
       }
 
       const activeClient = clientResult.data.client;
@@ -784,7 +734,6 @@ export function createLspSession(
 
         client = null;
         process = null;
-        startPromise = null;
         stores.workspaceState.isLoading = false;
         stores.workspaceState.isReady = false;
 
@@ -810,21 +759,27 @@ export function createLspSession(
         state = 'error';
         lastError = initResult.error.message;
         await terminateClientProcess(activeClient, activeProcess);
-        throw new Error(initResult.error.message);
+        throw initResult.error;
       }
 
       try {
-        await initializeWorkspace();
+        await initializeWorkspace(activeClient, activeProcess);
       } catch (error) {
-        client = null;
-        process = null;
+        if (client === activeClient) {
+          client = null;
+        }
+        if (process === activeProcess) {
+          process = null;
+        }
         state = 'error';
-        lastError = error instanceof Error ? error.message : String(error);
+        lastError ||= error instanceof Error ? error.message : String(error);
         await terminateClientProcess(activeClient, activeProcess);
         throw error;
       }
 
-      state = 'ready';
+      if (client === activeClient && process === activeProcess) {
+        state = 'ready';
+      }
     })().finally(() => {
       startPromise = null;
     });
@@ -942,6 +897,7 @@ export function createLspSession(
     getWindowLogStore(): WindowLogStore {
       return stores.windowLogStore;
     },
+    refreshOpenDocuments,
     executeWithCursorContext: executeWithSessionCursorContext,
     executeWithDocumentLifecycle: executeWithSessionDocumentLifecycle,
     claimDocument,

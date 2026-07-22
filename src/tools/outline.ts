@@ -7,7 +7,11 @@ import { prepareFileRequest } from '../preparation.js';
 import * as LspOperations from '../lsp/operations/index.js';
 import { fileSchema } from './schemas.js';
 import { getSymbolKindName, formatFilePath } from './utils.js';
-import { enrichSymbolsWithCode, createSignaturePreview } from './enrichment.js';
+import {
+  enrichCodeSnippets,
+  createSignaturePreview,
+  type EnrichmentRequest,
+} from './enrichment.js';
 import { FlattenedSymbol } from '../types/lsp.js';
 import { validateFile } from './validation.js';
 import {
@@ -15,6 +19,8 @@ import {
   isContainerKind,
 } from '../config/symbol-kinds.js';
 import type { LspManager } from '../runtime/lsp-manager.js';
+import { formatZeroBasedPosition } from '../types/position.js';
+import { textToolResult } from './responses.js';
 
 export function registerOutlineTool(server: McpServer, manager: LspManager) {
   server.registerTool(
@@ -31,29 +37,21 @@ export function registerOutlineTool(server: McpServer, manager: LspManager) {
       const prepared = prepareFileRequest(session, {
         file: validatedRequest.file,
       });
-      if (!prepared.ok) throw new Error(prepared.error.message);
 
-      const result = await LspOperations.outlineSymbols(session, prepared.data);
-      if (!result.ok) throw new Error(result.error.message);
+      const result = await LspOperations.outlineSymbols(session, prepared);
 
       const containerKinds =
         session.getProfile().config.symbols?.containerKinds ||
         DEFAULT_CONTAINER_KINDS;
 
       const formattedText = await formatOutlineResults(
-        { symbols: result.data },
-        validatedRequest.file,
+        { symbols: result },
+        prepared.filePath,
         Boolean(validatedRequest.preview),
-        containerKinds
+        containerKinds,
+        session.getProfile().workspacePath
       );
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: formattedText,
-          },
-        ],
-      };
+      return textToolResult(formattedText);
     }
   );
 }
@@ -147,10 +145,11 @@ async function formatOutlineResults(
   data: { symbols: FlattenedSymbol[] },
   filePath: string,
   preview = false,
-  containerKinds: number[] = DEFAULT_CONTAINER_KINDS
+  containerKinds: number[] = DEFAULT_CONTAINER_KINDS,
+  workspacePath?: string
 ): Promise<string> {
   if (!data.symbols || data.symbols.length === 0) {
-    return `No symbols found in ${formatFilePath(filePath)}`;
+    return `No symbols found in ${formatFilePath(filePath, workspacePath)}`;
   }
 
   const symbols = data.symbols;
@@ -164,9 +163,13 @@ async function formatOutlineResults(
   let enrichedSymbols: EnrichedSymbol[];
 
   if (preview) {
-    const enrichmentResults = await enrichSymbolsWithCode(filteredSymbols, {
-      extractFullDeclaration: true,
-    });
+    const enrichmentResults = await enrichCodeSnippets(
+      filteredSymbols.map((symbol): EnrichmentRequest => ({
+        uri: symbol.uri ?? filePath,
+        extent: 'declaration',
+        range: symbol.range,
+      }))
+    );
 
     enrichedSymbols = filteredSymbols.map((symbol, index) => {
       const result = enrichmentResults[index];
@@ -203,7 +206,7 @@ async function formatOutlineResults(
   const sections = [];
 
   sections.push(
-    `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath)}\nSymbol breakdown: ${typeBreakdown}`
+    `Found ${filteredSymbols.length} symbols in file: ${formatFilePath(filePath, workspacePath)}\nSymbol breakdown: ${typeBreakdown}`
   );
 
   const rootContainers = new Map<string, EnrichedSymbol[]>();
@@ -265,10 +268,8 @@ async function formatOutlineResults(
     const lines = sortedSymbols.map((enriched) => {
       const depth = calculateDisplayDepth(enriched.symbol, symbolsByName);
       const indent = '  '.repeat(depth);
-      const line = enriched.symbol.range.start.line + 1;
-      const character = enriched.symbol.range.start.character + 1;
       const kind = getSymbolKindName(enriched.symbol.kind);
-      let formatted = `${indent}@${line}:${character} ${kind} ${enriched.symbol.name}`;
+      let formatted = `${indent}@${formatZeroBasedPosition(enriched.symbol.range.start)} ${kind} ${enriched.symbol.name}`;
 
       if (enriched.signaturePreview) {
         formatted += `\n${indent}  \`${enriched.signaturePreview}\``;

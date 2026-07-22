@@ -1,0 +1,127 @@
+{
+  "documentType": "codex-security.scan-manifest",
+  "scan": {
+    "artifacts": [
+      {
+        "mediaType": "application/json",
+        "path": "findings.json",
+        "sha256": "e0ea741b6d17fb74bfcf2584a76f84488caf5ab3a4f7724c029f9cb9a82d79ef"
+      },
+      {
+        "mediaType": "application/json",
+        "path": "coverage.json",
+        "sha256": "0fe57b43425373a05336814d1daafc0d85daeb77f2220016e3e4c2fe3267cea2"
+      },
+      {
+        "mediaType": "application/octet-stream",
+        "path": "artifacts/02_discovery/work_ledger.jsonl",
+        "sha256": "1f37e0984e6db015e99f83c3baa3c60cd08198de569dc12c7d3cf2c0c3bccb46"
+      },
+      {
+        "mediaType": "application/octet-stream",
+        "path": "artifacts/03_coverage/repository_coverage_ledger.md",
+        "sha256": "36592ee5b994bb4b48fe3985ba06acdb1df9fe5cfbfd6b4d6fb2f7f61edd269a"
+      },
+      {
+        "mediaType": "application/octet-stream",
+        "path": "artifacts/03_coverage/reviewed_surfaces.md",
+        "sha256": "02959eb2ec06f5e357d8cc37c2211554b9b6e7ab07a546eaceae8d42d05739fd"
+      }
+    ],
+    "completedAt": "2026-07-14T12:02:15Z",
+    "coverageRef": "coverage.json",
+    "findingsRef": "findings.json",
+    "hardening": {
+      "portfolioPath": "hardening/hardening.md"
+    },
+    "id": "7534904e940c_20260714T101023Z",
+    "producer": {
+      "name": "codex-security-plugin",
+      "version": "0.1.11"
+    },
+    "scope": {
+      "artifactsReviewed": [
+        "111-row generated source and privileged-surface worklist",
+        "all files under src/",
+        "package and distribution metadata",
+        "Codex and Antigravity plugin assets",
+        "language-server installation and navigation skills",
+        "GitHub Actions and release automation",
+        "production dependency resolution and advisory inventory"
+      ],
+      "context": "The threat model was generated during this scan. Symbols is a local, single-user stdio MCP bridge that lazily launches same-user language-server child processes; no hosted service, network listener, account, or tenant boundary is in scope.",
+      "excludePaths": [
+        "README.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/",
+        "examples/",
+        "test/",
+        "pnpm-lock.yaml",
+        "node_modules/",
+        "dist/",
+        "coverage/"
+      ],
+      "includePaths": [
+        "."
+      ],
+      "limitations": [
+        "Host-specific approval UX was not measured across every supported MCP client.",
+        "The diagnostics reproduction invoked the registered public tool handler directly rather than a separate MCP stdio client, and no process-crash threshold was sought.",
+        "Excluded documentation, examples, unit-test source, dependency contents, and generated build outputs were used only as context or verification inputs rather than exhaustive security-review worklist rows."
+      ],
+      "runtimeStatus": "Node.js v22.14.0; pnpm build passed; all 216 unit tests passed; pnpm audit --prod reported zero known vulnerabilities across 149 production dependencies.",
+      "summary": "Repository-wide review of the shipped TypeScript runtime, MCP and plugin metadata, configuration assets, language-server installation skills, privileged CI/release workflows, and executable developer/release helpers.",
+      "validationMode": "Exhaustive static full-file review with bounded dynamic reproductions for both final findings and exact candidate-ledger reconciliation."
+    },
+    "sealedAt": "2026-07-14T12:02:15Z",
+    "startedAt": "2026-07-14T10:10:23Z",
+    "status": "completed",
+    "target": {
+      "displayName": "p1va/symbols",
+      "kind": "git_worktree",
+      "remote": "https://github.com/p1va/symbols.git",
+      "revision": "7534904e940c5585a8675624ca71eb4e247d37e8",
+      "snapshotDigest": "codex-security-snapshot/v1:sha256:11bb4e0b4b6f14f6c23723da8c5c39b77d78de9d6a2ba5a8f2c4bd3ed416b1fe",
+      "targetId": "target_sha256_066096132b0bf434bab56b80832cff590f759d27759098ec94959aff590cfc4b"
+    },
+    "threatModel": {
+      "assets": [
+        "Integrity of files in the selected workspace",
+        "Confidentiality of local source, credentials, environment, and logs accessible to the user",
+        "Integrity of the user account and same-user child-process authority",
+        "Availability and bounded context use of the Symbols session and connected agent",
+        "Integrity and provenance of published packages, plugin assets, skills, and release automation"
+      ],
+      "assumptions": [
+        "The configured and approved language-server executable is trusted to run with the local user's authority.",
+        "A separate OS user who already controls this user's config, binaries, or process memory is outside scope.",
+        "Remote clients, hostile co-tenants, browser sessions, and hosted-service authorization are outside the current product model.",
+        "Repository content and language-server results remain untrusted even though the MCP transport is local."
+      ],
+      "attackerCapabilities": [
+        "Control files, symlinks, project metadata, and workspace-local YAML in an untrusted checkout or branch",
+        "Influence an AI caller through repository or language-server text",
+        "Cause ordinary language servers to emit hostile cardinality, URIs, ranges, edits, markup, and diagnostics",
+        "Contribute pull-request or release-adjacent content without already controlling the victim OS account"
+      ],
+      "securityObjectives": [
+        "Do not promote workspace-local executable configuration without an explicit trust decision",
+        "Keep mutations within the canonical workspace and validate all edits before replacement",
+        "Bound untrusted protocol retention, transformation, and model-facing output",
+        "Keep read-only tools non-mutating and make lifecycle failures fail closed",
+        "Preserve publication and plugin provenance across reviewed source and generated assets"
+      ],
+      "summary": "The principal security boundaries are untrusted workspace/config content becoming executable language-server policy, untrusted LSP responses entering Symbols memory and model-facing output, and LSP workspace edits crossing into local filesystem mutation. The local stdio deployment limits network and cross-tenant concerns but does not make repository authors or protocol output trusted.",
+      "trustBoundaries": [
+        "MCP host to Symbols stdio tools and resources",
+        "Workspace and config filesystem to executable runtime policy",
+        "Symbols to same-user language-server child processes",
+        "Language-server JSON-RPC to Symbols storage, formatting, and MCP output",
+        "Language-server WorkspaceEdit to local filesystem mutation",
+        "Repository and registries to installed plugin, language servers, and release artifacts"
+      ]
+    }
+  },
+  "schemaVersion": "1.0"
+}

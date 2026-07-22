@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "symbols",
+  "description": "Semantic code navigation and language-server setup through the Symbols MCP server."
+}

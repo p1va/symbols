@@ -19,67 +19,9 @@ import type {
   WorkspaceLoader,
 } from './workspace/types.js';
 
-// Error codes for LSP operations
-export enum ErrorCode {
-  LSPError = 'LSP_ERROR',
-}
-
-// Helper functions to create different error types
-export function createLspError(
-  errorCode: ErrorCode,
-  message: string,
-  originalError?: Error
-): LspOperationError {
-  return originalError
-    ? { message, errorCode, originalError }
-    : { message, errorCode };
-}
-
 // Enhanced Result type with generic error parameter and improved discriminants
-export type Result<T, E = LspOperationError> =
-  | { ok: true; data: T }
-  | { ok: false; error: E };
-
-// Helper function to wrap operations that might throw into Result
-export function tryResult<T, E = LspOperationError>(
-  fn: () => T,
-  errorHandler?: (error: unknown) => E
-): Result<T, E> {
-  try {
-    return { ok: true, data: fn() };
-  } catch (error) {
-    const handledError = errorHandler
-      ? errorHandler(error)
-      : (createLspError(
-          ErrorCode.LSPError,
-          error instanceof Error ? error.message : String(error),
-          error instanceof Error ? error : undefined
-        ) as E);
-
-    return { ok: false, error: handledError };
-  }
-}
-
-// Async version of tryResult
-export async function tryResultAsync<T, E = LspOperationError>(
-  fn: () => Promise<T>,
-  errorHandler?: (error: unknown) => E
-): Promise<Result<T, E>> {
-  try {
-    const data = await fn();
-    return { ok: true, data };
-  } catch (error) {
-    const handledError = errorHandler
-      ? errorHandler(error)
-      : (createLspError(
-          ErrorCode.LSPError,
-          error instanceof Error ? error.message : String(error),
-          error instanceof Error ? error : undefined
-        ) as E);
-
-    return { ok: false, error: handledError };
-  }
-}
+export type Result<T, E = Error> =
+  { ok: true; data: T } | { ok: false; error: E };
 
 // LSP Client state
 export interface LspClient {
@@ -138,8 +80,10 @@ export interface DiagnosticProvider {
 // Stores for cached data
 export interface DiagnosticsStore {
   diagnostics: Map<string, Diagnostic[]>;
+  omittedDiagnostics: Map<string, number>;
   addDiagnostics(uri: string, diagnostics: Diagnostic[]): void;
   getDiagnostics(uri: string): Diagnostic[];
+  getOmittedCount(uri: string): number;
   clear(): void;
 }
 
@@ -158,9 +102,9 @@ export interface DiagnosticProviderStore {
 export type LogMessage = LogMessageParams;
 
 export interface WindowLogStore {
-  messages: LogMessage[];
   addMessage(message: LogMessage): void;
   getMessages(): LogMessage[];
+  getDroppedCount(): number;
   clear(): void;
 }
 
@@ -193,12 +137,6 @@ export interface SearchRequest {
   query: string;
 }
 
-export interface RenameRequest {
-  file: string;
-  position: OneBasedPosition;
-  newName: string;
-}
-// Additional error codes for validation (extending the main ErrorCode enum)
 export enum ValidationErrorCode {
   InvalidPath = 'INVALID_PATH',
   PositionOutOfBounds = 'POSITION_OUT_OF_BOUNDS',
@@ -216,14 +154,8 @@ export interface ValidationError extends BaseError {
   errorCode: ValidationErrorCode;
 }
 
-// Enhanced LSP operation error (now compatible with the base error interface)
-interface LspOperationError extends BaseError {
-  errorCode: ErrorCode;
-}
-
 export type ValidationResult =
-  | { valid: true }
-  | { valid: false; error: ValidationError };
+  { valid: true } | { valid: false; error: ValidationError };
 
 // Diagnostic entry for LSP diagnostics operations
 export interface DiagnosticEntry {
@@ -232,4 +164,9 @@ export interface DiagnosticEntry {
   severity: number;
   range: Range;
   source: string;
+}
+
+export interface DiagnosticsResult {
+  diagnostics: DiagnosticEntry[];
+  omittedCount: number;
 }

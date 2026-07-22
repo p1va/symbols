@@ -1,6 +1,0 @@
-{
-  "mcp": {
-    "allowed": ["language-servers"],
-    "excluded": []
-  }
-}

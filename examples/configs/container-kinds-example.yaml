@@ -6,7 +6,7 @@
 
 language-servers:
   typescript:
-    command: npx typescript-language-server --stdio
+    command: npx -y -p typescript@^7.0.2 tsc --lsp --stdio
     # Extensions are optional - defaults cover .js, .mjs, .cjs, .jsx, .ts, .mts, .cts, .tsx, .json
     # Only specify extensions if you need to add custom mappings or override defaults
     extensions:

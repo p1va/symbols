@@ -2,8 +2,8 @@
 
 ## Decision
 
-Symbols should be delivered primarily as a host-native plugin or extension for
-coding agents such as Codex and Gemini, not as an MCP server that also tries to
+Symbols should be delivered primarily as a host-native plugin for coding agents
+such as Codex and Antigravity, not as an MCP server that also tries to
 be the instruction catalog for installing language servers.
 
 The MCP server remains important, but its role is narrower:
@@ -13,14 +13,14 @@ The MCP server remains important, but its role is narrower:
 - let the agent inspect failures and logs
 
 Installation instructions, language-specific workflows, and recommended usage
-patterns should live in the host plugin or extension as skills, README content,
-and related host-native assets.
+patterns should live in the host plugin as skills, README content, and related
+host-native assets.
 
 ## Why
 
 This matches how coding-agent ecosystems already work:
 
-- plugins/extensions are the discoverable place for instructions
+- plugins are the discoverable place for instructions
 - skills are the natural way to guide an agent through installation and setup
 - MCP is best used for runtime state and actions that only the running server
   can know
@@ -33,7 +33,7 @@ well.
 
 ### Plugin / Extension
 
-The plugin or extension should provide:
+The plugin should provide:
 
 - the MCP server wiring for Symbols
 - human-facing README material
@@ -166,15 +166,15 @@ only needs to load what the config declares.
 
 ## Immediate Implementation Implications
 
-The next product-facing work should be:
+The current product-facing shape is:
 
 1. add `language-servers://profiles`
 2. add `language-servers://profiles/{name}`
 3. add `language-servers://profiles/{name}/logs`
-4. add `setup.reload`
-5. make `setup.status` and the resource clearly report the active config path
+4. expose `reload` for applying config changes
+5. report the active config path and runtime state through the resources
 6. keep direct config-file editing as the configuration workflow
-7. package Symbols for Codex and Gemini as host-native plugin/extension bundles
+7. package Symbols for Codex and Antigravity as host-native plugins
 
 ## Relationship To Existing Docs
 

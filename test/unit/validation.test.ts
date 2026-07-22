@@ -13,14 +13,9 @@ import {
   validateAndNormalizeFilePath,
   validatePosition,
   validateFileRequest,
-  validateSymbolPositionRequest,
   validateWorkspaceOperation,
 } from '../../src/validation.js';
-import {
-  ValidationErrorCode,
-  type SymbolPositionRequest,
-  type FileRequest,
-} from '../../src/types.js';
+import { ValidationErrorCode, type FileRequest } from '../../src/types.js';
 import { createOneBasedPosition } from '../../src/types/position.js';
 import type { LspSession } from '../../src/runtime/lsp-session.js';
 
@@ -60,7 +55,6 @@ function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
   const workspaceState = overrides.workspaceState ?? {
     isReady: true,
     isLoading: false,
-    loadingStartedAt: undefined,
   };
   const workspacePath = overrides.workspacePath ?? '/test/workspace';
   const workspaceLoaderState = overrides.workspaceLoaderState ?? null;
@@ -107,7 +101,11 @@ function createMockContext(overrides: MockSessionOverrides = {}): LspSession {
     getWorkspaceLoaderStore: vi.fn(() => workspaceLoaderStore),
     getDiagnosticsStore: vi.fn(() => ({})),
     getDiagnosticProviderStore: vi.fn(() => ({})),
-    getWindowLogStore: vi.fn(() => ({ getMessages: vi.fn() })),
+    getWindowLogStore: vi.fn(() => ({
+      getMessages: vi.fn(),
+      getDroppedCount: vi.fn(() => 0),
+    })),
+    refreshOpenDocuments: vi.fn(() => Promise.resolve([])),
     executeWithCursorContext: vi.fn(),
     executeWithDocumentLifecycle: vi.fn(),
     claimDocument: vi.fn((filePath: string) => filePath),
@@ -145,7 +143,6 @@ describe('Validation Utilities', () => {
         workspaceState: {
           isReady: true,
           isLoading: false,
-          loadingStartedAt: undefined,
         },
       });
 
@@ -179,7 +176,6 @@ describe('Validation Utilities', () => {
         workspaceState: {
           isReady: false,
           isLoading: false,
-          loadingStartedAt: undefined,
         },
       });
 
@@ -198,7 +194,6 @@ describe('Validation Utilities', () => {
         workspaceState: {
           isReady: true,
           isLoading: false,
-          loadingStartedAt: undefined,
         },
         workspaceLoaderState: {
           type: 'roslyn',
@@ -222,7 +217,6 @@ describe('Validation Utilities', () => {
         workspaceState: {
           isReady: true,
           isLoading: false,
-          loadingStartedAt: undefined,
         },
         workspaceLoaderState: {
           type: 'roslyn',
@@ -324,6 +318,19 @@ describe('Validation Utilities', () => {
       expect(mockReadFile).toHaveBeenCalledWith(filePath, 'utf8');
     });
 
+    it.each([
+      ['an empty line', 'first\n\nthird', createOneBasedPosition(2, 1)],
+      ['a trailing empty line', 'first\n', createOneBasedPosition(2, 1)],
+      ['an empty file', '', createOneBasedPosition(1, 1)],
+    ])('should validate column 1 on %s', async (_, fileContent, position) => {
+      const filePath = '/test/file.ts';
+      mockReadFile.mockResolvedValue(fileContent);
+
+      const result = await validatePosition(filePath, position);
+
+      expect(result.valid).toBe(true);
+    });
+
     it('should return invalid for line out of bounds', async () => {
       const filePath = '/test/file.ts';
       const fileContent = 'line 1\nline 2';
@@ -399,7 +406,6 @@ describe('Validation Utilities', () => {
         workspaceState: {
           isReady: false,
           isLoading: false,
-          loadingStartedAt: undefined,
         },
       });
       const request: FileRequest = { file: 'src/file.ts' };
@@ -410,48 +416,6 @@ describe('Validation Utilities', () => {
       if (!result.valid) {
         expect(result.error.errorCode).toBe(
           ValidationErrorCode.WorkspaceNotReady
-        );
-      }
-    });
-  });
-
-  describe('validateSymbolPositionRequest', () => {
-    it('should validate symbol position request successfully', async () => {
-      const ctx = createMockContext();
-      const request: SymbolPositionRequest = {
-        file: 'src/file.ts',
-        position: createOneBasedPosition(1, 1),
-      };
-
-      mockExistsSync.mockReturnValue(true);
-      mockStatSync.mockReturnValue({ isFile: () => true } as fs.Stats);
-      mockReadFile.mockResolvedValue('console.log("hello");');
-
-      const result = await validateSymbolPositionRequest(ctx, request);
-
-      expect(result.valid).toBe(true);
-      if (result.valid) {
-        expect(result.absolutePath).toBeDefined();
-      }
-    });
-
-    it('should fail if position is out of bounds', async () => {
-      const ctx = createMockContext();
-      const request: SymbolPositionRequest = {
-        file: 'src/file.ts',
-        position: createOneBasedPosition(5, 1),
-      };
-
-      mockExistsSync.mockReturnValue(true);
-      mockStatSync.mockReturnValue({ isFile: () => true } as fs.Stats);
-      mockReadFile.mockResolvedValue('line 1\nline 2');
-
-      const result = await validateSymbolPositionRequest(ctx, request);
-
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.error.errorCode).toBe(
-          ValidationErrorCode.PositionOutOfBounds
         );
       }
     });
@@ -471,7 +435,6 @@ describe('Validation Utilities', () => {
         workspaceState: {
           isReady: false,
           isLoading: false,
-          loadingStartedAt: undefined,
         },
       });
 

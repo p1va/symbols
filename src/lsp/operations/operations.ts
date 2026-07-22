@@ -4,41 +4,39 @@
 
 import { setTimeout as delay } from 'node:timers/promises';
 import {
-  createLspError,
   DiagnosticEntry,
-  ErrorCode,
-  Result,
-  tryResult,
-  tryResultAsync,
+  DiagnosticsResult,
   DiagnosticsStore,
   DiagnosticProviderStore,
   DiagnosticProvider,
 } from '../../types.js';
 import {
   PreparedFileRequest,
-  PreparedRenameRequest,
-  PreparedSymbolPositionRequest,
   PreparedWorkspaceRequest,
+  ResolvedRenameTarget,
+  ResolvedSymbolTarget,
 } from '../../preparation.js';
 import { DEFAULT_SEARCH_WARMUP_WINDOW_MS } from '../../config/lsp-config.js';
 import logger from '../../utils/logger.js';
 import {
+  DIAGNOSTIC_MESSAGE_MAX_CHARACTERS,
+  DIAGNOSTICS_MAX_ENTRIES,
+  diagnosticMessageToString,
+  truncateDiagnosticMessage,
+  truncateDiagnosticMetadata,
+} from '../../utils/diagnostics.js';
+import {
   CallHierarchyDirection,
   CallHierarchyIncomingCall,
-  CallHierarchyItem,
   CallHierarchyOutgoingCall,
   CallHierarchyResult,
   CompletionItem,
-  CompletionList,
   CompletionParams,
   CompletionResult,
   DocumentDiagnosticParams,
   FlattenedSymbol,
   getDocumentSymbols,
-  Hover,
-  Location,
   LogMessageResult,
-  Range,
   ReferenceParams,
   RenameParams,
   RenameResult,
@@ -48,18 +46,48 @@ import {
   SymbolReference,
   SymbolSearchResult,
   TextDocumentPositionParams,
-  WorkspaceEdit,
   WorkspaceSymbol,
   WorkspaceSymbolParams,
 } from '../../types/lsp.js';
-import { CompletionTriggerKind } from 'vscode-languageserver-protocol';
+import {
+  CallHierarchyIncomingCallsRequest,
+  CallHierarchyOutgoingCallsRequest,
+  CallHierarchyPrepareRequest,
+  CompletionRequest,
+  CompletionTriggerKind,
+  DefinitionRequest,
+  DocumentDiagnosticRequest,
+  DocumentDiagnosticReportKind,
+  HoverRequest,
+  ImplementationRequest,
+  Location,
+  ReferencesRequest,
+  RenameRequest,
+  TextDocumentEdit,
+  TextEdit,
+  TypeDefinitionRequest,
+  WorkspaceSymbolRequest,
+} from 'vscode-languageserver-protocol';
+import type { LocationLink } from 'vscode-languageserver-protocol';
 import type {
   CursorContextOperationResult,
   LspSession,
   SessionDocumentScope,
 } from '../../runtime/lsp-session.js';
+import { contextualError } from '../../utils/errors.js';
 
 const SEARCH_WARMUP_RETRY_DELAYS_MS = [250, 500, 1000, 1500] as const;
+
+async function runOperation<T>(
+  context: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    throw contextualError(context, error);
+  }
+}
 
 function getSearchWarmupDeadlineMs(session: LspSession): number | null {
   const readyAt = session.getWorkspaceState().readyAt;
@@ -79,73 +107,74 @@ function getSearchWarmupDeadlineMs(session: LspSession): number | null {
 }
 
 function transformWorkspaceSymbols(
-  symbols: WorkspaceSymbol[] | SymbolInformation[]
+  symbols: WorkspaceSymbol[] | SymbolInformation[] | null
 ): SymbolSearchResult[] {
-  return Array.isArray(symbols)
-    ? symbols.map((symbol) => {
-        if (
-          'location' in symbol &&
-          symbol.location &&
-          'range' in symbol.location
-        ) {
-          return {
-            name: symbol.name,
-            kind: symbol.kind,
-            location: {
-              uri: symbol.location.uri,
-              range: symbol.location.range,
-            },
-            containerName: symbol.containerName || '',
-          };
-        }
-
-        return {
-          name: symbol.name,
-          kind: symbol.kind,
-          location: {
-            uri: symbol.location.uri || '',
-            range: {
-              start: { line: 0, character: 0 },
-              end: { line: 0, character: 0 },
-            },
+  return (symbols ?? []).map((symbol) => ({
+    name: symbol.name,
+    kind: symbol.kind,
+    location: Location.is(symbol.location)
+      ? symbol.location
+      : {
+          uri: symbol.location.uri,
+          range: {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 0 },
           },
-          containerName: symbol.containerName || '',
-        };
-      })
-    : [];
+        },
+    containerName: symbol.containerName ?? '',
+  }));
 }
 
 async function requestWorkspaceSymbols(
   session: LspSession,
   params: WorkspaceSymbolParams
 ): Promise<SymbolSearchResult[]> {
-  const symbols: WorkspaceSymbol[] | SymbolInformation[] = await session.request(
-    'workspace/symbol',
-    params
-  );
+  const symbols = await session.request(WorkspaceSymbolRequest.type, params);
 
   return transformWorkspaceSymbols(symbols);
 }
 
+function normalizeLocations(
+  response: Location | Location[] | LocationLink[] | null
+): Location[] {
+  if (response === null) {
+    return [];
+  }
+
+  if (Location.is(response)) {
+    return [response];
+  }
+
+  return response.map((location) =>
+    Location.is(location)
+      ? location
+      : {
+          uri: location.targetUri,
+          range: location.targetSelectionRange,
+        }
+  );
+}
+
 export async function inspectSymbol(
   session: LspSession,
-  prepared: PreparedSymbolPositionRequest
-): Promise<Result<CursorContextOperationResult<SymbolInspection>>> {
+  target: ResolvedSymbolTarget
+): Promise<CursorContextOperationResult<SymbolInspection>> {
   logger.info(
-    `Inspect for ${prepared.filePath} at ${prepared.position.line}:${prepared.position.character}`
+    `Inspect for ${target.filePath} at ${target.position.line}:${target.position.character}`
   );
 
-  return await session.executeWithCursorContext(
-    'inspect',
-    prepared.filePath,
-    prepared.position,
-    'transient',
-    async (scope) => {
-      return await tryResultAsync(
-        async () => {
+  return await runOperation(
+    'Inspect symbol failed',
+    async () =>
+      await session.executeWithCursorContext(
+        'inspect',
+        target.filePath,
+        target.position,
+        'transient',
+        async (scope) => {
           const positionParams: TextDocumentPositionParams = {
             textDocument: { uri: scope.uri },
-            position: prepared.lspPosition,
+            position: target.lspPosition,
           };
 
           const [
@@ -154,155 +183,90 @@ export async function inspectSymbol(
             typeDefinitionResult,
             implementationResult,
           ] = await Promise.allSettled([
-            scope.request<Hover>('textDocument/hover', positionParams),
-            scope.request<Location | Location[]>(
-              'textDocument/definition',
-              positionParams
-            ),
-            scope.request<Location | Location[]>(
-              'textDocument/typeDefinition',
-              positionParams
-            ),
-            scope.request<Location | Location[]>(
-              'textDocument/implementation',
-              positionParams
-            ),
+            scope.request(HoverRequest.type, positionParams),
+            scope.request(DefinitionRequest.type, positionParams),
+            scope.request(TypeDefinitionRequest.type, positionParams),
+            scope.request(ImplementationRequest.type, positionParams),
           ]);
 
-          const inspectData: SymbolInspection = {
+          return {
             hover:
               hoverResult.status === 'fulfilled' ? hoverResult.value : null,
             definition:
               definitionResult.status === 'fulfilled'
-                ? definitionResult.value
-                : null,
+                ? normalizeLocations(definitionResult.value)
+                : [],
             typeDefinition:
               typeDefinitionResult.status === 'fulfilled'
-                ? typeDefinitionResult.value
-                : null,
+                ? normalizeLocations(typeDefinitionResult.value)
+                : [],
             implementation:
               implementationResult.status === 'fulfilled'
-                ? implementationResult.value
-                : null,
-          };
-
-          // Transform locations back to 1-based coordinates for user display
-          const transformLocations = (
-            locations: Location | Location[] | null
-          ) => {
-            if (!locations || !Array.isArray(locations)) return locations;
-            return locations.map((loc) => ({
-              ...loc,
-              range: {
-                ...loc.range,
-                start: {
-                  line: loc.range.start.line + 1,
-                  character: loc.range.start.character + 1,
-                },
-                end: {
-                  line: loc.range.end.line + 1,
-                  character: loc.range.end.character + 1,
-                },
-              },
-            }));
-          };
-
-          inspectData.definition = transformLocations(inspectData.definition);
-          inspectData.typeDefinition = transformLocations(
-            inspectData.typeDefinition
-          );
-          inspectData.implementation = transformLocations(
-            inspectData.implementation
-          );
-
-          return inspectData;
-        },
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Inspect symbol failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
-          )
-      );
-    }
+                ? normalizeLocations(implementationResult.value)
+                : [],
+          } satisfies SymbolInspection;
+        }
+      )
   );
 }
 
 export async function findReferences(
   session: LspSession,
-  prepared: PreparedSymbolPositionRequest
-): Promise<Result<CursorContextOperationResult<SymbolReference[]>>> {
-  return await session.executeWithCursorContext(
-    'references',
-    prepared.filePath,
-    prepared.position,
-    'transient',
-    async (scope) => {
-      return await tryResultAsync(
-        async () => {
+  target: ResolvedSymbolTarget
+): Promise<CursorContextOperationResult<SymbolReference[]>> {
+  return await runOperation(
+    'Find references failed',
+    async () =>
+      await session.executeWithCursorContext(
+        'references',
+        target.filePath,
+        target.position,
+        'transient',
+        async (scope) => {
           const params: ReferenceParams = {
             textDocument: { uri: scope.uri },
-            position: prepared.lspPosition,
+            position: target.lspPosition,
             context: {
               includeDeclaration: true,
             },
           };
 
-          const references: Location[] = await scope.request(
-            'textDocument/references',
+          const references = await scope.request(
+            ReferencesRequest.type,
             params
           );
 
-          if (!Array.isArray(references)) {
-            return [];
-          }
-
-          // Transform LSP response to our format
-          const results: SymbolReference[] = references.map((ref) => ({
-            uri: ref.uri,
-            range: ref.range,
-            // Convert back to 1-based for user display
-            line: ref.range.start.line + 1,
-            character: ref.range.start.character + 1,
-          }));
-
-          return results;
-        },
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Find references failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
-          )
-      );
-    }
+          return (references ?? []) satisfies SymbolReference[];
+        }
+      )
   );
 }
 
 export async function callHierarchy(
   session: LspSession,
-  prepared: PreparedSymbolPositionRequest,
+  target: ResolvedSymbolTarget,
   direction: CallHierarchyDirection = 'both'
-): Promise<Result<CursorContextOperationResult<CallHierarchyResult>>> {
-  return await session.executeWithCursorContext(
-    'callHierarchy',
-    prepared.filePath,
-    prepared.position,
-    'transient',
-    async (scope) => {
-      return await tryResultAsync(
-        async () => {
+): Promise<CursorContextOperationResult<CallHierarchyResult>> {
+  return await runOperation(
+    'Call hierarchy failed',
+    async () =>
+      await session.executeWithCursorContext(
+        'callHierarchy',
+        target.filePath,
+        target.position,
+        'transient',
+        async (scope) => {
           const positionParams: TextDocumentPositionParams = {
             textDocument: { uri: scope.uri },
-            position: prepared.lspPosition,
+            position: target.lspPosition,
           };
 
-          const preparedItems = await scope.request<CallHierarchyItem[] | null>(
-            'textDocument/prepareCallHierarchy',
+          const preparedItems = await scope.request(
+            CallHierarchyPrepareRequest.type,
             positionParams
           );
 
-          if (!Array.isArray(preparedItems) || preparedItems.length === 0) {
+          if (!preparedItems || preparedItems.length === 0) {
             return {
               direction,
               targets: [],
@@ -318,17 +282,13 @@ export async function callHierarchy(
                 direction === 'outgoing'
                   ? Promise.resolve<CallHierarchyIncomingCall[] | null>(null)
                   : scope
-                      .request<
-                        CallHierarchyIncomingCall[] | null
-                      >('callHierarchy/incomingCalls', { item })
-                      .then((calls) => (Array.isArray(calls) ? calls : [])),
+                      .request(CallHierarchyIncomingCallsRequest.type, { item })
+                      .then((calls) => calls ?? []),
                 direction === 'incoming'
                   ? Promise.resolve<CallHierarchyOutgoingCall[] | null>(null)
                   : scope
-                      .request<
-                        CallHierarchyOutgoingCall[] | null
-                      >('callHierarchy/outgoingCalls', { item })
-                      .then((calls) => (Array.isArray(calls) ? calls : [])),
+                      .request(CallHierarchyOutgoingCallsRequest.type, { item })
+                      .then((calls) => calls ?? []),
               ]);
 
               return {
@@ -343,53 +303,41 @@ export async function callHierarchy(
             direction,
             targets,
           };
-        },
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Call hierarchy failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
-          )
-      );
-    }
+        }
+      )
   );
 }
 
 export async function completion(
   session: LspSession,
-  prepared: PreparedSymbolPositionRequest
-): Promise<Result<CursorContextOperationResult<CompletionResult[]>>> {
-  return await session.executeWithCursorContext(
-    'completion',
-    prepared.filePath,
-    prepared.position,
-    'transient',
-    async (scope) => {
-      return await tryResultAsync(
-        async () => {
+  target: ResolvedSymbolTarget
+): Promise<CursorContextOperationResult<CompletionResult[]>> {
+  return await runOperation(
+    'Code completion failed',
+    async () =>
+      await session.executeWithCursorContext(
+        'completion',
+        target.filePath,
+        target.position,
+        'transient',
+        async (scope) => {
           const params: CompletionParams = {
             textDocument: { uri: scope.uri },
-            position: prepared.lspPosition,
+            position: target.lspPosition,
             context: {
               triggerKind: CompletionTriggerKind.Invoked,
             },
           };
 
-          const completionResult: CompletionList | CompletionItem[] =
-            await scope.request('textDocument/completion', params);
-
-          let completions: CompletionItem[] = [];
-
-          if (Array.isArray(completionResult)) {
-            completions = completionResult;
-          } else if (
-            completionResult &&
-            typeof completionResult === 'object' &&
-            'items' in completionResult
-          ) {
-            // CompletionList format - items is always CompletionItem[] per LSP spec
-            completions = completionResult.items;
-          }
+          const completionResult = await scope.request(
+            CompletionRequest.type,
+            params
+          );
+          const completions: CompletionItem[] = completionResult
+            ? Array.isArray(completionResult)
+              ? completionResult
+              : completionResult.items
+            : [];
 
           // Transform LSP completion items to our format
           const results: CompletionResult[] = completions.map((item) => ({
@@ -400,111 +348,81 @@ export async function completion(
             insertText: item.insertText || item.label,
             filterText: item.filterText || item.label,
             sortText: item.sortText || item.label,
-            ...(item.textEdit && 'range' in item.textEdit
+            ...(item.textEdit && TextEdit.is(item.textEdit)
               ? {
                   textEdit: {
                     newText: item.textEdit.newText,
-                    range: {
-                      start: {
-                        line: item.textEdit.range.start.line + 1,
-                        character: item.textEdit.range.start.character + 1,
-                      },
-                      end: {
-                        line: item.textEdit.range.end.line + 1,
-                        character: item.textEdit.range.end.character + 1,
-                      },
-                    },
+                    range: item.textEdit.range,
                   },
                 }
               : {}),
           }));
 
           return results;
-        },
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Code completion failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
-          )
-      );
-    }
+        }
+      )
   );
 }
 
 export async function searchSymbols(
   session: LspSession,
   prepared: PreparedWorkspaceRequest
-): Promise<Result<SymbolSearchResult[]>> {
-  return await tryResultAsync(
-    async () => {
-      const params: WorkspaceSymbolParams = {
-        query: prepared.query,
-      };
+): Promise<SymbolSearchResult[]> {
+  return await runOperation('Workspace symbol search failed', async () => {
+    const params: WorkspaceSymbolParams = {
+      query: prepared.query,
+    };
 
-      let results = await requestWorkspaceSymbols(session, params);
-      const warmupDeadlineAt = getSearchWarmupDeadlineMs(session);
+    let results = await requestWorkspaceSymbols(session, params);
+    const warmupDeadlineAt = getSearchWarmupDeadlineMs(session);
 
-      if (results.length === 0 && warmupDeadlineAt !== null) {
-        for (const retryDelayMs of SEARCH_WARMUP_RETRY_DELAYS_MS) {
-          const remainingWarmupMs = warmupDeadlineAt - Date.now();
-          if (remainingWarmupMs <= 0) {
-            break;
-          }
+    if (results.length === 0 && warmupDeadlineAt !== null) {
+      for (const retryDelayMs of SEARCH_WARMUP_RETRY_DELAYS_MS) {
+        const remainingWarmupMs = warmupDeadlineAt - Date.now();
+        if (remainingWarmupMs <= 0) {
+          break;
+        }
 
-          await delay(Math.min(retryDelayMs, remainingWarmupMs));
-          results = await requestWorkspaceSymbols(session, params);
+        await delay(Math.min(retryDelayMs, remainingWarmupMs));
+        results = await requestWorkspaceSymbols(session, params);
 
-          if (results.length > 0) {
-            logger.info('Workspace symbol search warmed up after retry', {
-              profile: session.getProfile().name,
-              query: prepared.query,
-            });
-            break;
-          }
+        if (results.length > 0) {
+          logger.info('Workspace symbol search warmed up after retry', {
+            profile: session.getProfile().name,
+            query: prepared.query,
+          });
+          break;
         }
       }
+    }
 
-      return results;
-    },
-    (error) =>
-      createLspError(
-        ErrorCode.LSPError,
-        `Workspace symbol search failed: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      )
-  );
+    return results;
+  });
 }
 
 export async function outlineSymbols(
   session: LspSession,
   prepared: PreparedFileRequest
-): Promise<Result<FlattenedSymbol[]>> {
-  return await session.executeWithDocumentLifecycle(
-    prepared.filePath,
-    'transient',
-    async (scope): Promise<Result<FlattenedSymbol[]>> => {
-      return await tryResultAsync(
-        async () =>
+): Promise<FlattenedSymbol[]> {
+  return await runOperation(
+    'Document symbol request failed',
+    async () =>
+      await session.executeWithDocumentLifecycle(
+        prepared.filePath,
+        'transient',
+        async (scope) =>
           await getDocumentSymbols(
-            async (method, params) => await scope.request(method, params),
+            async (type, params) => await scope.request(type, params),
             scope.uri
-          ),
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Document symbol request failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
           )
-      );
-    }
+      )
   );
 }
 
 export async function getDiagnostics(
   session: LspSession,
   prepared: PreparedFileRequest
-): Promise<Result<DiagnosticEntry[]>> {
+): Promise<DiagnosticsResult> {
   const diagnosticsStore = session.getDiagnosticsStore();
   const diagnosticProviderStore = session.getDiagnosticProviderStore();
   const profile = session.getProfile();
@@ -517,39 +435,38 @@ export async function getDiagnostics(
 
   logger.debug('Using diagnostic strategy', { strategy, lspName, filePath });
 
-  return await session.executeWithDocumentLifecycle(
-    filePath,
-    'transient',
-    async (scope): Promise<Result<DiagnosticEntry[]>> => {
-      return await tryResultAsync(
-        async () => {
+  return await runOperation(
+    'Get diagnostics failed',
+    async () =>
+      await session.executeWithDocumentLifecycle(
+        filePath,
+        'transient',
+        async (scope) => {
           if (strategy === 'pull') {
             return await getPullDiagnostics(
-              async (method, params) => await scope.request(method, params),
+              async (type, params) => await scope.request(type, params),
               diagnosticProviderStore,
               scope.uri
             );
           } else {
-            return await getPushDiagnostics(diagnosticsStore, scope.uri);
+            return await getPushDiagnostics(
+              diagnosticsStore,
+              scope.uri,
+              lspConfig.diagnostics.wait_timeout_ms
+            );
           }
-        },
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Get diagnostics failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
-          )
-      );
-    }
+        }
+      )
   );
 }
 
 async function getPushDiagnostics(
   diagnosticsStore: DiagnosticsStore,
-  uri: string
-): Promise<DiagnosticEntry[]> {
-  // Give LSP a moment to send diagnostics after opening the file
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  uri: string,
+  waitTimeoutMs: number
+): Promise<DiagnosticsResult> {
+  // Give the LSP its configured window to publish diagnostics after opening the file.
+  await delay(waitTimeoutMs);
 
   // Get diagnostics from store (populated by push notifications)
   const diagnostics = diagnosticsStore.getDiagnostics(uri);
@@ -558,22 +475,26 @@ async function getPushDiagnostics(
   const diagnosticEntries: DiagnosticEntry[] = diagnostics.map(
     (diagnostic) => ({
       code: diagnostic.code?.toString() || 'unknown',
-      message: diagnostic.message,
+      message: diagnosticMessageToString(diagnostic.message),
       severity: diagnostic.severity || 1, // Error by default
       range: diagnostic.range,
       source: diagnostic.source || 'unknown',
     })
   );
 
-  return diagnosticEntries;
+  return {
+    diagnostics: diagnosticEntries,
+    omittedCount: diagnosticsStore.getOmittedCount(uri),
+  };
 }
 
 async function getPullDiagnostics(
   request: SessionDocumentScope['request'],
   diagnosticProviderStore: DiagnosticProviderStore,
   uri: string
-): Promise<DiagnosticEntry[]> {
+): Promise<DiagnosticsResult> {
   const allDiagnostics: DiagnosticEntry[] = [];
+  let omittedCount = 0;
 
   // Get all diagnostic providers that support this document
   const providers: DiagnosticProvider[] =
@@ -599,35 +520,36 @@ async function getPullDiagnostics(
         // previousResultId omitted for first request
       };
 
-      const diagnosticReport = await request('textDocument/diagnostic', params);
+      const diagnosticReport = await request(
+        DocumentDiagnosticRequest.type,
+        params
+      );
 
-      // Handle different types of diagnostic reports
-      if ((diagnosticReport as { kind?: string }).kind === 'full') {
-        const fullReport = diagnosticReport as { items: unknown[] };
+      if (diagnosticReport.kind === DocumentDiagnosticReportKind.Full) {
+        const remainingCapacity = Math.max(
+          0,
+          DIAGNOSTICS_MAX_ENTRIES - allDiagnostics.length
+        );
+        const boundedItems = diagnosticReport.items.slice(0, remainingCapacity);
+        omittedCount += diagnosticReport.items.length - boundedItems.length;
 
-        // Convert diagnostics to our format
-        const diagnosticEntries: DiagnosticEntry[] = fullReport.items.map(
-          (diagnostic: unknown) => {
-            const d = diagnostic as {
-              code?: { value: string | number } | string | number;
-              message: string;
-              severity?: number;
-              range: Range;
-              source?: string;
-            };
-            return {
-              code:
-                typeof d.code === 'object' && d.code && 'value' in d.code
-                  ? String(d.code.value)
-                  : d.code
-                    ? String(d.code)
-                    : 'unknown',
-              message: d.message,
-              severity: d.severity || 1, // Error by default
-              range: d.range,
-              source: d.source || provider.id,
-            };
-          }
+        const diagnosticEntries: DiagnosticEntry[] = boundedItems.map(
+          (diagnostic) => ({
+            code: truncateDiagnosticMetadata(
+              diagnostic.code === undefined
+                ? 'unknown'
+                : String(diagnostic.code)
+            ),
+            message: truncateDiagnosticMessage(
+              diagnosticMessageToString(diagnostic.message),
+              DIAGNOSTIC_MESSAGE_MAX_CHARACTERS
+            ),
+            severity: diagnostic.severity ?? 1,
+            range: diagnostic.range,
+            source: truncateDiagnosticMetadata(
+              diagnostic.source ?? provider.id
+            ),
+          })
         );
 
         allDiagnostics.push(...diagnosticEntries);
@@ -635,6 +557,8 @@ async function getPullDiagnostics(
         logger.debug('Retrieved diagnostics from provider', {
           providerId: provider.id,
           diagnosticCount: diagnosticEntries.length,
+          omittedDiagnosticCount:
+            diagnosticReport.items.length - diagnosticEntries.length,
         });
       } else {
         logger.debug('Provider returned unchanged diagnostics', {
@@ -654,35 +578,34 @@ async function getPullDiagnostics(
     uri,
     totalDiagnostics: allDiagnostics.length,
     providerCount: providers.length,
+    omittedDiagnosticCount: omittedCount,
   });
 
-  return allDiagnostics;
+  return { diagnostics: allDiagnostics, omittedCount };
 }
 
 export async function rename(
   session: LspSession,
-  prepared: PreparedRenameRequest
-): Promise<Result<CursorContextOperationResult<RenameResult>>> {
-  return await session.executeWithCursorContext(
-    'rename',
-    prepared.filePath,
-    prepared.position,
-    'transient',
-    async (scope) => {
-      return await tryResultAsync(
-        async () => {
+  target: ResolvedRenameTarget
+): Promise<CursorContextOperationResult<RenameResult>> {
+  return await runOperation(
+    'Rename symbol failed',
+    async () =>
+      await session.executeWithCursorContext(
+        'rename',
+        target.filePath,
+        target.position,
+        'transient',
+        async (scope) => {
           const params: RenameParams = {
             textDocument: { uri: scope.uri },
-            position: prepared.lspPosition,
-            newName: prepared.newName,
+            position: target.lspPosition,
+            newName: target.newName,
           };
 
-          const workspaceEdit: WorkspaceEdit = await scope.request(
-            'textDocument/rename',
-            params
-          );
+          const workspaceEdit = await scope.request(RenameRequest.type, params);
 
-          if (!workspaceEdit || typeof workspaceEdit !== 'object') {
+          if (workspaceEdit === null) {
             return {};
           }
 
@@ -691,25 +614,25 @@ export async function rename(
 
           const addEdits = (
             fileUri: string,
-            edits: Array<{
-              range: Range;
-              newText: string;
-            }>
+            edits: TextDocumentEdit['edits']
           ) => {
-            const fileChanges = edits.map((edit) => ({
-              range: edit.range,
-              newText: edit.newText,
-              // Convert positions back to 1-based for user display
-              startLine: edit.range.start.line + 1,
-              startCharacter: edit.range.start.character + 1,
-              endLine: edit.range.end.line + 1,
-              endCharacter: edit.range.end.character + 1,
-            }));
+            const fileChanges = edits.map((edit) => {
+              if (!TextEdit.is(edit)) {
+                throw new Error(
+                  `Rename returned an unsupported snippet edit for ${fileUri}`
+                );
+              }
+
+              return {
+                range: edit.range,
+                newText: edit.newText,
+              };
+            });
 
             changes[fileUri] = [...(changes[fileUri] || []), ...fileChanges];
           };
 
-          if ('changes' in workspaceEdit && workspaceEdit.changes) {
+          if (workspaceEdit.changes) {
             for (const [fileUri, edits] of Object.entries(
               workspaceEdit.changes
             )) {
@@ -717,66 +640,39 @@ export async function rename(
             }
           }
 
-          if (
-            'documentChanges' in workspaceEdit &&
-            Array.isArray(workspaceEdit.documentChanges)
-          ) {
+          if (workspaceEdit.documentChanges) {
             for (const change of workspaceEdit.documentChanges) {
-              if (!change || typeof change !== 'object') {
+              if (!TextDocumentEdit.is(change)) {
+                throw new Error(
+                  `Rename returned unsupported file operation '${change.kind}'; no files were changed`
+                );
+              }
+
+              if (change.edits.length === 0) {
                 continue;
               }
 
-              if (!('textDocument' in change) || !('edits' in change)) {
-                continue;
-              }
-
-              const fileUri = change.textDocument?.uri;
-              const edits = Array.isArray(change.edits) ? change.edits : [];
-              if (!fileUri || edits.length === 0) {
-                continue;
-              }
-
-              addEdits(fileUri, edits);
+              addEdits(change.textDocument.uri, change.edits);
             }
           }
 
           if (Object.keys(changes).length === 0) {
             logger.info('Rename returned no file edits', {
               hasChanges:
-                'changes' in workspaceEdit &&
                 !!workspaceEdit.changes &&
                 Object.keys(workspaceEdit.changes).length > 0,
               hasDocumentChanges:
-                'documentChanges' in workspaceEdit &&
-                Array.isArray(workspaceEdit.documentChanges) &&
+                !!workspaceEdit.documentChanges &&
                 workspaceEdit.documentChanges.length > 0,
             });
           }
 
           return changes;
-        },
-        (error) =>
-          createLspError(
-            ErrorCode.LSPError,
-            `Rename symbol failed: ${error instanceof Error ? error.message : String(error)}`,
-            error instanceof Error ? error : undefined
-          )
-      );
-    }
+        }
+      )
   );
 }
 
-export function logs(session: LspSession): Result<LogMessageResult[]> {
-  const windowLogStore = session.getWindowLogStore();
-
-  // Using the new tryResult helper to eliminate try/catch boilerplate
-  return tryResult(
-    () => windowLogStore.getMessages(),
-    (error) =>
-      createLspError(
-        ErrorCode.LSPError,
-        `Failed to get window log messages: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      )
-  );
+export function logs(session: LspSession): LogMessageResult[] {
+  return session.getWindowLogStore().getMessages();
 }

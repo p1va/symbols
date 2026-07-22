@@ -81,15 +81,16 @@ venv = ".venv"
   <b>TypeScript</b>
 </summary>
 
-### TypeScript Language Server
+### TypeScript 7 Native Language Server
 
 #### Installation
 
-`npm install -g typescript-language-server`
+No separate Language Server package is required. TypeScript 7 includes its
+native LSP and the configuration below installs it through `npx` when needed.
 
 #### Verify Installation
 
-`typescript-language-server --version`
+`npx -y -p typescript@^7.0.2 tsc --version`
 
 #### Configuration
 
@@ -105,27 +106,28 @@ venv = ".venv"
         // Adjust this or remove it (defaults to current directory)
         "-w",
         "optional/path/to/workspace",
-        "typescript-language-server",
+        "npx",
+        "-y",
+        "-p",
+        "typescript@^7.0.2",
+        "tsc",
+        "--lsp",
         "--stdio",
       ],
       "env": {
-        // Keep at least one code file open for search to work
-        "SYMBOLS_PRELOAD_FILES": "src/index.ts",
-        "SYMBOLS_DIAGNOSTICS_STRATEGY": "push",
+        "SYMBOLS_DIAGNOSTICS_STRATEGY": "pull",
       },
     },
   },
 }
 ```
 
-> ℹ️ If you'd rather avoid installing **typescript-language-server** globally and are fine with a slower start up, you can substitute `typescript-language-server --stdio` in the JSON above with `npx -y typescript-language-server --stdio`
-
 #### Troubleshooting
 
-**Search: No results**
+**Server exits immediately**
 
-For the search functionality to work the TS Language Server needs to compute the codebase index and keep in memory.
-This is done by keeping at least one code file open at any time. Use the `SYMBOLS_PRELOAD_FILES="src/index.ts` variable with paths to a few files.
+Confirm the command contains both `--lsp` and `--stdio`. The native server does
+not need `SYMBOLS_PRELOAD_FILES` or a fixed startup delay by default.
 
 </details>
 
@@ -251,7 +253,7 @@ Additionally JetBrains has more details on [this issue](https://youtrack.jetbrai
 </details>
 
 <details>
-  
+
 <summary>
   &nbsp;
   <picture>
@@ -716,7 +718,7 @@ rust-analyzer --version
 </details>
 
 <details>
-  
+
 <summary>
   &nbsp;
   <picture>

@@ -11,170 +11,20 @@ import {
   searchSymbols,
 } from '../../src/lsp/operations/operations.js';
 import { createOneBasedPosition, type LogMessage } from '../../src/types.js';
-import type { LspSession } from '../../src/runtime/lsp-session.js';
-
-const TEST_URI = 'file:///test/workspace/src/test.ts';
-const TEST_FILE_PATH = '/test/workspace/src/test.ts';
-
-interface MockSessionOptions {
-  requestImpl?: (method: string, params: unknown) => Promise<unknown>;
-  diagnosticsStrategy?: 'push' | 'pull';
-  providers?: Array<{ id: string }>;
-  logMessages?: LogMessage[];
-  workspaceState?: {
-    isReady: boolean;
-    isLoading: boolean;
-    readyAt?: Date;
-  };
-  searchWarmupWindowMs?: number;
-}
-function createMockSession(options: MockSessionOptions = {}): {
-  session: LspSession;
-  request: ReturnType<typeof vi.fn>;
-  diagnosticsStore: { getDiagnostics: ReturnType<typeof vi.fn> };
-  diagnosticProviderStore: {
-    getProvidersForDocument: ReturnType<typeof vi.fn>;
-  };
-  windowLogStore: { getMessages: ReturnType<typeof vi.fn> };
-} {
-  const request = vi.fn((method: string, params: unknown) => {
-    if (options.requestImpl) {
-      return options.requestImpl(method, params);
-    }
-
-    return Promise.reject(new Error(`unexpected request ${method}`));
-  });
-  const diagnosticsStore = {
-    getDiagnostics: vi.fn(() => []),
-  };
-  const diagnosticProviderStore = {
-    getProvidersForDocument: vi.fn(() => options.providers ?? []),
-  };
-  const windowLogStore = {
-    getMessages: vi.fn(() => options.logMessages ?? []),
-  };
-  const profile = {
-    name: 'typescript',
-    workspacePath: '/test/workspace',
-    workspaceUri: 'file:///test/workspace',
-    workspaceName: 'workspace',
-    configPath: null,
-    config: {
-      commandName: 'typescript-language-server',
-      commandArgs: ['--stdio'],
-      extensions: { '.ts': 'typescript' },
-      diagnostics: {
-        strategy: options.diagnosticsStrategy ?? ('push' as const),
-      },
-      ...(options.searchWarmupWindowMs !== undefined
-        ? {
-            search: {
-              warmup_window_ms: options.searchWarmupWindowMs,
-            },
-          }
-        : {}),
-      symbols: {},
-      preload_files: [],
-      workspace_ready_delay_ms: 0,
-    },
-  };
-
-  const executeWithCursorContext: LspSession['executeWithCursorContext'] =
-    async (_name, _filePath, _position, _strategy, operation) => {
-      const result = await operation({
-        uri: TEST_URI,
-        request,
-      });
-
-      if (!result.ok) {
-        return result;
-      }
-
-      return {
-        ok: true,
-        data: {
-          result: result.data,
-        },
-      };
-    };
-
-  const executeWithDocumentLifecycle: LspSession['executeWithDocumentLifecycle'] =
-    async (_filePath, _strategy, operation) =>
-      await operation({
-        uri: TEST_URI,
-        request,
-      });
-
-  const session: LspSession = {
-    sessionKey: 'typescript::/test/workspace',
-    getProfile: () => profile,
-    setProfile: vi.fn(),
-    canHandleFile: vi.fn(() => true),
-    isReady: vi.fn(() => true),
-    isActive: vi.fn(() => true),
-    start: vi.fn(() => Promise.resolve()),
-    stop: vi.fn(() => Promise.resolve()),
-    restart: vi.fn(() => Promise.resolve()),
-    request,
-    getWorkspaceState: vi.fn(() => ({
-      isReady: options.workspaceState?.isReady ?? true,
-      isLoading: options.workspaceState?.isLoading ?? false,
-      ...(options.workspaceState?.readyAt
-        ? { readyAt: options.workspaceState.readyAt }
-        : {}),
-    })),
-    getWorkspaceLoaderStore: vi.fn(() => ({
-      state: null,
-      loader: null,
-      setState: vi.fn(),
-      setLoader: vi.fn(),
-      getState: vi.fn(() => null),
-      getLoader: vi.fn(() => null),
-      updateState: vi.fn(),
-      isReady: vi.fn(() => false),
-    })),
-    getDiagnosticsStore: vi.fn(() => diagnosticsStore),
-    getDiagnosticProviderStore: vi.fn(() => diagnosticProviderStore),
-    getWindowLogStore: vi.fn(() => windowLogStore),
-    executeWithCursorContext,
-    executeWithDocumentLifecycle,
-    claimDocument: vi.fn((filePath: string) => filePath),
-    releaseDocument: vi.fn(() => null),
-    listOwnedDocuments: vi.fn(() => []),
-    clearOwnedDocuments: vi.fn(() => []),
-    getStatusSnapshot: vi.fn(() => ({
-      sessionKey: 'typescript::/test/workspace',
-      profileName: 'typescript',
-      state: 'ready' as const,
-      command: 'typescript-language-server --stdio',
-      workspacePath: '/test/workspace',
-      lastError: null,
-      pid: 1234,
-      extensions: ['.ts'],
-      preloadFiles: [],
-      diagnosticsStrategy: options.diagnosticsStrategy ?? ('push' as const),
-      workspaceLoader: null,
-      workspaceReady: true,
-      workspaceLoading: false,
-      windowLogCount: 0,
-    })),
-  };
-
-  return {
-    session,
-    request,
-    diagnosticsStore,
-    diagnosticProviderStore,
-    windowLogStore,
-  };
-}
+import { createZeroBasedPosition } from '../../src/types/position.js';
+import { DIAGNOSTICS_MAX_ENTRIES } from '../../src/utils/diagnostics.js';
+import {
+  createMockSession,
+  TEST_FILE_PATH,
+  TEST_URI,
+} from './helpers/mock-lsp-session.js';
 
 describe('LSP operations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('inspectSymbol sends the expected LSP requests from the prepared input', async () => {
+  it('inspectSymbol sends the expected LSP requests from the resolved target', async () => {
     const { session, request } = createMockSession({
       requestImpl: (method) => {
         switch (method) {
@@ -190,13 +40,12 @@ describe('LSP operations', () => {
       },
     });
 
-    const result = await inspectSymbol(session, {
+    await inspectSymbol(session, {
       filePath: TEST_FILE_PATH,
       position: createOneBasedPosition(5, 10),
-      lspPosition: { line: 4, character: 9 },
+      lspPosition: createZeroBasedPosition(4, 9),
     });
 
-    expect(result.ok).toBe(true);
     expect(request).toHaveBeenCalledWith('textDocument/hover', {
       textDocument: { uri: TEST_URI },
       position: { line: 4, character: 9 },
@@ -218,13 +67,12 @@ describe('LSP operations', () => {
         ]),
     });
 
-    const result = await findReferences(session, {
+    await findReferences(session, {
       filePath: TEST_FILE_PATH,
       position: createOneBasedPosition(3, 4),
-      lspPosition: { line: 2, character: 3 },
+      lspPosition: createZeroBasedPosition(2, 3),
     });
 
-    expect(result.ok).toBe(true);
     expect(request).toHaveBeenCalledWith('textDocument/references', {
       textDocument: { uri: TEST_URI },
       position: { line: 2, character: 3 },
@@ -346,10 +194,9 @@ describe('LSP operations', () => {
       const result = await callHierarchy(session, {
         filePath: TEST_FILE_PATH,
         position: createOneBasedPosition(5, 10),
-        lspPosition: { line: 4, character: 9 },
+        lspPosition: createZeroBasedPosition(4, 9),
       });
 
-      expect(result.ok).toBe(true);
       expect(request).toHaveBeenCalledWith(
         'textDocument/prepareCallHierarchy',
         {
@@ -358,14 +205,10 @@ describe('LSP operations', () => {
         }
       );
 
-      if (!result.ok) {
-        throw new Error('expected call hierarchy result');
-      }
-
-      expect(result.data.result.direction).toBe('both');
-      expect(result.data.result.targets).toHaveLength(2);
-      expect(result.data.result.targets[0]?.incomingCalls).toHaveLength(1);
-      expect(result.data.result.targets[0]?.outgoingCalls).toHaveLength(1);
+      expect(result.result.direction).toBe('both');
+      expect(result.result.targets).toHaveLength(2);
+      expect(result.result.targets[0]?.incomingCalls).toHaveLength(1);
+      expect(result.result.targets[0]?.outgoingCalls).toHaveLength(1);
       expect(request).toHaveBeenCalledTimes(5);
     });
 
@@ -403,21 +246,15 @@ describe('LSP operations', () => {
         {
           filePath: TEST_FILE_PATH,
           position: createOneBasedPosition(5, 10),
-          lspPosition: { line: 4, character: 9 },
+          lspPosition: createZeroBasedPosition(4, 9),
         },
         'incoming'
       );
 
-      expect(result.ok).toBe(true);
-
-      if (!result.ok) {
-        throw new Error('expected call hierarchy result');
-      }
-
-      expect(result.data.result.direction).toBe('incoming');
-      expect(result.data.result.targets).toHaveLength(1);
-      expect(result.data.result.targets[0]?.incomingCalls).toEqual([]);
-      expect(result.data.result.targets[0]?.outgoingCalls).toBeNull();
+      expect(result.result.direction).toBe('incoming');
+      expect(result.result.targets).toHaveLength(1);
+      expect(result.result.targets[0]?.incomingCalls).toEqual([]);
+      expect(result.result.targets[0]?.outgoingCalls).toBeNull();
       expect(request).toHaveBeenCalledTimes(2);
       expect(request).not.toHaveBeenCalledWith(
         'callHierarchy/outgoingCalls',
@@ -459,21 +296,15 @@ describe('LSP operations', () => {
         {
           filePath: TEST_FILE_PATH,
           position: createOneBasedPosition(5, 10),
-          lspPosition: { line: 4, character: 9 },
+          lspPosition: createZeroBasedPosition(4, 9),
         },
         'outgoing'
       );
 
-      expect(result.ok).toBe(true);
-
-      if (!result.ok) {
-        throw new Error('expected call hierarchy result');
-      }
-
-      expect(result.data.result.direction).toBe('outgoing');
-      expect(result.data.result.targets).toHaveLength(1);
-      expect(result.data.result.targets[0]?.incomingCalls).toBeNull();
-      expect(result.data.result.targets[0]?.outgoingCalls).toEqual([]);
+      expect(result.result.direction).toBe('outgoing');
+      expect(result.result.targets).toHaveLength(1);
+      expect(result.result.targets[0]?.incomingCalls).toBeNull();
+      expect(result.result.targets[0]?.outgoingCalls).toEqual([]);
       expect(request).toHaveBeenCalledTimes(2);
       expect(request).not.toHaveBeenCalledWith(
         'callHierarchy/incomingCalls',
@@ -497,17 +328,11 @@ describe('LSP operations', () => {
         const result = await callHierarchy(session, {
           filePath: TEST_FILE_PATH,
           position: createOneBasedPosition(5, 10),
-          lspPosition: { line: 4, character: 9 },
+          lspPosition: createZeroBasedPosition(4, 9),
         });
 
-        expect(result.ok).toBe(true);
-
-        if (!result.ok) {
-          throw new Error('expected call hierarchy result');
-        }
-
-        expect(result.data.result.direction).toBe('both');
-        expect(result.data.result.targets).toEqual([]);
+        expect(result.result.direction).toBe('both');
+        expect(result.result.targets).toEqual([]);
         expect(request).toHaveBeenCalledTimes(1);
       }
     );
@@ -529,13 +354,12 @@ describe('LSP operations', () => {
         }),
     });
 
-    const result = await completion(session, {
+    await completion(session, {
       filePath: TEST_FILE_PATH,
       position: createOneBasedPosition(1, 1),
-      lspPosition: { line: 0, character: 0 },
+      lspPosition: createZeroBasedPosition(0, 0),
     });
 
-    expect(result.ok).toBe(true);
     expect(request).toHaveBeenCalledWith('textDocument/completion', {
       textDocument: { uri: TEST_URI },
       position: { line: 0, character: 0 },
@@ -561,11 +385,10 @@ describe('LSP operations', () => {
         ]),
     });
 
-    const result = await searchSymbols(session, {
+    await searchSymbols(session, {
       query: 'TestClass',
     });
 
-    expect(result.ok).toBe(true);
     expect(request).toHaveBeenCalledWith('workspace/symbol', {
       query: 'TestClass',
     });
@@ -611,8 +434,7 @@ describe('LSP operations', () => {
       await vi.runAllTimersAsync();
       const result = await resultPromise;
 
-      expect(result.ok).toBe(true);
-      expect(result.ok && result.data).toHaveLength(1);
+      expect(result).toHaveLength(1);
       expect(request).toHaveBeenCalledTimes(2);
       expect(request).toHaveBeenNthCalledWith(1, 'workspace/symbol', {
         query: 'registerAllTools',
@@ -645,8 +467,7 @@ describe('LSP operations', () => {
         query: 'MissingSymbol',
       });
 
-      expect(result.ok).toBe(true);
-      expect(result.ok && result.data).toHaveLength(0);
+      expect(result).toHaveLength(0);
       expect(request).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
@@ -667,8 +488,7 @@ describe('LSP operations', () => {
       query: 'MissingSymbol',
     });
 
-    expect(result.ok).toBe(true);
-    expect(result.ok && result.data).toHaveLength(0);
+    expect(result).toHaveLength(0);
     expect(request).toHaveBeenCalledTimes(1);
   });
 
@@ -687,8 +507,7 @@ describe('LSP operations', () => {
       query: 'MissingSymbol',
     });
 
-    expect(result.ok).toBe(true);
-    expect(result.ok && result.data).toHaveLength(0);
+    expect(result).toHaveLength(0);
     expect(request).toHaveBeenCalledTimes(1);
   });
 
@@ -715,8 +534,7 @@ describe('LSP operations', () => {
       await vi.runAllTimersAsync();
       const result = await resultPromise;
 
-      expect(result.ok).toBe(true);
-      expect(result.ok && result.data).toHaveLength(0);
+      expect(result).toHaveLength(0);
       expect(request).toHaveBeenCalledTimes(5);
     } finally {
       vi.useRealTimers();
@@ -743,11 +561,10 @@ describe('LSP operations', () => {
         ]),
     });
 
-    const result = await outlineSymbols(session, {
+    await outlineSymbols(session, {
       filePath: TEST_FILE_PATH,
     });
 
-    expect(result.ok).toBe(true);
     expect(request).toHaveBeenCalledWith('textDocument/documentSymbol', {
       textDocument: { uri: TEST_URI },
     });
@@ -763,7 +580,7 @@ describe('LSP operations', () => {
           items: [
             {
               code: 'CS1001',
-              message: 'problem',
+              message: { kind: 'markdown', value: '**problem**' },
               severity: 1,
               range: {
                 start: { line: 1, character: 2 },
@@ -779,14 +596,72 @@ describe('LSP operations', () => {
       filePath: TEST_FILE_PATH,
     });
 
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({
+      diagnostics: [{ message: '**problem**' }],
+      omittedCount: 0,
+    });
     expect(request).toHaveBeenCalledWith('textDocument/diagnostic', {
       textDocument: { uri: TEST_URI },
       identifier: 'roslyn',
     });
   });
 
-  it('rename uses the prepared rename payload and returns workspace edits', async () => {
+  it('getDiagnostics respects the configured push diagnostics timeout', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const { session, diagnosticsStore } = createMockSession({
+        diagnosticsStrategy: 'push',
+        diagnosticsWaitTimeoutMs: 1200,
+      });
+
+      const resultPromise = getDiagnostics(session, {
+        filePath: TEST_FILE_PATH,
+      });
+
+      await vi.advanceTimersByTimeAsync(1199);
+      expect(diagnosticsStore.getDiagnostics).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await resultPromise;
+
+      expect(result).toEqual({ diagnostics: [], omittedCount: 0 });
+      expect(diagnosticsStore.getDiagnostics).toHaveBeenCalledWith(TEST_URI);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bounds pull diagnostics across providers before mapping them', async () => {
+    const items = Array.from(
+      { length: DIAGNOSTICS_MAX_ENTRIES + 2 },
+      (_, index) => ({
+        code: `TS${index}`,
+        message: index === 0 ? 'x'.repeat(10_000) : `problem-${index}`,
+        severity: 1,
+        range: {
+          start: { line: index, character: 0 },
+          end: { line: index, character: 1 },
+        },
+        source: 'typescript',
+      })
+    );
+    const { session } = createMockSession({
+      diagnosticsStrategy: 'pull',
+      providers: [{ id: 'typescript' }],
+      requestImpl: () => Promise.resolve({ kind: 'full', items }),
+    });
+
+    const result = await getDiagnostics(session, {
+      filePath: TEST_FILE_PATH,
+    });
+
+    expect(result.diagnostics).toHaveLength(DIAGNOSTICS_MAX_ENTRIES);
+    expect(result.diagnostics[0]?.message.length).toBe(2_000);
+    expect(result.omittedCount).toBe(2);
+  });
+
+  it('rename uses the resolved target and returns workspace edits', async () => {
     const { session, request } = createMockSession({
       requestImpl: () =>
         Promise.resolve({
@@ -804,14 +679,13 @@ describe('LSP operations', () => {
         }),
     });
 
-    const result = await rename(session, {
+    await rename(session, {
       filePath: TEST_FILE_PATH,
       position: createOneBasedPosition(1, 1),
-      lspPosition: { line: 0, character: 0 },
+      lspPosition: createZeroBasedPosition(0, 0),
       newName: 'Renamed',
     });
 
-    expect(result.ok).toBe(true);
     expect(request).toHaveBeenCalledWith('textDocument/rename', {
       textDocument: { uri: TEST_URI },
       position: { line: 0, character: 0 },
@@ -846,16 +720,11 @@ describe('LSP operations', () => {
     const result = await rename(session, {
       filePath: TEST_FILE_PATH,
       position: createOneBasedPosition(2, 3),
-      lspPosition: { line: 1, character: 2 },
+      lspPosition: createZeroBasedPosition(1, 2),
       newName: 'Renamed',
     });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      return;
-    }
-
-    expect(result.data.result).toEqual({
+    expect(result.result).toEqual({
       [TEST_URI]: [
         {
           range: {
@@ -863,13 +732,80 @@ describe('LSP operations', () => {
             end: { line: 1, character: 6 },
           },
           newText: 'Renamed',
-          startLine: 2,
-          startCharacter: 3,
-          endLine: 2,
-          endCharacter: 7,
         },
       ],
     });
+  });
+
+  it('rename rejects snippet edits before they can be written as raw text', async () => {
+    const { session } = createMockSession({
+      requestImpl: () =>
+        Promise.resolve({
+          documentChanges: [
+            {
+              textDocument: { uri: TEST_URI, version: 1 },
+              edits: [
+                {
+                  range: {
+                    start: { line: 1, character: 2 },
+                    end: { line: 1, character: 6 },
+                  },
+                  snippet: { kind: 'snippet', value: '${1:Renamed}' },
+                },
+              ],
+            },
+          ],
+        }),
+    });
+
+    await expect(
+      rename(session, {
+        filePath: TEST_FILE_PATH,
+        position: createOneBasedPosition(2, 3),
+        lspPosition: createZeroBasedPosition(1, 2),
+        newName: 'Renamed',
+      })
+    ).rejects.toThrow(
+      'unsupported snippet edit for file:///test/workspace/src/test.ts'
+    );
+  });
+
+  it('rename rejects resource operations before returning any text edits', async () => {
+    const { session } = createMockSession({
+      requestImpl: () =>
+        Promise.resolve({
+          documentChanges: [
+            {
+              textDocument: { uri: TEST_URI, version: 1 },
+              edits: [
+                {
+                  range: {
+                    start: { line: 0, character: 0 },
+                    end: { line: 0, character: 4 },
+                  },
+                  newText: 'Renamed',
+                },
+              ],
+            },
+            {
+              kind: 'rename',
+              oldUri: TEST_URI,
+              newUri: 'file:///test/workspace/src/renamed.ts',
+            },
+          ],
+        }),
+    });
+
+    await expect(
+      rename(session, {
+        filePath: TEST_FILE_PATH,
+        position: createOneBasedPosition(1, 1),
+        lspPosition: createZeroBasedPosition(0, 0),
+        newName: 'Renamed',
+      })
+    ).rejects.toThrow(
+      "unsupported file operation 'rename'; no files were changed"
+    );
   });
 
   it('logs returns messages from the window log store', () => {
@@ -881,8 +817,6 @@ describe('LSP operations', () => {
       logMessages: messages,
     });
 
-    const result = logs(session);
-
-    expect(result).toEqual({ ok: true, data: messages });
+    expect(logs(session)).toEqual(messages);
   });
 });
