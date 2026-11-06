@@ -31,6 +31,18 @@ export default tseslint.config(
     },
     rules: {
       curly: 'warn',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['vscode-jsonrpc', 'vscode-jsonrpc/*'],
+              message:
+                "Import from 'vscode-languageserver-protocol' (or '/node'). Its request descriptors only work with the vscode-jsonrpc copy it bundles; a second copy fails with 'Unknown parameter structure byName'.",
+            },
+          ],
+        },
+      ],
     },
   },
 

@@ -6,7 +6,7 @@
  */
 
 import * as cp from 'child_process';
-import * as rpc from 'vscode-jsonrpc';
+import * as rpc from 'vscode-languageserver-protocol/node';
 import {
   InitializeParams,
   DidOpenTextDocumentParams,

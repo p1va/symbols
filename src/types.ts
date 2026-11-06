@@ -1,9 +1,9 @@
-import * as rpc from 'vscode-jsonrpc';
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import {
   ClientCapabilities,
   Diagnostic,
   LogMessageParams,
+  MessageConnection,
   Range,
   ServerCapabilities,
 } from 'vscode-languageserver-protocol';
@@ -25,7 +25,7 @@ export type Result<T, E = Error> =
 
 // LSP Client state
 export interface LspClient {
-  connection: rpc.MessageConnection;
+  connection: MessageConnection;
   isInitialized: boolean;
   clientCapabilities?: ClientCapabilities;
   serverCapabilities?: ServerCapabilities;
