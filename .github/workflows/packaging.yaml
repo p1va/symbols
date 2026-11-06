@@ -1,0 +1,30 @@
+name: Packed Install
+permissions:
+  contents: read
+
+# Installs the packed tarball with npm and no lockfile, as `npx` does for plugin
+# users. The scheduled run catches dependency releases that break fresh
+# installs between commits.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  packed-install:
+    name: 📦 Packed npm install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup and Install
+        uses: ./.github/actions/setup-and-install
+
+      - name: Build
+        run: pnpm build
+
+      - name: Smoke-test the packed install
+        run: pnpm test:packaging
+        timeout-minutes: 10

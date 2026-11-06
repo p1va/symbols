@@ -1,4 +1,4 @@
-import type { RequestParam, RequestType } from 'vscode-jsonrpc';
+import type { RequestParam, RequestType } from 'vscode-languageserver-protocol';
 
 /**
  * Sends an LSP request whose descriptor couples the method, parameters, and

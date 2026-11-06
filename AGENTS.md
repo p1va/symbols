@@ -195,6 +195,11 @@ session lifecycle, preparation, routing, or tool output. Add focused contract
 tests for accepted protocol variants, coordinate boundaries, cleanup, mutation
 preflight, enrichment cardinality, and public formatting.
 
+After changing dependencies or package contents, run `pnpm test:packaging`
+(after `pnpm build`). It installs the packed tarball with npm and no lockfile,
+as `npx` does for plugin users, so it sees the versions users resolve rather
+than the ones `pnpm-lock.yaml` pins.
+
 ## Decision Style
 
 When choosing an implementation, bias toward:

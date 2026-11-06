@@ -26,12 +26,9 @@ importers:
       shell-quote:
         specifier: ^1.10.0
         version: 1.10.0
-      vscode-jsonrpc:
-        specifier: ^9.0.1
-        version: 9.0.1
       vscode-languageserver-protocol:
-        specifier: ^3.18.2
-        version: 3.18.2
+        specifier: ^3.18.5
+        version: 3.18.5
       which:
         specifier: ^5.0.0
         version: 5.0.0
@@ -2954,23 +2951,23 @@ packages:
       jsdom:
         optional: true
 
-  vscode-jsonrpc@9.0.1:
+  vscode-jsonrpc@10.0.0:
     resolution:
       {
-        integrity: sha512-rfuA6T75H6m5EkbhtEPzre9pT0HPcDI2MMy4+nPFIBks5J8JBAUHD4tRYSgaBOijIEC7SRkC1kKyXTLqbmh9jw==,
+        integrity: sha512-USSfxg0vDIpTQqlQBGxF3mBARyoS8cU7LHLpbYNh6dOJt32dlskxPWB0Irrh5TllTmyf7oNLAvqDqzklbwwnpA==,
       }
-    engines: { node: '>=14.0.0' }
+    engines: { node: '>=14.17.0' }
 
-  vscode-languageserver-protocol@3.18.2:
+  vscode-languageserver-protocol@3.18.5:
     resolution:
       {
-        integrity: sha512-XRyDbT0Pp3sSNti3JmxVEUMySWCSi1hhM+/KUlCy1hV1zmrqpM1OwO12EAki8blhmLuIMpaJrYbo0OzGVfK2Qg==,
+        integrity: sha512-FW4fBMzZ99N8xeob4py0l050wgCoRgTpEq5Xcsb9lM1bc29UKGR/wSV+4knaqFxssFHajy7OzNiKP/m3U1ZEuA==,
       }
 
-  vscode-languageserver-types@3.18.0:
+  vscode-languageserver-types@3.18.5:
     resolution:
       {
-        integrity: sha512-8TsGPNMIMiiBdkORgRSvLjuiEIiAFtO+KssmYWxQ+uSVvlf7RjK8YKCOjPzZ+YA04jXEV7+7LvkSmHkhpNS99g==,
+        integrity: sha512-kPd6+JQNz3HMJvjKlqUxERSlZHAntl/aGpsk7ImwIh0ewDKDcjgAEyVSYciPiOJD3ftbK9IrfiqUeTZLSbCizw==,
       }
 
   walk-up-path@4.0.0:
@@ -4726,14 +4723,14 @@ snapshots:
       - tsx
       - yaml
 
-  vscode-jsonrpc@9.0.1: {}
+  vscode-jsonrpc@10.0.0: {}
 
-  vscode-languageserver-protocol@3.18.2:
+  vscode-languageserver-protocol@3.18.5:
     dependencies:
-      vscode-jsonrpc: 9.0.1
-      vscode-languageserver-types: 3.18.0
+      vscode-jsonrpc: 10.0.0
+      vscode-languageserver-types: 3.18.5
 
-  vscode-languageserver-types@3.18.0: {}
+  vscode-languageserver-types@3.18.5: {}
 
   walk-up-path@4.0.0: {}
 

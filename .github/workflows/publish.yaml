@@ -40,6 +40,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Smoke-test the packed install
+        run: pnpm test:packaging
+
       - name: Update MCP server.json with version
         run: |
           VERSION=$(node -p "require('./package.json').version")

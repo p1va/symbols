@@ -81,7 +81,8 @@ The flow is `tools -> preparation -> operations -> session -> client`.
 For normal code changes run `pnpm format:check`, `pnpm build`,
 `pnpm test:unit`, `pnpm check:unused`, and `pnpm check:unused:ts`. Run the
 relevant language integration test after changing protocol behavior, session
-lifecycle, preparation, routing, or tool output.
+lifecycle, preparation, routing, or tool output. Run `pnpm test:packaging`
+after `pnpm build` when dependencies or package contents change.
 
 ## Keep In Sync
 

@@ -6,7 +6,7 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as rpc from 'vscode-jsonrpc/node';
+import * as rpc from 'vscode-languageserver-protocol/node';
 import which from 'which';
 import {
   InitializeParams,
